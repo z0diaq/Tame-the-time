@@ -17,12 +17,20 @@ class TaskCard:
 
     def draw(self, canvas: Canvas, now: time):
         is_active = time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute)
+        is_finished = time(self.end_hour, self.end_minute) <= now
         color = (
-            "#cccccc" if time(self.end_hour, self.end_minute) <= now else
+            "#cccccc" if is_finished else
             "#ffff99" if is_active else
             "#add8e6"
         )
         self.card = canvas.create_rectangle(self.card_left, self.y, self.card_right, self.y + self.height, fill=color, outline="black")
+        # Progress bar for active card
+        if is_active:
+            total_minutes = (self.end_hour - self.start_hour) * 60 + (self.end_minute - self.start_minute)
+            elapsed_minutes = (now.hour - self.start_hour) * 60 + (now.minute - self.start_minute)
+            progress = min(max(elapsed_minutes / total_minutes, 0), 1) if total_minutes > 0 else 1
+            fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
+            canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="")
         self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
         tag = f"card_{self.card}"
         canvas.itemconfig(self.card, tags=(tag, "card"))
@@ -67,6 +75,6 @@ def create_task_cards(
     if active_y is not None and cards:
         card_left = cards[0].card_left
         card_right = cards[0].card_right
-        canvas.create_line(card_left-30, active_y, card_left, active_y, fill="green", width=2, arrow="last", arrowshape=(16,20,6))
-        canvas.create_line(card_right+30, active_y, card_right, active_y, fill="green", width=2, arrow="last", arrowshape=(16,20,6))
+        #canvas.create_line(card_left-30, active_y, card_left, active_y, fill="green", width=2, arrow="last", arrowshape=(16,20,6))
+        #canvas.create_line(card_right+30, active_y, card_right, active_y, fill="green", width=2, arrow="last", arrowshape=(16,20,6))
     return cards

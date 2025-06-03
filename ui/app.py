@@ -5,10 +5,38 @@ from ui.timeline import draw_timeline
 from ui.task_card import create_task_cards
 from utils.time_utils import get_current_activity, format_time
 from datetime import datetime, timedelta, time
+import json
+import os
+import utils.notification
+
+last_activity = None  # Global variable to track the last activity for notifications
 
 class TimeboxApp(tk.Tk):
+    SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
+
+    def load_settings(self):
+        if os.path.exists(self.SETTINGS_PATH):
+            with open(self.SETTINGS_PATH, "r") as f:
+                return json.load(f)
+        return {}
+
+    def save_settings(self):
+        settings = {
+            "window_position": self.geometry(),
+            "gotify_token": utils.notification.gotify_token,
+            "gotify_url": utils.notification.gotify_url
+        }
+        with open(self.SETTINGS_PATH, "w") as f:
+            json.dump(settings, f)
+
     def __init__(self, schedule: List[Dict]):
         super().__init__()
+        self.settings = self.load_settings()
+        # Restore window position if available
+        if "window_position" in self.settings:
+            self.geometry(self.settings["window_position"])
+        utils.notification.gotify_token = self.settings.get("gotify_token", "")
+        utils.notification.gotify_url = self.settings.get("gotify_url", "")
         self.title("Timeboxing Timeline")
         self.geometry("400x700")
         self.schedule = schedule
@@ -46,6 +74,12 @@ class TimeboxApp(tk.Tk):
         self.draw_timeline()
         self.create_task_cards()
         self.update_ui()
+
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def on_close(self):
+        self.save_settings()
+        self.destroy()
 
     def on_resize(self, event):
         if event.widget == self:
@@ -244,6 +278,9 @@ class TimeboxApp(tk.Tk):
                     self.canvas.move(item, 0, delta_y)
 
     def update_ui(self):
+
+        global last_activity
+
         now = datetime.now()
         self.time_label.config(text=now.strftime("%H:%M:%S %A, %Y-%m-%d"))
         activity = get_current_activity(self.schedule, now)
@@ -252,6 +289,11 @@ class TimeboxApp(tk.Tk):
             self.activity_label.config(
                 text=f"Actions:\n{desc}"
             )
+            if last_activity is None or last_activity["name"] != activity["name"]:
+                utils.notification.send_gotify_notification(activity)
+                print(f"Notification sent for activity: {activity['name']}")
+
+            last_activity = activity
         else:
             text = (
                 "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM." if now.weekday() >= 5 else
