@@ -29,9 +29,11 @@ class TimeboxApp(tk.Tk):
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
 
-    def __init__(self, schedule: List[Dict]):
+    def __init__(self, schedule: List[Dict], now_provider=datetime.now):
         super().__init__()
+        self.now_provider = now_provider
         self.settings = self.load_settings()
+        
         # Restore window position if available
         if "window_position" in self.settings:
             self.geometry(self.settings["window_position"])
@@ -40,14 +42,16 @@ class TimeboxApp(tk.Tk):
         self.title("Timeboxing Timeline")
         self.geometry("400x700")
         self.schedule = schedule
-        self.start_hour = 8
-        self.end_hour = 17
+        self.start_hour = 0
+        self.end_hour = 24
         self.zoom_factor = 6.0
         self.pixels_per_hour = max(50, int(50 * self.zoom_factor))
         self.offset_y = 0
         self.cards: List[Tuple[int, int, int, Dict]] = []
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False}
         self._last_size = (self.winfo_width(), self.winfo_height())
+        self.timeline_granularity = 60  # 60 min (1h) by default
+        self.hide_card_start_times = False
         
         self.canvas = tk.Canvas(self, bg="white", width=400, height=700)
         self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -63,7 +67,7 @@ class TimeboxApp(tk.Tk):
         self.bind("<Configure>", self.on_resize)
 
         # Center view on current time
-        now = datetime.now().time()
+        now = self.now_provider().time()
         minutes_since_start = (now.hour - self.start_hour) * 60 + now.minute
         center_y = int(minutes_since_start * self.pixels_per_hour / 60) + 100
         
@@ -128,12 +132,16 @@ class TimeboxApp(tk.Tk):
 
     def draw_timeline(self):
         # Pass current time to draw_timeline for green line
-        now = datetime.now().time()
-        draw_timeline(self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y, current_time=now)
+        now = self.now_provider().time()
+        draw_timeline(
+            self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y, 
+            current_time=now, granularity=self.timeline_granularity
+        )
 
     def create_task_cards(self):
         self.cards = create_task_cards(
-            self.canvas, self.schedule, self.start_hour, self.pixels_per_hour, self.offset_y, self.winfo_width()
+            self.canvas, self.schedule, self.start_hour, self.pixels_per_hour, self.offset_y, self.winfo_width(),
+            now_provider=self.now_provider, hide_start_time=self.hide_card_start_times
         )
         for card_obj in self.cards:
             tag = f"card_{card_obj.card}"
@@ -145,7 +153,7 @@ class TimeboxApp(tk.Tk):
 
         if center:
             # Center view on current time before redraw
-            now = datetime.now().time()
+            now = self.now_provider().time()
             minutes_since_start = (now.hour - self.start_hour) * 60 + now.minute
             center_y = int(minutes_since_start * self.pixels_per_hour / 60) + 100
             self.offset_y = (height // 2) - center_y
@@ -160,24 +168,60 @@ class TimeboxApp(tk.Tk):
         self._drag_data["offset_y"] = event.y
         self._drag_data["start_y"] = event.y
         self._drag_data["dragging"] = False
+        # Make all other cards barely visible
+        dragged_id = self._drag_data["item_ids"][0]
+        for card_obj in self.cards:
+            if card_obj.card != dragged_id:
+                self.canvas.itemconfig(card_obj.card, stipple="gray25")
+                if card_obj.label:
+                    self.canvas.itemconfig(card_obj.label, fill="#cccccc")
+            else:
+                self.canvas.itemconfig(card_obj.card, stipple="")
+                if card_obj.label:
+                    self.canvas.itemconfig(card_obj.label, fill="black")
 
     def on_card_drag(self, event):
         if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
             return
+
+        if self.timeline_granularity != 5:
+            self.timeline_granularity = 5
+            self.hide_card_start_times = True
+            self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+            # Restore drag state after redraw
+            self.on_card_press(event)
+
         self._drag_data["dragging"] = True
-        delta_y = event.y - self._drag_data["offset_y"]
+        dragged_id = self._drag_data["item_ids"][0]
+        # Snap to 5 min increments
+        y = event.y
+        y_relative = y - 100 - self.offset_y
+        total_minutes = int(y_relative * 60 / self.pixels_per_hour)
+        snapped_minutes = 5 * round(total_minutes / 5)
+        snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
+        delta_y = snapped_y - self.canvas.coords(dragged_id)[1]
         for item_id in self._drag_data["item_ids"]:
             self.canvas.move(item_id, 0, delta_y)
-        self._drag_data["offset_y"] = event.y
+        self._drag_data["offset_y"] = event.y + (snapped_y - y)
 
     def on_card_release(self, event):
         if not self._drag_data["item_ids"] or not self._drag_data["dragging"]:
             self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False}
+            self.timeline_granularity = 60
+            self.hide_card_start_times = False
+            self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
             return
-        
         card_id = self._drag_data["item_ids"][0]
         self.handle_card_snap(card_id, event.y)
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False}
+        self.timeline_granularity = 60
+        self.hide_card_start_times = False
+        # Restore all cards to normal appearance
+        for card_obj in self.cards:
+            self.canvas.itemconfig(card_obj.card, stipple="")
+            if card_obj.label:
+                self.canvas.itemconfig(card_obj.label, fill="black")
+        self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
 
     def handle_card_snap(self, card_id: int, y: int):
         # Find the TaskCard object for the moved card
@@ -246,13 +290,13 @@ class TimeboxApp(tk.Tk):
             key=lambda t: t[3]
         )
         
-        current_time = datetime.now().time()
+        current_time = self.now_provider().time()
         for idx, (card, label, time_label, top, bottom, activity) in enumerate(card_positions):
             start_minutes = 0 if idx == 0 else int((card_positions[idx-1][4] - 100 - self.offset_y) * 60 / self.pixels_per_hour)
             end_minutes = start_minutes + int((bottom - top) * 60 / self.pixels_per_hour)
             
-            start_time = (datetime.combine(datetime.today(), time(self.start_hour)) + timedelta(minutes=start_minutes)).time()
-            end_time = (datetime.combine(datetime.today(), time(self.start_hour)) + timedelta(minutes=end_minutes)).time()
+            start_time = (datetime.combine(self.now_provider(), time(self.start_hour)) + timedelta(minutes=start_minutes)).time()
+            end_time = (datetime.combine(self.now_provider(), time(self.start_hour)) + timedelta(minutes=end_minutes)).time()
             
             self.canvas.itemconfig(label, text=activity["name"])
             self.canvas.delete(time_label)
@@ -281,7 +325,7 @@ class TimeboxApp(tk.Tk):
 
         global last_activity
 
-        now = datetime.now()
+        now = self.now_provider()
         self.time_label.config(text=now.strftime("%H:%M:%S %A, %Y-%m-%d"))
         activity = get_current_activity(self.schedule, now)
         if activity:

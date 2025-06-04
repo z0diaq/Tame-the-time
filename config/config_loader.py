@@ -16,7 +16,7 @@ def get_day_config_path() -> str:
     
     return "default_settings.yaml"
 
-def load_schedule(config_path: Optional[str] = None) -> List[Dict]:
+def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[Dict]:
     """Load and validate the schedule from a YAML file."""
     config_path = config_path or get_day_config_path()
     

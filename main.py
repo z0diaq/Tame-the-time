@@ -1,11 +1,31 @@
 import sys
 from config.config_loader import load_schedule
 from ui.app import TimeboxApp
+from datetime import datetime
+
+now_parameter_value = None
+
+def check_now_parameter():
+    global now_parameter_value
+    if '--now' in sys.argv:
+        idx = sys.argv.index('--now')
+        if idx + 1 < len(sys.argv):
+            try:
+                now_parameter_value = datetime.fromisoformat(sys.argv[idx + 1])
+            except ValueError:
+                print(f"Invalid date format: {sys.argv[idx + 1]}. Expected ISO format (YYYY-MM-DDTHH:MM:SS).")
+                sys.exit(1)
+
+def get_now():
+    if now_parameter_value is not None:
+        return now_parameter_value
+    return datetime.now()
 
 def main():
-    config_path = sys.argv[1] if len(sys.argv) > 1 else None
+    config_path = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else None
     schedule = load_schedule(config_path)
-    app = TimeboxApp(schedule)
+    check_now_parameter()
+    app = TimeboxApp(schedule, now_provider=get_now)
     app.mainloop()
 
 if __name__ == "__main__":
