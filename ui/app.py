@@ -10,6 +10,7 @@ import os
 import utils.notification
 
 last_activity = None  # Global variable to track the last activity for notifications
+allow_notification = True
 
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
@@ -140,8 +141,14 @@ class TimeboxApp(tk.Tk):
 
     def create_task_cards(self):
         self.cards = create_task_cards(
-            self.canvas, self.schedule, self.start_hour, self.pixels_per_hour, self.offset_y, self.winfo_width(),
-            now_provider=self.now_provider, hide_start_time=self.hide_card_start_times
+            self.canvas,
+            self.schedule,
+            self.start_hour,
+            self.pixels_per_hour,
+            self.offset_y,
+            self.winfo_width(),
+            now_provider=self.now_provider,
+            hide_start_time=self.hide_card_start_times
         )
         for card_obj in self.cards:
             tag = f"card_{card_obj.card}"
@@ -164,6 +171,7 @@ class TimeboxApp(tk.Tk):
 
     def on_card_press(self, event):
         tags = self.canvas.gettags(tk.CURRENT)
+        print(f"Card pressed: {tags}")
         self._drag_data["item_ids"] = self.canvas.find_withtag(tags[0])
         self._drag_data["offset_y"] = event.y
         self._drag_data["start_y"] = event.y
@@ -179,26 +187,37 @@ class TimeboxApp(tk.Tk):
                 self.canvas.itemconfig(card_obj.card, stipple="")
                 if card_obj.label:
                     self.canvas.itemconfig(card_obj.label, fill="black")
-
-    def on_card_drag(self, event):
-        if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
-            return
-
         if self.timeline_granularity != 5:
             self.timeline_granularity = 5
             self.hide_card_start_times = True
             self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
             # Restore drag state after redraw
-            self.on_card_press(event)
+            #self.on_card_press(event)
+
+    def on_card_drag(self, event):
+        if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
+            return
+
+
+
+        # THIS COULD BE A PROBLEM
+        #if self.timeline_granularity != 5:
+        #    self.timeline_granularity = 5
+        #    self.hide_card_start_times = True
+        #    self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+            # Restore drag state after redraw
+            #self.on_card_press(event)
 
         self._drag_data["dragging"] = True
         dragged_id = self._drag_data["item_ids"][0]
+        print(f"Dragging card: {dragged_id}, Start Y: {self._drag_data['start_y']}, Current Y: {event.y}")
         # Snap to 5 min increments
         y = event.y
         y_relative = y - 100 - self.offset_y
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
         snapped_minutes = 5 * round(total_minutes / 5)
         snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
+        print(f"Dragged item: {self.canvas.coords(dragged_id)}")
         delta_y = snapped_y - self.canvas.coords(dragged_id)[1]
         for item_id in self._drag_data["item_ids"]:
             self.canvas.move(item_id, 0, delta_y)
@@ -239,10 +258,15 @@ class TimeboxApp(tk.Tk):
             new_hour, new_minute = self.start_hour, 0
         if new_hour > self.end_hour or (new_hour == self.end_hour and new_minute > 0):
             new_hour, new_minute = self.end_hour, 0
-
+        
+        idx = self.cards.index(moved_card)
+        self.cards[idx].move_to_time(new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
+        self.schedule = [card.to_dict() for card in self.cards]
+        '''
         # Check for overlap with other cards
         sorted_cards = sorted(self.cards, key=lambda c: (c.start_hour, c.start_minute))
         idx = sorted_cards.index(moved_card)
+        print(f"Card found at index {idx} in sorted list.")
 
         # Remove moved card from list
         sorted_cards.pop(idx)
@@ -254,34 +278,18 @@ class TimeboxApp(tk.Tk):
                 break
             insert_idx = i + 1
 
+        print(f"Inserting moved card at index {insert_idx}.")
         # Insert moved card at new position
         sorted_cards.insert(insert_idx, moved_card)
 
-        # Update times for all cards in order
-        cur_hour, cur_minute = self.start_hour, 0
-        for card in sorted_cards:
-            duration = (card.end_hour - card.start_hour) * 60 + (card.end_minute - card.start_minute)
-            card.move_to_time(cur_hour, cur_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
-            cur_hour = cur_hour + (cur_minute + duration) // 60
-            cur_minute = (cur_minute + duration) % 60
+        # Reflect changes from sorted_cards in schedule
+        #self.cards = sorted_cards
 
-        # Update moved card last
-        duration = (moved_card.end_hour - moved_card.start_hour) * 60 + (moved_card.end_minute - moved_card.start_minute)
-        moved_card.move_to_time(new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
-        cur_hour = new_hour + (new_minute + duration) // 60
-        cur_minute = (new_minute + duration) % 60
+        # Re-create schedule with updated times
+        self.schedule = [card.to_dict() for card in sorted_cards]
 
-        # Rebuild self.cards in new order
-        self.cards = []
-        inserted = False
-        for i, card in enumerate(sorted_cards):
-            if not inserted and (card.start_hour, card.start_minute) > (moved_card.start_hour, moved_card.start_minute):
-                self.cards.append(moved_card)
-                inserted = True
-            self.cards.append(card)
-        if not inserted:
-            self.cards.append(moved_card)
-        self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+        #self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+        '''
 
     def update_card_positions(self):
         card_positions = sorted(
@@ -333,7 +341,8 @@ class TimeboxApp(tk.Tk):
             self.activity_label.config(
                 text=f"Actions:\n{desc}"
             )
-            if last_activity is None or last_activity["name"] != activity["name"]:
+            # Send notification if activity changed and notifications are allowed
+            if (last_activity is None or last_activity["name"] != activity["name"]) and allow_notification:
                 utils.notification.send_gotify_notification(activity)
                 print(f"Notification sent for activity: {activity['name']}")
 

@@ -50,10 +50,33 @@ class TaskCard:
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
 
     def move_to_time(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y):
+        # Update the end time based on the new start time
+        card_duration_minutes = (self.end_hour - self.start_hour) * 60 + (self.end_minute - self.start_minute)
+        # Calculate new end time
+        # Convert everything to total minutes since midnight
+        total_minutes = new_start_hour * 60 + new_start_minute + card_duration_minutes
+        
+        # Handle negative times (wrap to previous day)
+        # Modulo operation ensures we stay within 24-hour range
+        total_minutes = total_minutes % (24 * 60)
+        
+        # Convert back to hours and minutes
+        self.end_hour = total_minutes // 60
+        self.end_minute = total_minutes % 60
+
         # Update y based on new start time
         self.start_hour = new_start_hour
         self.start_minute = new_start_minute
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
+    
+    def to_dict(self):
+        """Convert the TaskCard to a dictionary representation."""
+        return {
+            "name": self.activity["name"],
+            "start_time": f"{self.start_hour:02d}:{self.start_minute:02d}",
+            "end_time": f"{self.end_hour:02d}:{self.end_minute:02d}",
+            "description": self.activity["description"]
+        }
 
 def create_task_cards(
     canvas: Canvas,
