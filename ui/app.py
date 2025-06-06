@@ -74,10 +74,13 @@ class TimeboxApp(tk.Tk):
         
         # both these calls are needed to ensure the correct offset_y is calculated
         self.offset_y = (self.winfo_height() // 2) - center_y
+        self.skip_redraw = True  # Skip initial redraw when computing window's size to avoid flickering
         self.update_idletasks()  # Ensure window size is correct before centering
         self.offset_y = (self.winfo_height() // 2) - center_y
+        self.canvas.delete("all")
         self.draw_timeline()
         self.create_task_cards()
+        self.skip_redraw = False  # Allow redraws after initial setup
         self.update_ui()
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -93,7 +96,8 @@ class TimeboxApp(tk.Tk):
             if any(abs(d) >= 10 for d in [width - last_width, height - last_height]):
                 self._last_size = (width, height)
                 self.canvas.config(width=width, height=height)
-                self.redraw_timeline_and_cards(width, height, center=False)
+                if not self.skip_redraw:
+                    self.redraw_timeline_and_cards(width, height, center=False)
 
     def on_mouse_wheel(self, event):
         ctrl_held = (event.state & 0x0004) != 0
@@ -134,10 +138,15 @@ class TimeboxApp(tk.Tk):
     def draw_timeline(self):
         # Pass current time to draw_timeline for green line
         now = self.now_provider().time()
-        draw_timeline(
+        self.timeline_objects_ids = draw_timeline(
             self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y, 
             current_time=now, granularity=self.timeline_granularity
         )
+
+    def redraw_timeline(self):
+        """Redraw the timeline without creating task cards."""
+        self.canvas.delete("timeline")
+        self.draw_timeline()
 
     def create_task_cards(self):
         self.cards = create_task_cards(
@@ -194,6 +203,10 @@ class TimeboxApp(tk.Tk):
             # Restore drag state after redraw
             #self.on_card_press(event)
 
+    def round_to_nearest_5_minutes(self, minutes: int) -> int:
+        """Round minutes to the nearest 5 minutes."""
+        return 5 * round(minutes / 5)
+
     def on_card_drag(self, event):
         if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
             return
@@ -215,7 +228,7 @@ class TimeboxApp(tk.Tk):
         y = event.y
         y_relative = y - 100 - self.offset_y
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
-        snapped_minutes = 5 * round(total_minutes / 5)
+        snapped_minutes = self.round_to_nearest_5_minutes(total_minutes)
         snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
         print(f"Dragged item: {self.canvas.coords(dragged_id)}")
         delta_y = snapped_y - self.canvas.coords(dragged_id)[1]
@@ -250,7 +263,7 @@ class TimeboxApp(tk.Tk):
         y_relative = y - 100 - self.offset_y
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
         new_hour = self.start_hour + total_minutes // 60
-        new_minute = total_minutes % 60
+        new_minute = self.round_to_nearest_5_minutes(total_minutes % 60)
         print(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
 
         # Clamp to valid range
