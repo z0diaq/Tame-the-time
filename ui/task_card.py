@@ -29,16 +29,16 @@ class TaskCard:
         self.card = canvas.create_rectangle(self.card_left, self.y, self.card_right, self.y + self.height, fill=color, outline="black")
         # Progress bar for active card
         if is_active:
-            total_minutes = (self.end_hour - self.start_hour) * 60 + (self.end_minute - self.start_minute)
-            elapsed_minutes = (now.hour - self.start_hour) * 60 + (now.minute - self.start_minute)
-            progress = min(max(elapsed_minutes / total_minutes, 0), 1) if total_minutes > 0 else 1
+            total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
+            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60
+            progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
-            canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="black")
+            self.progress = canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="black")
         self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
         tag = f"card_{self.card}"
         canvas.itemconfig(self.card, tags=(tag, "card"))
         canvas.itemconfig(self.label, tags=(tag, "card"))
-        if not hide_start_time:
+        if not hide_start_time and self.start_minute != 0:
             self.time_label = canvas.create_text(
                 self.card_left - 10, self.y, text=f"{self.start_hour:02d}:{self.start_minute:02d}", font=("Arial", 8), anchor="e"
             )

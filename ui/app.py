@@ -12,6 +12,22 @@ import utils.notification
 last_activity = None  # Global variable to track the last activity for notifications
 allow_notification = True
 
+def parse_time_str(tstr):
+    # Accepts '8:00', '08:00', '8:00:00', '08:00:00' and returns a time object
+    parts = tstr.split(":")
+    if len(parts) == 2:
+        # e.g. '8:00' or '08:00'
+        hour = int(parts[0])
+        minute = int(parts[1])
+        return time(hour, minute)
+    elif len(parts) == 3:
+        hour = int(parts[0])
+        minute = int(parts[1])
+        second = int(parts[2])
+        return time(hour, minute, second)
+    else:
+        raise ValueError(f"Invalid time string: {tstr}")
+
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
 
@@ -35,6 +51,10 @@ class TimeboxApp(tk.Tk):
         self.now_provider = now_provider
         self.settings = self.load_settings()
         
+        now = now_provider().time()
+        self.last_hour = now.hour
+        self.last_minute = now.minute
+
         # Restore window position if available
         if "window_position" in self.settings:
             self.geometry(self.settings["window_position"])
@@ -54,6 +74,7 @@ class TimeboxApp(tk.Tk):
         self.timeline_granularity = 60  # 60 min (1h) by default
         self.hide_card_start_times = False
         self.menu_hide_job = None
+        self.last_action = datetime.now()
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
@@ -249,6 +270,7 @@ class TimeboxApp(tk.Tk):
         self.canvas.delete("all")
         self.draw_timeline()
         self.create_task_cards()
+        self.last_action = datetime.now()
 
     def on_card_press(self, event):
         tags = self.canvas.gettags(tk.CURRENT)
@@ -273,6 +295,10 @@ class TimeboxApp(tk.Tk):
             self._drag_data["resize_mode"] = None
         # Make all other cards barely visible
         for card_obj in self.cards:
+            # If card has fill rectangle, hide it until drag is done
+            if hasattr(card_obj, 'progress'):
+                self.canvas.itemconfig(card_obj.progress, state="hidden")
+
             if card_obj.card != dragged_id:
                 self.canvas.itemconfig(card_obj.card, stipple="gray25")
                 if card_obj.label:
@@ -295,6 +321,8 @@ class TimeboxApp(tk.Tk):
     def on_card_drag(self, event):
         if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
             return
+        
+        self.last_action = datetime.now()
         self._drag_data["dragging"] = True
         dragged_id = self._drag_data["item_ids"][0]
         if self._drag_data.get("resize_mode") == "top":
@@ -431,12 +459,22 @@ class TimeboxApp(tk.Tk):
                     self.canvas.move(item, 0, delta_y)
 
     def update_ui(self):
-
         global last_activity
-
         now = self.now_provider()
         self.time_label.config(text=now.strftime("%H:%M:%S %A, %Y-%m-%d"))
         activity = get_current_activity(self.schedule, now)
+        next_task, next_task_start = self.get_next_task_and_time(now)
+        # --- 30 seconds before next task notification ---
+        if allow_notification and next_task and 0 <= (next_task_start - now).total_seconds() <= 30:
+            if not hasattr(self, '_notified_next_task') or self._notified_next_task != next_task['name']:
+                utils.notification.send_gotify_notification({
+                    'name': f"30 seconds to start {next_task['name']}",
+                    'description': [f"{next_task['name']} starts at {next_task['start_time']}"]
+                }, is_delayed=True)
+                self._notified_next_task = next_task['name']
+        elif hasattr(self, '_notified_next_task') and (not next_task or (next_task_start - now).total_seconds() > 30 or (next_task_start - now).total_seconds() < 0):
+            self._notified_next_task = None
+        # --- UI update logic ---
         if activity:
             desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(activity["description"]))
             self.activity_label.config(
@@ -446,18 +484,48 @@ class TimeboxApp(tk.Tk):
             if (last_activity is None or last_activity["name"] != activity["name"]) and allow_notification:
                 utils.notification.send_gotify_notification(activity)
                 print(f"Notification sent for activity: {activity['name']}")
-
             last_activity = activity
         else:
-            text = (
-                "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM." if now.weekday() >= 5 else
-                "Before work hours\nWork day starts at 8:00 AM" if now.time() < time(8, 0) else
-                "End of work day\nSee you tomorrow at 8:00 AM!"
-            )
+            # --- Show time till next task if no active task ---
+            if now.weekday() >= 5 or not next_task:
+                text = (
+                    "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM."
+                )
+            else:
+                seconds_left = int((next_task_start - now).total_seconds())
+                if seconds_left < 0:
+                    # Handle over-midnight: add 24h
+                    seconds_left += 24*3600
+                hours, remainder = divmod(seconds_left, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                text = f"No active task\nNext: {next_task['name']} at {next_task['start_time']}\nTime left: {hours:02d}:{minutes:02d}:{seconds:02d}"
             self.activity_label.config(text=text)
-
-        # Redraw everything every full minute
-        if now.second == 0:
-            self.config(cursor="")
+        # Redraw everything every 20 seconds
+        if (datetime.now() - self.last_action).total_seconds() >= 20:
+            #self.config(cursor="")
+            print("Redrawing timeline and cards due to inactivity...")
             self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height())
         self.after(1000, self.update_ui)
+
+    def get_next_task_and_time(self, now):
+        # Returns (next_task_dict, next_task_start_datetime)
+        today = now.date()
+        # If weekend, find first task on Monday
+        if now.weekday() >= 5:
+            # Find next Monday
+            days_ahead = 0 if now.weekday() == 0 else (7 - now.weekday())
+            monday = today + timedelta(days=days_ahead)
+            first = self.schedule[0]
+            next_time = datetime.combine(monday, parse_time_str(first['start_time']))
+            return first, next_time
+        # Find next task after now
+        for task in self.schedule:
+            t = parse_time_str(task['start_time'])
+            task_dt = datetime.combine(today, t)
+            if task_dt > now:
+                return task, task_dt
+        # If none found, return first task of next day
+        tomorrow = today + timedelta(days=1)
+        first = self.schedule[0]
+        next_time = datetime.combine(tomorrow, parse_time_str(first['start_time']))
+        return first, next_time

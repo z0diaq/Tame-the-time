@@ -8,12 +8,12 @@ def format_gotify_message(activity: Dict) -> str:
     """Format a message for Gotify notification."""
     return "\n".join(f"{i}. {point}" for i, point in enumerate(activity['description'], 1))
 
-def send_gotify_notification(activity: Dict) -> None:
+def send_gotify_notification(activity: Dict, is_delayed: bool = False) -> None:
     """Send a notification to Gotify."""
 
     message = format_gotify_message(activity)
     payload = {
-        "title": f"Starting: {activity['name']}",
+        "title": f"{'Starting: ' if not is_delayed else ''}{activity['name']}",
         "message": message
     }
     
