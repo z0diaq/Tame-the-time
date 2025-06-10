@@ -1,5 +1,6 @@
 from typing import Dict
 import requests
+from utils.logging import log_info, log_error, log_debug
 
 gotify_token = None  # Replace with your Gotify token
 gotify_url = None  # Replace with your Gotify server URL
@@ -22,9 +23,10 @@ def send_gotify_notification(activity: Dict, is_delayed: bool = False) -> None:
         "Content-Type": "application/json"
     }
 
+    log_debug(f"Sending notification: {payload}")
     response = requests.post(gotify_url, json=payload, headers=headers)
 
     if response.status_code != 200:
-        print(f"Failed to send notification: {response.status_code} - {response.text}")
+        log_error(f"Failed to send notification: {response.status_code} - {response.text}")
     else:
-        print("Notification sent successfully.")
+        log_debug("Notification sent successfully.")

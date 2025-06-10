@@ -1,7 +1,8 @@
 import sys
-from config.config_loader import load_schedule
-import ui.app
 from datetime import datetime, timedelta
+from utils.logging import log_startup, log_info, log_error
+import ui.app
+from config.config_loader import load_schedule
 
 timelapse_speed = 1.0
 start_real_time = None
@@ -15,15 +16,15 @@ def check_time_parameter():
             try:
                 start_sim_time = datetime.fromisoformat(sys.argv[idx + 1])
             except ValueError:
-                print(f"Invalid date format: {sys.argv[idx + 1]}. Expected ISO format (YYYY-MM-DDTHH:MM:SS).")
+                log_error(f"Invalid date format: {sys.argv[idx + 1]}. Expected ISO format (YYYY-MM-DDTHH:MM:SS).")
                 sys.exit(1)
 
 def check_no_notification_parameter():
     if '--no-notification' in sys.argv:
-        print("Notifications are disabled.")
+        log_info("Notifications are disabled.")
         ui.app.allow_notification = False
     else:
-        print("Notifications are enabled.")
+        log_info("Notifications are enabled.")
 
 def check_timelapse_speed_parameter():
     global timelapse_speed
@@ -35,34 +36,29 @@ def check_timelapse_speed_parameter():
                 if 0.0 < val <= 1000.0:
                     timelapse_speed = val
                 else:
-                    print(f"Invalid timelapse-speed: {val}. Must be in (0.0, 1000.0].")
+                    log_error(f"Invalid timelapse-speed: {val}. Must be in (0.0, 1000.0].")
                     sys.exit(1)
             except ValueError:
-                print(f"Invalid timelapse-speed value: {sys.argv[idx + 1]}")
+                log_error(f"Invalid timelapse-speed value: {sys.argv[idx + 1]}")
                 sys.exit(1)
 
 def get_now():
     global start_real_time, start_sim_time
-    if timelapse_speed == 1.0:
-        return datetime.now()
-    if start_real_time is None or start_sim_time is None:
-        start_real_time = datetime.now()
-        start_sim_time = start_real_time
-        return start_sim_time
     elapsed_real = (datetime.now() - start_real_time).total_seconds()
     elapsed_sim = elapsed_real * timelapse_speed
     return start_sim_time + timedelta(seconds=elapsed_sim)
 
 def main():
-    global start_sim_time
+    global start_real_time, start_sim_time
     
     config_path = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else None
     schedule = load_schedule(config_path)
     
     # Init with current time
-    start_sim_time = datetime.now()
+    start_real_time = start_sim_time = datetime.now()
     # Optionally override with command line parameters
-    check_tim_parameter()
+    log_startup()
+    check_time_parameter()
     check_no_notification_parameter()
     check_timelapse_speed_parameter()
     app = ui.app.TimeboxApp(schedule, now_provider=get_now)

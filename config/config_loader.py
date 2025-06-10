@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 from typing import Dict, List, Optional
 import yaml
+from utils.logging import log_error
 
 def get_day_config_path() -> str:
     """Determine the configuration file path based on the current day."""
@@ -41,11 +42,11 @@ def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[
         return schedule
     
     except FileNotFoundError:
-        print(f"Configuration file '{config_path}' not found.")
+        log_error(f"Configuration file '{config_path}' not found.")
         sys.exit(1)
     except yaml.YAMLError as e:
-        print(f"Error parsing YAML configuration: {e}")
+        log_error(f"Error parsing YAML configuration: {e}")
         sys.exit(1)
     except ValueError as e:
-        print(f"Configuration error: {e}")
+        log_error(f"Configuration error: {e}")
         sys.exit(1)

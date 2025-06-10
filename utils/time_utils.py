@@ -11,9 +11,6 @@ def get_current_activity(schedule: list[Dict], current_time: datetime) -> Option
         return None
     
     time_now = current_time.time()
-    if time_now < time(8, 0) or time_now >= time(17, 0):
-        return None
-    
     for activity in schedule:
         start_hour, start_minute = map(int, activity["start_time"].split(":"))
         end_hour, end_minute = map(int, activity["end_time"].split(":"))

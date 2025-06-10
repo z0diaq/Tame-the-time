@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, time
 import json
 import os
 import utils.notification
+from utils.logging import log_debug, log_info, log_error
 
 last_activity = None  # Global variable to track the last activity for notifications
 allow_notification = True
@@ -72,7 +73,6 @@ class TimeboxApp(tk.Tk):
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         self._last_size = (self.winfo_width(), self.winfo_height())
         self.timeline_granularity = 60  # 60 min (1h) by default
-        self.hide_card_start_times = False
         self.menu_hide_job = None
         self.last_action = datetime.now()
         
@@ -137,7 +137,7 @@ class TimeboxApp(tk.Tk):
 
     def on_mouse_wheel(self, event):
         ctrl_held = (event.state & 0x0004) != 0
-        print(f"Mouse Wheel Event: {event.num}, Delta: {event.delta}, Ctrl Held: {ctrl_held}")
+        log_debug(f"Mouse Wheel Event: {event.num}, Delta: {event.delta}, Ctrl Held: {ctrl_held}")
         delta = 0
         if event.num == 4 or event.delta > 0:  # Scroll up
             delta = -1
@@ -205,7 +205,7 @@ class TimeboxApp(tk.Tk):
         self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
 
     def scroll(self, event, delta: int):
-        print(f"Scrolling: {delta}, PPH: {self.pixels_per_hour}, Current Offset Y: {self.offset_y}")
+        log_debug(f"Scrolling: {delta}, PPH: {self.pixels_per_hour}, Current Offset Y: {self.offset_y}")
         if self.pixels_per_hour > 50:
             scroll_step = -40 if delta > 0 else 40
             self.offset_y += scroll_step
@@ -226,7 +226,7 @@ class TimeboxApp(tk.Tk):
 
     def on_card_motion(self, event):
         tags = self.canvas.gettags(tk.CURRENT)
-        print(f"Tags = {tags}")
+        log_debug(f"Tags = {tags}")
         if not tags:
             self.config(cursor="")
             return
@@ -248,8 +248,7 @@ class TimeboxApp(tk.Tk):
             self.pixels_per_hour,
             self.offset_y,
             self.winfo_width(),
-            now_provider=self.now_provider,
-            hide_start_time=self.hide_card_start_times
+            now_provider=self.now_provider
         )
         for card_obj in self.cards:
             tag = f"card_{card_obj.card}"
@@ -274,7 +273,7 @@ class TimeboxApp(tk.Tk):
 
     def on_card_press(self, event):
         tags = self.canvas.gettags(tk.CURRENT)
-        print(f"Card pressed: {tags}")
+        log_debug(f"Card pressed: {tags}")
         self._drag_data["item_ids"] = self.canvas.find_withtag(tags[0])
         self._drag_data["offset_y"] = event.y
         self._drag_data["start_y"] = event.y
@@ -309,7 +308,6 @@ class TimeboxApp(tk.Tk):
                     self.canvas.itemconfig(card_obj.label, fill="black")
         if self.timeline_granularity != 5:
             self.timeline_granularity = 5
-            self.hide_card_start_times = True
             for item in getattr(self, 'timeline_objects_ids', []):
                 self.canvas.delete(item)
             self.draw_timeline()
@@ -356,7 +354,6 @@ class TimeboxApp(tk.Tk):
         if not self._drag_data["item_ids"] or not self._drag_data["dragging"]:
             self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
             self.timeline_granularity = 60
-            self.hide_card_start_times = False
             self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
             return
         card_id = self._drag_data["item_ids"][0]
@@ -366,7 +363,6 @@ class TimeboxApp(tk.Tk):
             self.handle_card_snap(card_id, event.y)
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         self.timeline_granularity = 60
-        self.hide_card_start_times = False
         for card_obj in self.cards:
             self.canvas.itemconfig(card_obj.card, stipple="")
             if card_obj.label:
@@ -382,17 +378,13 @@ class TimeboxApp(tk.Tk):
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
         new_hour = self.start_hour + total_minutes // 60
         new_minute = self.round_to_nearest_5_minutes(total_minutes % 60)
-        print(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
-
-        # Clamp to valid range
-        if new_hour < self.start_hour:
-            new_hour, new_minute = self.start_hour, 0
-        if new_hour > self.end_hour or (new_hour == self.end_hour and new_minute > 0):
-            new_hour, new_minute = self.end_hour, 0
+        log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
         
         idx = self.cards.index(moved_card)
         self.cards[idx].move_to_time(new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
-        self.schedule = [card.to_dict() for card in self.cards]
+        self.schedule[idx] = self.cards[idx].to_dict()  # Update schedule with new time
+        #self.schedule = [card.to_dict() for card in self.cards]
+
 
     def handle_card_resize(self, card_id: int, y: int, mode: str):
         moved_card = next(card for card in self.cards if card.card == card_id)
@@ -483,7 +475,7 @@ class TimeboxApp(tk.Tk):
             # Send notification if activity changed and notifications are allowed
             if (last_activity is None or last_activity["name"] != activity["name"]) and allow_notification:
                 utils.notification.send_gotify_notification(activity)
-                print(f"Notification sent for activity: {activity['name']}")
+                log_debug(f"Notification sent for activity: {activity['name']}")
             last_activity = activity
         else:
             # --- Show time till next task if no active task ---
@@ -503,7 +495,7 @@ class TimeboxApp(tk.Tk):
         # Redraw everything every 20 seconds
         if (datetime.now() - self.last_action).total_seconds() >= 20:
             #self.config(cursor="")
-            print("Redrawing timeline and cards due to inactivity...")
+            log_debug("Redrawing timeline and cards due to inactivity...")
             self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height())
         self.after(1000, self.update_ui)
 

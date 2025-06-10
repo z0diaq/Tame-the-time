@@ -16,7 +16,7 @@ class TaskCard:
         self.now_provider = now_provider
         self.time_label = None
 
-    def draw(self, canvas: Canvas, now: time = None, hide_start_time: bool = False):
+    def draw(self, canvas: Canvas, now: time = None, draw_end_time: bool = False):
         if now is None:
             now = self.now_provider().time()
         is_active = time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute)
@@ -38,12 +38,17 @@ class TaskCard:
         tag = f"card_{self.card}"
         canvas.itemconfig(self.card, tags=(tag, "card"))
         canvas.itemconfig(self.label, tags=(tag, "card"))
-        if not hide_start_time and self.start_minute != 0:
+        if self.start_minute != 0:
             self.time_label = canvas.create_text(
                 self.card_left - 10, self.y, text=f"{self.start_hour:02d}:{self.start_minute:02d}", font=("Arial", 8), anchor="e"
             )
         else:
             self.time_label = None
+        if draw_end_time and self.end_minute != 0:
+            end_time_text = f"{self.end_hour:02d}:{self.end_minute:02d}"
+            canvas.create_text(
+                self.card_left - 10, self.y + self.height, text=end_time_text, font=("Arial", 8), anchor="e"
+            )
         return self
 
     def get_time_range(self):
@@ -66,7 +71,7 @@ class TaskCard:
 
         # Update y based on new start time
         self.start_hour = new_start_hour
-        self.start_minute = new_start_minute
+        self.start_minute = new_start_minute % 60
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
     
     def to_dict(self):
@@ -85,16 +90,25 @@ def create_task_cards(
     pixels_per_hour: int,
     offset_y: int,
     width: int,
-    now_provider=None,
-    hide_start_time: bool = False
+    now_provider=None
 ) -> List[TaskCard]:
     """Create task card objects and draw them on the canvas."""
     cards = []
     now = now_provider().time()
     active_y = None
-    for activity in schedule:
+    count = len(schedule)
+    for index, activity in enumerate(schedule):
         card_obj = TaskCard(activity, start_of_workday, pixels_per_hour, offset_y, width, now_provider=now_provider)
-        card_obj.draw(canvas, now, hide_start_time=hide_start_time)
+        draw_end_time = False
+        # Draw end time if there is a gap between this and the next card
+        if index < count - 1:
+            next_activity = schedule[index + 1]
+            next_start_hour, next_start_minute = map(int, next_activity["start_time"].split(":"))
+            if (next_start_hour, next_start_minute) != (card_obj.end_hour, card_obj.end_minute):
+                draw_end_time = True
+        else:
+            draw_end_time = True
+        card_obj.draw(canvas, now, draw_end_time=draw_end_time)
         # Find active card's y for green arrows
         start_time, end_time = card_obj.get_time_range()
         if start_time <= now < end_time:
