@@ -199,7 +199,16 @@ def log_startup():
         if idx + 1 < len(os.sys.argv):
             level_str = os.sys.argv[idx + 1].upper()
             if level_str in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-                level = getattr(loglevel, f"loglevel_{level_str.lower()}")
+                if level_str == "DEBUG":
+                    level = loglevel_debug
+                elif level_str == "INFO":
+                    level = loglevel_info
+                elif level_str == "WARNING":
+                    level = loglevel_warning
+                elif level_str == "ERROR":
+                    level = loglevel_error
+                elif level_str == "CRITICAL":
+                    level = loglevel_critical
             else:
                 raise ValueError(f"Invalid log level: {level_str}")
         else:

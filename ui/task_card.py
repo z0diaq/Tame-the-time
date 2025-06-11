@@ -1,6 +1,7 @@
 from datetime import datetime, time
 from tkinter import Canvas
 from typing import Dict, List
+from utils.logging import log_info
 
 class TaskCard:
     def __init__(self, activity: Dict, start_of_workday: int, pixels_per_hour: int, offset_y: int, width: int, now_provider=None):
@@ -30,14 +31,15 @@ class TaskCard:
         # Progress bar for active card
         if is_active:
             total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
-            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60
+            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
             progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
+            log_info(f"Drawing progress for card {self.activity['name']}: {progress:.2f}")
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
             self.progress = canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="black")
         self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
         tag = f"card_{self.card}"
-        canvas.itemconfig(self.card, tags=(tag, "card"))
-        canvas.itemconfig(self.label, tags=(tag, "card"))
+        canvas.itemconfig(self.card, tags=(tag))
+        canvas.itemconfig(self.label, tags=(tag))
         if self.start_minute != 0:
             self.time_label = canvas.create_text(
                 self.card_left - 10, self.y, text=f"{self.start_hour:02d}:{self.start_minute:02d}", font=("Arial", 8), anchor="e"
