@@ -21,3 +21,17 @@ def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pi
             created_objects.append(text)
 
     return created_objects
+
+# Reposition of all timeline elements after pixels per hour change
+def reposition_timeline(canvas: Canvas, created_objects, pixels_per_hour: int, offset_y: int):
+    """Reposition all timeline elements after pixels per hour change."""
+    for i, obj in enumerate(created_objects):
+        coords = canvas.coords(obj)
+        if len(coords) == 4:  # Line object
+            y = (i // 2) * pixels_per_hour + 100 + offset_y
+            canvas.coords(obj, coords[0], y, coords[2], y)
+        elif len(coords) == 2:  # Text object
+            y = (i // 2) * pixels_per_hour + 100 + offset_y
+            canvas.coords(obj, coords[0], y)
+        else:
+            print(f"Unexpected object type: {obj} with coords {coords}")

@@ -1,7 +1,7 @@
 import tkinter as tk
 from datetime import datetime
 from typing import Dict, List, Tuple
-from ui.timeline import draw_timeline
+from ui.timeline import draw_timeline, reposition_timeline
 from ui.task_card import create_task_cards
 from utils.time_utils import get_current_activity, format_time
 from datetime import datetime, timedelta, time
@@ -69,10 +69,12 @@ class TimeboxApp(tk.Tk):
         self.zoom_factor = 6.0
         self.pixels_per_hour = max(50, int(50 * self.zoom_factor))
         self.offset_y = 0
-        self.cards: List[Tuple[int, int, int, Dict]] = []
+        self.cards = []  # List[TaskCard]
+        self.timeline_1h_ids = []
+        self.timeline_5m_ids = []
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         self._last_size = (self.winfo_width(), self.winfo_height())
-        self.timeline_granularity = 60  # 60 min (1h) by default
+        self.timeline_granularity = 60
         self.menu_hide_job = None
         self.last_action = datetime.now()
         
@@ -112,9 +114,11 @@ class TimeboxApp(tk.Tk):
         self.skip_redraw = True  # Skip initial redraw when computing window's size to avoid flickering
         self.update_idletasks()  # Ensure window size is correct before centering
         self.offset_y = (self.winfo_height() // 2) - center_y
-        self.canvas.delete("all")
-        self.draw_timeline()
-        self.create_task_cards()
+        # --- Create both timelines and all cards only once ---
+        self.timeline_1h_ids = self.create_timeline(granularity=60)
+        self.timeline_5m_ids = self.create_timeline(granularity=5)
+        self.show_timeline(granularity=60)
+        self.cards = self.create_task_cards()
         self.skip_redraw = False  # Allow redraws after initial setup
         self.update_ui()
 
@@ -134,6 +138,39 @@ class TimeboxApp(tk.Tk):
                 self.canvas.config(width=width, height=height)
                 if not self.skip_redraw:
                     self.redraw_timeline_and_cards(width, height, center=False)
+
+    def create_timeline(self, granularity=60):
+        now = self.now_provider().time()
+        return draw_timeline(
+            self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y,
+            current_time=now, granularity=granularity
+        )
+
+    def show_timeline(self, granularity=60):
+        # Show only the timeline with the given granularity
+        for tid in getattr(self, 'timeline_1h_ids', []):
+            self.canvas.itemconfig(tid, state="normal" if granularity == 60 else "hidden")
+        for tid in getattr(self, 'timeline_5m_ids', []):
+            self.canvas.itemconfig(tid, state="normal" if granularity == 5 else "hidden")
+
+    def move_timelines_and_cards(self, delta_y):
+        # Move both timelines and all cards by delta_y
+        for tid in getattr(self, 'timeline_1h_ids', []):
+            self.canvas.move(tid, 0, delta_y)
+        for tid in getattr(self, 'timeline_5m_ids', []):
+            self.canvas.move(tid, 0, delta_y)
+        
+        now = self.now_provider().time()
+        # Move all cards
+        for card_obj in self.cards:
+            card_obj.y += delta_y
+            for cid in [card_obj.card, card_obj.label]:
+                if cid:
+                    self.canvas.move(cid, 0, delta_y)
+                        
+            card_obj.update_progress(now, delta_y)
+            self.canvas.move(card_obj.time_start_label, 0, delta_y)
+            self.canvas.move(card_obj.time_end_label, 0, delta_y)
 
     def on_mouse_wheel(self, event):
         ctrl_held = (event.state & 0x0004) != 0
@@ -194,54 +231,39 @@ class TimeboxApp(tk.Tk):
     def zoom(self, event, delta: int):
         zoom_step = 0.1
         a = self.zoom_factor + (-zoom_step if delta > 0 else zoom_step)
-        self.zoom_factor = max(0.5, min(6, a ))
+        self.zoom_factor = max(0.5, min(6, a))
         old_pph = self.pixels_per_hour
         self.pixels_per_hour = max(50, int(50 * self.zoom_factor))
-        
         mouse_y = event.y
         rel_y = mouse_y - 100 - self.offset_y
         scale = self.pixels_per_hour / old_pph
         self.offset_y = min(100, int(mouse_y - 100 - rel_y * scale))
-        self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+        self.resize_timelines_and_cards()
+
+    def resize_timelines_and_cards(self):
+        log_debug(f"Resizing timelines and cards, new PPH: {self.pixels_per_hour}, Offset Y: {self.offset_y}")
+        # Resize all cards
+        for card_obj in self.cards:
+            card_obj.move_to_time(
+                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
+            # Update labels positions
+            #card_obj.update_labels_positions(self.canvas)
+            #card_obj.update_progress(self.now_provider().time(), self.offset_y)
+        # Redraw timelines with new granularity
+        #self.show_timeline(granularity=self.timeline_granularity)
+        # Update both timelines
+        reposition_timeline(self.canvas, self.timeline_1h_ids, self.pixels_per_hour, self.offset_y)
+        reposition_timeline(self.canvas, self.timeline_5m_ids, self.pixels_per_hour, self.offset_y)
 
     def scroll(self, event, delta: int):
         log_debug(f"Scrolling: {delta}, PPH: {self.pixels_per_hour}, Current Offset Y: {self.offset_y}")
         if self.pixels_per_hour > 50:
             scroll_step = -40 if delta > 0 else 40
             self.offset_y += scroll_step
-            self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
-
-    def draw_timeline(self):
-        # Pass current time to draw_timeline for green line
-        now = self.now_provider().time()
-        self.timeline_objects_ids = draw_timeline(
-            self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y, 
-            current_time=now, granularity=self.timeline_granularity
-        )
-
-    def redraw_timeline(self):
-        """Redraw the timeline without creating task cards."""
-        self.canvas.delete("timeline")
-        self.draw_timeline()
-
-    def on_card_motion(self, event):
-        tags = self.canvas.gettags(tk.CURRENT)
-        log_debug(f"Tags = {tags}")
-        if not tags:
-            self.config(cursor="")
-            return
-        dragged_id = self.canvas.find_withtag(tags[0])[0]
-        y_card_top = self.canvas.coords(dragged_id)[1]
-        y_card_bottom = self.canvas.coords(dragged_id)[3]
-        if abs(event.y - y_card_top) <= 10:
-            self.config(cursor="top_side")
-        elif abs(event.y - y_card_bottom) <= 10:
-            self.config(cursor="bottom_side")
-        else:
-            self.config(cursor="fleur")
+            self.move_timelines_and_cards(scroll_step)
 
     def create_task_cards(self):
-        self.cards = create_task_cards(
+        cards = create_task_cards(
             self.canvas,
             self.schedule,
             self.start_hour,
@@ -250,25 +272,26 @@ class TimeboxApp(tk.Tk):
             self.winfo_width(),
             now_provider=self.now_provider
         )
-        for card_obj in self.cards:
+        for card_obj in cards:
             tag = f"card_{card_obj.card}"
             self.canvas.tag_bind(tag, "<ButtonPress-1>", self.on_card_press)
             self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
             self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
             self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
+        return cards
 
     def redraw_timeline_and_cards(self, width: int, height: int, center: bool = True):
-
+        # No deletion, just move/hide/show
         if center:
-            # Center view on current time before redraw
             now = self.now_provider().time()
             minutes_since_start = (now.hour - self.start_hour) * 60 + now.minute
             center_y = int(minutes_since_start * self.pixels_per_hour / 60) + 100
-            self.offset_y = (height // 2) - center_y
-
-        self.canvas.delete("all")
-        self.draw_timeline()
-        self.create_task_cards()
+            new_offset = (height // 2) - center_y
+            delta_y = new_offset - self.offset_y
+            self.offset_y = new_offset
+            self.move_timelines_and_cards(delta_y)
+        # Show correct timeline granularity
+        self.show_timeline(granularity=self.timeline_granularity)
         self.last_action = datetime.now()
 
     def on_card_press(self, event):
@@ -308,9 +331,7 @@ class TimeboxApp(tk.Tk):
                     self.canvas.itemconfig(card_obj.label, fill="black")
         if self.timeline_granularity != 5:
             self.timeline_granularity = 5
-            for item in getattr(self, 'timeline_objects_ids', []):
-                self.canvas.delete(item)
-            self.draw_timeline()
+            self.show_timeline(granularity=5)
 
     def round_to_nearest_5_minutes(self, minutes: int) -> int:
         """Round minutes to the nearest 5 minutes."""
@@ -354,7 +375,7 @@ class TimeboxApp(tk.Tk):
         if not self._drag_data["item_ids"] or not self._drag_data["dragging"]:
             self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
             self.timeline_granularity = 60
-            self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+            self.show_timeline(granularity=60)
             return
         card_id = self._drag_data["item_ids"][0]
         if self._drag_data.get("resize_mode"):
@@ -367,7 +388,7 @@ class TimeboxApp(tk.Tk):
             self.canvas.itemconfig(card_obj.card, stipple="")
             if card_obj.label:
                 self.canvas.itemconfig(card_obj.label, fill="black")
-        self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height(), center=False)
+        self.show_timeline(granularity=60)
 
     def handle_card_snap(self, card_id: int, y: int):
         # Find the TaskCard object for the moved card
@@ -383,7 +404,13 @@ class TimeboxApp(tk.Tk):
         idx = self.cards.index(moved_card)
         self.cards[idx].move_to_time(new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
         self.schedule[idx] = self.cards[idx].to_dict()  # Update schedule with new time
-        #self.schedule = [card.to_dict() for card in self.cards]
+        # End time label is allowed if there is a gap to the next card
+        allow_end_time_label = True
+        if idx < len(self.cards) - 1:
+            next_card = self.cards[idx + 1]
+            if next_card.start_hour == self.cards[idx].end_hour and next_card.start_minute == self.cards[idx].end_minute:
+                allow_end_time_label = False
+        moved_card.update_labels_positions(self.canvas, show_end_time=allow_end_time_label)
 
 
     def handle_card_resize(self, card_id: int, y: int, mode: str):
@@ -411,6 +438,14 @@ class TimeboxApp(tk.Tk):
                 activity["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
                 activity["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
                 break
+        # End time label is allowed if there is a gap to the next card
+        allow_end_time_label = True
+        idx = self.cards.index(moved_card)
+        if idx < len(self.cards) - 1:
+            next_card = self.cards[idx + 1]
+            if next_card.start_hour == new_end_hour and next_card.start_minute == new_end_minute:
+                allow_end_time_label = False
+        moved_card.update_labels_positions(self.canvas, show_end_time=allow_end_time_label)
 
     def update_card_positions(self):
         card_positions = sorted(
@@ -493,7 +528,10 @@ class TimeboxApp(tk.Tk):
                 text = f"No active task\nNext: {next_task['name']} at {next_task['start_time']}\nTime left: {hours:02d}:{minutes:02d}:{seconds:02d}"
             self.activity_label.config(text=text)
         # Redraw everything every 20 seconds
-        if (datetime.now() - self.last_action).total_seconds() >= 20:
+        seconds_since_last_action = (datetime.now() - self.last_action).total_seconds()
+
+        # Redraw timeline and cards if no action for 20 seconds or at the start of each minute
+        if seconds_since_last_action >= 20 or (now.second == 0 and seconds_since_last_action > 5):
             #self.config(cursor="")
             log_debug("Redrawing timeline and cards due to inactivity...")
             self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height())
@@ -521,3 +559,19 @@ class TimeboxApp(tk.Tk):
         first = self.schedule[0]
         next_time = datetime.combine(tomorrow, parse_time_str(first['start_time']))
         return first, next_time
+
+    def on_card_motion(self, event):
+        tags = self.canvas.gettags(tk.CURRENT)
+        log_debug(f"Tags = {tags}")
+        if not tags:
+            self.config(cursor="")
+            return
+        dragged_id = self.canvas.find_withtag(tags[0])[0]
+        y_card_top = self.canvas.coords(dragged_id)[1]
+        y_card_bottom = self.canvas.coords(dragged_id)[3]
+        if abs(event.y - y_card_top) <= 10:
+            self.config(cursor="top_side")
+        elif abs(event.y - y_card_bottom) <= 10:
+            self.config(cursor="bottom_side")
+        else:
+            self.config(cursor="fleur")
