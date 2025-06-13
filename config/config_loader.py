@@ -5,12 +5,11 @@ from typing import Dict, List, Optional
 import yaml
 from utils.logging import log_error
 
-def get_day_config_path() -> str:
+def get_day_config_path(current_day) -> str:
     """Determine the configuration file path based on the current day."""
-    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    current_day = datetime.now().weekday()
-    
-    if 0 <= current_day <= 4:
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    if 0 <= current_day <= 6:
         day_config = f"{day_names[current_day]}_settings.yaml"
         if os.path.exists(day_config):
             return day_config
@@ -19,7 +18,7 @@ def get_day_config_path() -> str:
 
 def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[Dict]:
     """Load and validate the schedule from a YAML file."""
-    config_path = config_path or get_day_config_path()
+    config_path = config_path or get_day_config_path(current_day=now_provider().date().weekday())
     
     try:
         with open(config_path, 'r') as file:

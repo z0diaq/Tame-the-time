@@ -52,13 +52,13 @@ def main():
     global start_real_time, start_sim_time
     
     config_path = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else None
-    schedule = load_schedule(config_path)
-    
     # Init with current time
     start_real_time = start_sim_time = datetime.now()
+    check_time_parameter()
+    schedule = load_schedule(config_path, now_provider=get_now)
+    
     # Optionally override with command line parameters
     log_startup()
-    check_time_parameter()
     check_no_notification_parameter()
     check_timelapse_speed_parameter()
     app = ui.app.TimeboxApp(schedule, now_provider=get_now)

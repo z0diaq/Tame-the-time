@@ -137,7 +137,8 @@ class TimeboxApp(tk.Tk):
                 self._last_size = (width, height)
                 self.canvas.config(width=width, height=height)
                 if not self.skip_redraw:
-                    self.redraw_timeline_and_cards(width, height, center=False)
+                    #self.redraw_timeline_and_cards(width, height, center=False)
+                    #self.update_card_positions()
 
     def create_timeline(self, granularity=60):
         now = self.now_provider().time()
@@ -432,11 +433,20 @@ class TimeboxApp(tk.Tk):
         new_start_minute = new_start_minutes % 60
         new_end_hour = self.start_hour + new_end_minutes // 60
         new_end_minute = new_end_minutes % 60
+        
+        # Update the moved card's start and end times
+        moved_card.start_hour = new_start_hour
+        moved_card.start_minute = new_start_minute
+        moved_card.end_hour = new_end_hour
+        moved_card.end_minute = new_end_minute
+        moved_card.height = y_card_bottom - y_card_top
+        log_debug(f"Resizing card {moved_card.activity['name']} to {new_start_hour:02d}:{new_start_minute:02d} - {new_end_hour:02d}:{new_end_minute:02d}")
         # Update schedule for this card only
-        for activity in self.schedule:
-            if activity["name"] == moved_card.activity["name"]:
-                activity["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
-                activity["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
+        for activity,index in enumerate(self.schedule):
+            if activity == moved_card.activity:
+                self.schedule[index]["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
+                self.schedule[index]["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
+                log_info(f"FOUND! Resizing card {moved_card.activity['name']} to {new_start_hour:02d}:{new_start_minute:02d} - {new_end_hour:02d}:{new_end_minute:02d}")
                 break
         # End time label is allowed if there is a gap to the next card
         allow_end_time_label = True

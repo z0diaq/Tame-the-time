@@ -71,6 +71,7 @@ class TaskCard:
     def move_to_time(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y):
         # Update the end time based on the new start time
         card_duration_minutes = (self.end_hour - self.start_hour) * 60 + (self.end_minute - self.start_minute)
+        log_debug(f"Cards duration in minutes: {card_duration_minutes}")
         # Calculate new end time
         # Convert everything to total minutes since midnight
         total_minutes = new_start_hour * 60 + new_start_minute + card_duration_minutes
@@ -89,6 +90,7 @@ class TaskCard:
         prev_y = self.y
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
+        self.height = height
         diff_y = self.y - prev_y
 
         # Update the card itself
@@ -112,8 +114,9 @@ class TaskCard:
         self.canvas.move(self.time_start_label, 0, diff_y)
         self.canvas.itemconfig(self.time_end_label, text=f"{self.end_hour:02d}:{self.end_minute:02d}")
         self.canvas.move(self.time_end_label, 0, diff_y)
-        # Update the label in the center of the card
-        self.canvas.move(self.label, 0, diff_y)
+        # Position the label in the center of the card
+        self.canvas.coords(self.label, (self.card_left + self.card_right) // 2, self.y + height // 2)
+
     
     def update_progress(self, now: time, delta_y: int = 0):
         """Update the progress bar based on the current time."""
