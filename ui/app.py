@@ -96,6 +96,7 @@ class TimeboxApp(tk.Tk):
         self.canvas.bind('<Button-4>', self.on_mouse_wheel)
         self.canvas.bind('<Button-5>', self.on_mouse_wheel)
         self.canvas.bind("<Motion>", self.on_motion)
+        self.canvas.bind("<Button-3>", self.show_canvas_context_menu)
 
         self.time_label = tk.Label(self, font=("Arial", 14, "bold"), bg="#0f8000")
         self.time_label.place(x=10, y=10)
@@ -137,8 +138,7 @@ class TimeboxApp(tk.Tk):
                 self._last_size = (width, height)
                 self.canvas.config(width=width, height=height)
                 if not self.skip_redraw:
-                    #self.redraw_timeline_and_cards(width, height, center=False)
-                    #self.update_card_positions()
+                    self.resize_timelines_and_cards()
 
     def create_timeline(self, granularity=60):
         now = self.now_provider().time()
@@ -160,7 +160,6 @@ class TimeboxApp(tk.Tk):
             self.canvas.move(tid, 0, delta_y)
         for tid in getattr(self, 'timeline_5m_ids', []):
             self.canvas.move(tid, 0, delta_y)
-        
         now = self.now_provider().time()
         # Move all cards
         for card_obj in self.cards:
@@ -168,10 +167,9 @@ class TimeboxApp(tk.Tk):
             for cid in [card_obj.card, card_obj.label]:
                 if cid:
                     self.canvas.move(cid, 0, delta_y)
-                        
-            card_obj.update_progress(now, delta_y)
-            self.canvas.move(card_obj.time_start_label, 0, delta_y)
-            self.canvas.move(card_obj.time_end_label, 0, delta_y)
+            card_obj.update_card_visuals(
+                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, width=self.winfo_width()
+            )
 
     def on_mouse_wheel(self, event):
         ctrl_held = (event.state & 0x0004) != 0
@@ -240,21 +238,22 @@ class TimeboxApp(tk.Tk):
         scale = self.pixels_per_hour / old_pph
         self.offset_y = min(100, int(mouse_y - 100 - rel_y * scale))
         self.resize_timelines_and_cards()
+        self.last_action = datetime.now()
 
     def resize_timelines_and_cards(self):
         log_debug(f"Resizing timelines and cards, new PPH: {self.pixels_per_hour}, Offset Y: {self.offset_y}")
         # Resize all cards
+        now = self.now_provider().time()
         for card_obj in self.cards:
-            card_obj.move_to_time(
-                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
-            # Update labels positions
-            #card_obj.update_labels_positions(self.canvas)
-            #card_obj.update_progress(self.now_provider().time(), self.offset_y)
-        # Redraw timelines with new granularity
-        #self.show_timeline(granularity=self.timeline_granularity)
+            card_obj.update_card_visuals(
+                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, width=self.winfo_width()
+            )
         # Update both timelines
-        reposition_timeline(self.canvas, self.timeline_1h_ids, self.pixels_per_hour, self.offset_y)
-        reposition_timeline(self.canvas, self.timeline_5m_ids, self.pixels_per_hour, self.offset_y)
+        reposition_timeline(self.canvas, self.timeline_1h_ids, self.pixels_per_hour, self.offset_y, self.winfo_width(), granularity=60)
+        reposition_timeline(self.canvas, self.timeline_5m_ids, self.pixels_per_hour, self.offset_y, self.winfo_width(), granularity=5)
+
+        # Also resize activity label
+        self.activity_label.place(x=10, y=40, width=self.winfo_width() - 20)
 
     def scroll(self, event, delta: int):
         log_debug(f"Scrolling: {delta}, PPH: {self.pixels_per_hour}, Current Offset Y: {self.offset_y}")
@@ -262,6 +261,7 @@ class TimeboxApp(tk.Tk):
             scroll_step = -40 if delta > 0 else 40
             self.offset_y += scroll_step
             self.move_timelines_and_cards(scroll_step)
+            self.last_action = datetime.now()
 
     def create_task_cards(self):
         cards = create_task_cards(
@@ -392,27 +392,24 @@ class TimeboxApp(tk.Tk):
         self.show_timeline(granularity=60)
 
     def handle_card_snap(self, card_id: int, y: int):
-        # Find the TaskCard object for the moved card
         moved_card = next(card for card in self.cards if card.card == card_id)
-
-        # Compute new start time from y position
         y_relative = y - 100 - self.offset_y
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
         new_hour = self.start_hour + total_minutes // 60
         new_minute = self.round_to_nearest_5_minutes(total_minutes % 60)
         log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
-        
         idx = self.cards.index(moved_card)
-        self.cards[idx].move_to_time(new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y)
-        self.schedule[idx] = self.cards[idx].to_dict()  # Update schedule with new time
         # End time label is allowed if there is a gap to the next card
         allow_end_time_label = True
         if idx < len(self.cards) - 1:
             next_card = self.cards[idx + 1]
-            if next_card.start_hour == self.cards[idx].end_hour and next_card.start_minute == self.cards[idx].end_minute:
+            if next_card.start_hour == moved_card.end_hour and next_card.start_minute == moved_card.end_minute:
                 allow_end_time_label = False
-        moved_card.update_labels_positions(self.canvas, show_end_time=allow_end_time_label)
-
+        now = self.now_provider().time()
+        self.cards[idx].update_card_visuals(
+            new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, show_end_time=allow_end_time_label, width=self.winfo_width()
+        )
+        self.schedule[idx] = self.cards[idx].to_dict()  # Update schedule with new time
 
     def handle_card_resize(self, card_id: int, y: int, mode: str):
         moved_card = next(card for card in self.cards if card.card == card_id)
@@ -433,20 +430,11 @@ class TimeboxApp(tk.Tk):
         new_start_minute = new_start_minutes % 60
         new_end_hour = self.start_hour + new_end_minutes // 60
         new_end_minute = new_end_minutes % 60
-        
-        # Update the moved card's start and end times
-        moved_card.start_hour = new_start_hour
-        moved_card.start_minute = new_start_minute
-        moved_card.end_hour = new_end_hour
-        moved_card.end_minute = new_end_minute
-        moved_card.height = y_card_bottom - y_card_top
-        log_debug(f"Resizing card {moved_card.activity['name']} to {new_start_hour:02d}:{new_start_minute:02d} - {new_end_hour:02d}:{new_end_minute:02d}")
         # Update schedule for this card only
-        for activity,index in enumerate(self.schedule):
-            if activity == moved_card.activity:
-                self.schedule[index]["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
-                self.schedule[index]["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
-                log_info(f"FOUND! Resizing card {moved_card.activity['name']} to {new_start_hour:02d}:{new_start_minute:02d} - {new_end_hour:02d}:{new_end_minute:02d}")
+        for activity in self.schedule:
+            if activity["name"] == moved_card.activity["name"]:
+                activity["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
+                activity["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
                 break
         # End time label is allowed if there is a gap to the next card
         allow_end_time_label = True
@@ -455,45 +443,23 @@ class TimeboxApp(tk.Tk):
             next_card = self.cards[idx + 1]
             if next_card.start_hour == new_end_hour and next_card.start_minute == new_end_minute:
                 allow_end_time_label = False
-        moved_card.update_labels_positions(self.canvas, show_end_time=allow_end_time_label)
-
-    def update_card_positions(self):
-        card_positions = sorted(
-            [(card, label, time_label, self.canvas.bbox(card)[1], self.canvas.bbox(card)[3], activity)
-             for card, label, time_label, activity in self.cards],
-            key=lambda t: t[3]
+        now = self.now_provider().time()
+        # Update the card's start and end time attributes before calling update_card_visuals
+        moved_card.start_hour = new_start_hour
+        moved_card.start_minute = new_start_minute
+        moved_card.end_hour = new_end_hour
+        moved_card.end_minute = new_end_minute
+        moved_card.update_card_visuals(
+            new_start_hour, new_start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, show_end_time=allow_end_time_label, width=self.winfo_width()
         )
-        
-        current_time = self.now_provider().time()
-        for idx, (card, label, time_label, top, bottom, activity) in enumerate(card_positions):
-            start_minutes = 0 if idx == 0 else int((card_positions[idx-1][4] - 100 - self.offset_y) * 60 / self.pixels_per_hour)
-            end_minutes = start_minutes + int((bottom - top) * 60 / self.pixels_per_hour)
-            
-            start_time = (datetime.combine(self.now_provider(), time(self.start_hour)) + timedelta(minutes=start_minutes)).time()
-            end_time = (datetime.combine(self.now_provider(), time(self.start_hour)) + timedelta(minutes=end_minutes)).time()
-            
-            self.canvas.itemconfig(label, text=activity["name"])
-            self.canvas.delete(time_label)
-            time_range = f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
-            new_time_label = self.canvas.create_text(
-                (self.canvas.bbox(card)[0] + self.canvas.bbox(card)[2]) // 2,
-                (top + bottom) // 2 + 12,
-                text=time_range,
-                font=("Arial", 8)
+
+    def update_cards_after_size_change(self):
+        # Update all cards after window size change
+        now = self.now_provider().time()
+        for card_obj in self.cards:
+            card_obj.update_card_visuals(
+                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, width=self.winfo_width()
             )
-            self.cards[idx] = (card, label, new_time_label, activity)
-            
-            color = (
-                "#cccccc" if end_time <= current_time else
-                "#ffff99" if start_time <= current_time < end_time else
-                "#add8e6"
-            )
-            self.canvas.itemconfig(card, fill=color)
-            
-            if idx > 0 and top < card_positions[idx-1][4]:
-                delta_y = card_positions[idx-1][4] - top
-                for item in (card, label, new_time_label):
-                    self.canvas.move(item, 0, delta_y)
 
     def update_ui(self):
         global last_activity
@@ -585,3 +551,98 @@ class TimeboxApp(tk.Tk):
             self.config(cursor="bottom_side")
         else:
             self.config(cursor="fleur")
+    
+    def clone_card(card_obj):
+        # Create a new card object with the same properties as the original
+        new_card = card_obj.clone()
+        # Update the start time to be 5 minutes after the original
+        new_start_time = datetime.combine(datetime.today(), parse_time_str(new_card.activity['start_time'])) + timedelta(minutes=5)
+        new_card.start_hour = new_start_time.hour
+        new_card.start_minute = new_start_time.minute
+        # Update the visuals and add to canvas
+        new_card.update_card_visuals(
+            new_card.start_hour, new_card.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
+        )
+        return new_card
+
+    def show_canvas_context_menu(self, event):
+        # Determine if click is on a card
+        items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
+        card_ids = [card_obj.card for card_obj in self.cards]
+        menu = tk.Menu(self, tearoff=0)
+        card_under_cursor = None
+        for card_obj in self.cards:
+            if card_obj.card in items:
+                card_under_cursor = card_obj
+                break
+        if any(item in card_ids for item in items):
+            def edit_card():
+                self.open_edit_card_window(card_under_cursor)
+            menu.add_command(label="Edit", command=edit_card)
+            def clone_card():
+                new_card = card_under_cursor.clone()
+                new_card.update_card_visuals(
+                    new_card.start_hour, new_card.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
+                )
+                self.cards.append(new_card)
+                self.schedule.append(new_card.to_dict())
+            menu.add_command(label="Clone", command=clone_card)
+            menu.add_command(label="Remove")
+        elif event.y > 30:  # Not in top menu area
+            menu.add_command(label="New")
+            menu.add_command(label="Remove all")
+        else:
+            return  # Don't show menu in top menu area
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def open_edit_card_window(self, card_obj):
+        edit_win = tk.Toplevel(self)
+        edit_win.title("Edit Card")
+        edit_win.geometry("350x250")
+        edit_win.transient(self)
+        edit_win.grab_set()
+
+        tk.Label(edit_win, text="Title:").pack(anchor="w", padx=10, pady=(10, 0))
+        title_var = tk.StringVar(value=card_obj.activity.get("name", ""))
+        title_entry = tk.Entry(edit_win, textvariable=title_var)
+        title_entry.pack(fill="x", padx=10)
+
+        tk.Label(edit_win, text="Description:").pack(anchor="w", padx=10, pady=(10, 0))
+        desc_text = tk.Text(edit_win, height=6)
+        desc = "\n".join(card_obj.activity.get("description", []))
+        desc_text.insert("1.0", desc)
+        desc_text.pack(fill="both", expand=True, padx=10)
+
+        btn_frame = tk.Frame(edit_win)
+        btn_frame.pack(fill="x", pady=10)
+        def on_save():
+            new_title = title_var.get().strip()
+            new_desc = desc_text.get("1.0", "end-1c").strip().splitlines()
+            # Update schedule and card activity
+            activity_found = False
+            for activity in self.schedule:
+                if activity["name"] == card_obj.activity["name"]:
+                    activity["name"] = new_title
+                    activity["description"] = new_desc
+                    activity_found = True
+                    break
+            if not activity_found:
+                log_error(f"Activity '{card_obj.activity['name']}' not found in schedule.")
+            card_obj.activity["name"] = new_title
+            card_obj.activity["description"] = new_desc
+            # Update card label visual
+            card_obj.update_card_visuals(
+                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
+            )
+            # If this is the current activity, update activity_label
+            now = self.now_provider()
+            current = get_current_activity(self.schedule, now)
+            if current and current["name"] == new_title:
+                desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(new_desc))
+                self.activity_label.config(text=f"Actions:\n{desc}")
+            edit_win.destroy()
+        def on_cancel():
+            edit_win.destroy()
+        tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
+        tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
+        title_entry.focus_set()

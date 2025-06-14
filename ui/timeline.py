@@ -22,16 +22,27 @@ def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pi
 
     return created_objects
 
-# Reposition of all timeline elements after pixels per hour change
-def reposition_timeline(canvas: Canvas, created_objects, pixels_per_hour: int, offset_y: int):
-    """Reposition all timeline elements after pixels per hour change."""
-    for i, obj in enumerate(created_objects):
+# Reposition of all timeline elements after pixels per hour change or width change
+def reposition_timeline(canvas: Canvas, created_objects, pixels_per_hour: int, offset_y: int, width: int, granularity: int):
+    """Reposition all timeline elements after pixels per hour change or width change."""
+    # For 60m granularity, objects are [line, text, line, text, ...]
+    # For 5m granularity, objects are [line, text, line, text, ...] but not every line has a text
+    minute = 0
+    obj_idx = 0
+    total_objects = len(created_objects)
+    while obj_idx < total_objects:
+        obj = created_objects[obj_idx]
         coords = canvas.coords(obj)
+        y = (minute / 60) * pixels_per_hour + 100 + offset_y
         if len(coords) == 4:  # Line object
-            y = (i // 2) * pixels_per_hour + 100 + offset_y
-            canvas.coords(obj, coords[0], y, coords[2], y)
-        elif len(coords) == 2:  # Text object
-            y = (i // 2) * pixels_per_hour + 100 + offset_y
-            canvas.coords(obj, coords[0], y)
-        else:
-            print(f"Unexpected object type: {obj} with coords {coords}")
+            canvas.coords(obj, 0, y, width, y)
+            obj_idx += 1
+            # Check if next object is a text for this line
+            if obj_idx < total_objects:
+                next_obj = created_objects[obj_idx]
+                next_coords = canvas.coords(next_obj)
+                if len(next_coords) == 2:
+                    # This is a text object
+                    canvas.coords(next_obj, coords[0] if granularity == 60 and minute % 60 == 0 else (36 if granularity < 60 and minute % 60 != 0 else 5), y)
+                    obj_idx += 1
+        minute += granularity
