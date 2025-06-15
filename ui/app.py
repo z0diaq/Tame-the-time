@@ -580,12 +580,34 @@ class TimeboxApp(tk.Tk):
                 self.open_edit_card_window(card_under_cursor)
             menu.add_command(label="Edit", command=edit_card)
             def clone_card():
+                # Clone the card under cursor
+                # Card's text labels have to be created separately
                 new_card = card_under_cursor.clone()
-                new_card.update_card_visuals(
-                    new_card.start_hour, new_card.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
-                )
+                # New start time is at current card's end time exctly
+                new_card.start_hour = card_under_cursor.end_hour
+                new_card.start_minute = card_under_cursor.end_minute
+                # Card's end time is set to start time + length of original card
+                current_card_length = (card_under_cursor.end_hour - card_under_cursor.start_hour) * 60 + (card_under_cursor.end_minute - card_under_cursor.start_minute)
+                new_card.end_hour = (new_card.start_hour + (current_card_length // 60)) % 24
+                new_card.end_minute = (new_card.start_minute + current_card_length) % 60
+
+                # Is there any card starting at the same time as the new card ends ?
+                draw_end_time = True
+                for other_card in self.cards:
+                    if (other_card.start_hour == new_card.end_hour and
+                        other_card.start_minute == new_card.end_minute):
+                        draw_end_time = False
+                        break
+                new_card.draw(canvas=self.canvas, now=self.now_provider().time(), draw_end_time=draw_end_time)
+                # Setup actions
+                tag = f"card_{new_card.card}"
+                self.canvas.tag_bind(tag, "<ButtonPress-1>", self.on_card_press)
+                self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
+                self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
+                self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
                 self.cards.append(new_card)
                 self.schedule.append(new_card.to_dict())
+                self.update_cards_after_size_change()
             menu.add_command(label="Clone", command=clone_card)
             menu.add_command(label="Remove")
         elif event.y > 30:  # Not in top menu area

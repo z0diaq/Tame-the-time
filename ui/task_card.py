@@ -23,6 +23,28 @@ class TaskCard:
         self.finished_color = "#cccccc"  # Color for finished tasks
         self.active_color = "#ffff99"
         self.inactive_color = "#add8e6"  # Color for inactive tasks
+
+    # Make a clone function that will set the same properties as the original TaskCard
+    def clone(self):
+        """Create a clone of the TaskCard with the same properties."""
+        clone = TaskCard(
+            activity=self.activity,
+            start_of_workday=self.start_hour,
+            pixels_per_hour=0,  # Will be set later
+            offset_y=0,  # Will be set later
+            width=0,  # Will be set later
+            now_provider=self.now_provider
+        )
+        clone.start_hour = self.start_hour
+        clone.start_minute = self.start_minute
+        clone.end_hour = self.end_hour
+        clone.end_minute = self.end_minute
+        clone.y = self.y
+        clone.height = self.height
+        clone.card_left = self.card_left
+        clone.card_right = self.card_right
+        return clone    
+
     
     def draw(self, canvas: Canvas, now: time = None, draw_end_time: bool = False):
         self.canvas = canvas
