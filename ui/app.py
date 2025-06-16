@@ -89,6 +89,7 @@ class TimeboxApp(tk.Tk):
         self.options_menu.add_command(label="Global options")
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
         self.menu_visible = False
+        self.card_visual_changed = False  # Flag to track if card visuals have changed
 
         self.canvas = tk.Canvas(self, bg="white", width=400, height=700)
         self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -330,9 +331,20 @@ class TimeboxApp(tk.Tk):
                 self.canvas.itemconfig(card_obj.card, stipple="")
                 if card_obj.label:
                     self.canvas.itemconfig(card_obj.label, fill="black")
+        self.card_visual_changed = True
         if self.timeline_granularity != 5:
             self.timeline_granularity = 5
             self.show_timeline(granularity=5)
+
+    def restore_card_visuals(self):
+        """Restore visuals of all cards after drag or resize."""
+        for card_obj in self.cards:
+            self.canvas.itemconfig(card_obj.card, stipple="")
+            if card_obj.label:
+                self.canvas.itemconfig(card_obj.label, fill="black")
+            if hasattr(card_obj, 'progress'):
+                self.canvas.itemconfig(card_obj.progress, state="normal")
+        self.card_visual_changed = False
 
     def round_to_nearest_5_minutes(self, minutes: int) -> int:
         """Round minutes to the nearest 5 minutes."""
@@ -385,10 +397,11 @@ class TimeboxApp(tk.Tk):
             self.handle_card_snap(card_id, event.y)
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         self.timeline_granularity = 60
-        for card_obj in self.cards:
-            self.canvas.itemconfig(card_obj.card, stipple="")
-            if card_obj.label:
-                self.canvas.itemconfig(card_obj.label, fill="black")
+        #for card_obj in self.cards:
+        #    self.canvas.itemconfig(card_obj.card, stipple="")
+        #    if card_obj.label:
+        #        self.canvas.itemconfig(card_obj.label, fill="black")
+        self.restore_card_visuals()
         self.show_timeline(granularity=60)
 
     def handle_card_snap(self, card_id: int, y: int):
@@ -511,6 +524,9 @@ class TimeboxApp(tk.Tk):
             #self.config(cursor="")
             log_debug("Redrawing timeline and cards due to inactivity...")
             self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height())
+            if self.card_visual_changed:
+                self.restore_card_visuals()
+
         self.after(1000, self.update_ui)
 
     def get_next_task_and_time(self, now):
@@ -609,9 +625,49 @@ class TimeboxApp(tk.Tk):
                 self.schedule.append(new_card.to_dict())
                 self.update_cards_after_size_change()
             menu.add_command(label="Clone", command=clone_card)
-            menu.add_command(label="Remove")
+            def remove_card():
+                # Remove the card under cursor
+                if card_under_cursor in self.cards:
+                    self.cards.remove(card_under_cursor)
+                    self.schedule.remove(card_under_cursor.to_dict())
+                    self.canvas.delete(card_under_cursor.card)
+                    if card_under_cursor.label:
+                        self.canvas.delete(card_under_cursor.label)
+                    if hasattr(card_under_cursor, 'progress'):
+                        self.canvas.delete(card_under_cursor.progress)
+                    self.update_cards_after_size_change()
+            menu.add_command(label="Remove", command=remove_card)
         elif event.y > 30:  # Not in top menu area
-            menu.add_command(label="New")
+            def add_card():
+                # Create a new card at the clicked position
+                # TODO: NOT A VALID TIME - make this at clicked pos, not at start_hour
+                new_card = TaskCard(
+                    canvas=self.canvas,
+                    activity={"name": "New Task", "description": []},
+                    start_hour=self.start_hour,
+                    start_minute=0,
+                    end_hour=self.start_hour,
+                    end_minute=5,
+                    now=self.now_provider().time()
+                )
+                new_card.draw(now=self.now_provider().time(), width=self.winfo_width())
+                self.cards.append(new_card)
+                self.schedule.append(new_card.to_dict())
+                self.update_cards_after_size_change()
+                self.open_edit_card_window(new_card)
+
+                # TODO: when user clicks `Cancel` then remove this card
+
+
+
+
+
+
+
+
+
+
+            menu.add_command(label="New", command=add_card)
             menu.add_command(label="Remove all")
         else:
             return  # Don't show menu in top menu area
@@ -668,3 +724,5 @@ class TimeboxApp(tk.Tk):
         tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
         tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
         title_entry.focus_set()
+        
+
