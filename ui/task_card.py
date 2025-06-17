@@ -6,7 +6,15 @@ from utils.logging import log_info, log_debug
 
 
 class TaskCard:
-    def __init__(self, activity: Dict, start_of_workday: int, pixels_per_hour: int, offset_y: int, width: int, now_provider=None):
+    def __init__(
+            self,
+            activity: Dict,
+            start_of_workday: int,
+            pixels_per_hour: int,
+            offset_y: int,
+            width: int,
+            now_provider=None
+        ):
         self.activity = activity
         self.start_hour, self.start_minute = map(int, activity["start_time"].split(":"))
         self.end_hour, self.end_minute = map(int, activity["end_time"].split(":"))
@@ -87,6 +95,24 @@ class TaskCard:
             canvas.itemconfig(self.time_end_label, state="hidden")
         return self
 
+    def delete(self):
+        """Delete the card and its associated elements from the canvas."""
+        if self.card:
+            self.canvas.delete(self.card)
+            self.card = None
+        if self.label:
+            self.canvas.delete(self.label)
+            self.label = None
+        if hasattr(self, 'progress') and self.progress:
+            self.canvas.delete(self.progress)
+            self.progress = None
+        if hasattr(self, 'time_start_label') and self.time_start_label:
+            self.canvas.delete(self.time_start_label)
+            self.time_start_label = None
+        if hasattr(self, 'time_end_label') and self.time_end_label:
+            self.canvas.delete(self.time_end_label)
+            self.time_end_label = None
+
     def get_time_range(self):
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
 
@@ -106,20 +132,18 @@ class TaskCard:
         self.end_minute = total_minutes % 60
         self.start_hour = new_start_hour
         self.start_minute = new_start_minute % 60
-        prev_y = self.y
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
         self.height = height
-        diff_y = self.y - prev_y
         # Move/resize card
         self.canvas.coords(self.card, self.card_left, self.y, self.card_right, self.y + height)
-        # Update progress bar
+        # Update progress bar - always move it with the card even when hidden
         should_show_progress = time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute)
+        total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
+        elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
+        progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
+        fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
         if should_show_progress:
-            total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
-            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
-            progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
-            fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
             if not hasattr(self, 'progress') or self.progress is None:
                 self.progress = self.canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="")
             else:
@@ -129,7 +153,8 @@ class TaskCard:
             self.canvas.tag_raise(self.label)
         else:
             if hasattr(self, 'progress') and self.progress is not None:
-                self.canvas.itemconfig(self.progress, state="hidden")
+                self.canvas.delete(self.progress)
+                self.progress = None
             color = self.finished_color if time(self.end_hour, self.end_minute) <= now else self.inactive_color
             self.canvas.itemconfig(self.card, fill=color)
 

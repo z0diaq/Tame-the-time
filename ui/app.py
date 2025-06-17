@@ -1,8 +1,8 @@
-import tkinter as tk
+import tkinter as tk, tkinter.messagebox as messagebox
 from datetime import datetime
 from typing import Dict, List, Tuple
 from ui.timeline import draw_timeline, reposition_timeline
-from ui.task_card import create_task_cards
+from ui.task_card import create_task_cards, TaskCard
 from utils.time_utils import get_current_activity, format_time
 from datetime import datetime, timedelta, time
 import json
@@ -275,11 +275,8 @@ class TimeboxApp(tk.Tk):
             now_provider=self.now_provider
         )
         for card_obj in cards:
-            tag = f"card_{card_obj.card}"
-            self.canvas.tag_bind(tag, "<ButtonPress-1>", self.on_card_press)
-            self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
-            self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
-            self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
+            # Bind events to each card
+            self.bind_mouse_actions(card_obj)
         return cards
 
     def redraw_timeline_and_cards(self, width: int, height: int, center: bool = True):
@@ -503,10 +500,10 @@ class TimeboxApp(tk.Tk):
             last_activity = activity
         else:
             # --- Show time till next task if no active task ---
-            if now.weekday() >= 5 or not next_task:
-                text = (
-                    "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM."
-                )
+            if now.weekday() >= 5:
+                text = "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM."
+            elif next_task is None:
+                text = "No scheduled task was found."
             else:
                 seconds_left = int((next_task_start - now).total_seconds())
                 if seconds_left < 0:
@@ -531,6 +528,8 @@ class TimeboxApp(tk.Tk):
 
     def get_next_task_and_time(self, now):
         # Returns (next_task_dict, next_task_start_datetime)
+        if len(self.schedule) == 0:
+            return None, None
         today = now.date()
         # If weekend, find first task on Monday
         if now.weekday() >= 5:
@@ -615,12 +614,7 @@ class TimeboxApp(tk.Tk):
                         draw_end_time = False
                         break
                 new_card.draw(canvas=self.canvas, now=self.now_provider().time(), draw_end_time=draw_end_time)
-                # Setup actions
-                tag = f"card_{new_card.card}"
-                self.canvas.tag_bind(tag, "<ButtonPress-1>", self.on_card_press)
-                self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
-                self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
-                self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
+                self.bind_mouse_actions(new_card)
                 self.cards.append(new_card)
                 self.schedule.append(new_card.to_dict())
                 self.update_cards_after_size_change()
@@ -628,52 +622,69 @@ class TimeboxApp(tk.Tk):
             def remove_card():
                 # Remove the card under cursor
                 if card_under_cursor in self.cards:
-                    self.cards.remove(card_under_cursor)
+                    card_under_cursor.delete()
                     self.schedule.remove(card_under_cursor.to_dict())
-                    self.canvas.delete(card_under_cursor.card)
-                    if card_under_cursor.label:
-                        self.canvas.delete(card_under_cursor.label)
-                    if hasattr(card_under_cursor, 'progress'):
-                        self.canvas.delete(card_under_cursor.progress)
                     self.update_cards_after_size_change()
             menu.add_command(label="Remove", command=remove_card)
         elif event.y > 30:  # Not in top menu area
             def add_card():
                 # Create a new card at the clicked position
-                # TODO: NOT A VALID TIME - make this at clicked pos, not at start_hour
+                # Compute the start hour based on the clicked position
+                y_relative = event.y - 100 - self.offset_y
+                total_minutes = self.round_to_nearest_5_minutes(y_relative * 60 / self.pixels_per_hour)
+                start_hour = self.start_hour + total_minutes // 60
+                start_minute = total_minutes % 60
+                total_minutes += 25
+                end_hour = self.start_hour + total_minutes // 60
+                end_minute = total_minutes % 60
+
+                # Create a dict with default values for the new card
+                activity = {
+                    "name": "New Task",
+                    "description": [],
+                    "start_time": f"{start_hour:02d}:{start_minute:02d}",
+                    "end_time": f"{end_hour:02d}:{end_minute:02d}"
+                }
+
                 new_card = TaskCard(
-                    canvas=self.canvas,
-                    activity={"name": "New Task", "description": []},
-                    start_hour=self.start_hour,
-                    start_minute=0,
-                    end_hour=self.start_hour,
-                    end_minute=5,
-                    now=self.now_provider().time()
+                    activity=activity,
+                    start_of_workday=self.start_hour,
+                    pixels_per_hour=self.pixels_per_hour,
+                    offset_y=self.offset_y,
+                    width=self.winfo_width(),
+                    now_provider=self.now_provider
                 )
-                new_card.draw(now=self.now_provider().time(), width=self.winfo_width())
+                new_card.draw(canvas=self.canvas, draw_end_time=True)
+                self.bind_mouse_actions(new_card)
                 self.cards.append(new_card)
                 self.schedule.append(new_card.to_dict())
                 self.update_cards_after_size_change()
                 self.open_edit_card_window(new_card)
 
-                # TODO: when user clicks `Cancel` then remove this card
-
-
-
-
-
-
-
-
-
-
             menu.add_command(label="New", command=add_card)
-            menu.add_command(label="Remove all")
+            def remove_all_cards():
+                # Ask for confirmation before removing all cards
+                if messagebox.askyesno("Confirm", "Are you sure you want to remove all cards?"):
+                    for card_obj in self.cards:
+                        card_obj.delete()
+                    self.cards.clear()
+                    self.schedule.clear()
+            menu.add_command(label="Remove all", command=remove_all_cards)
         else:
             return  # Don't show menu in top menu area
         menu.tk_popup(event.x_root, event.y_root)
 
-    def open_edit_card_window(self, card_obj):
+    def on_cancel_callback(self, card_obj):
+        # Callback for when the edit window is cancelled
+        log_debug(f"Edit cancelled for card: {card_obj.activity['name']}")
+        # Optionally, you can remove the card if it was created in the edit window
+        if card_obj in self.cards:
+            card_obj.delete()
+            self.cards.remove(card_obj)
+            self.schedule.remove(card_obj.to_dict())
+            self.update_cards_after_size_change()
+
+    def open_edit_card_window(self, card_obj, on_cancel_callback=None):
         edit_win = tk.Toplevel(self)
         edit_win.title("Edit Card")
         edit_win.geometry("350x250")
@@ -720,9 +731,18 @@ class TimeboxApp(tk.Tk):
                 self.activity_label.config(text=f"Actions:\n{desc}")
             edit_win.destroy()
         def on_cancel():
+            if on_cancel_callback:
+                on_cancel_callback(card_obj)
             edit_win.destroy()
         tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
         tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
         title_entry.focus_set()
-        
+    
+    def bind_mouse_actions(self, card):
+        # Bind mouse actions to the card
+        tag = f"card_{card.card}"
+        self.canvas.tag_bind(tag, "<ButtonPress-1>", self.on_card_press)
+        self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
+        self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
+        self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
 
