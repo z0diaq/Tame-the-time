@@ -8,6 +8,14 @@ timelapse_speed = 1.0
 start_real_time = None
 start_sim_time = None
 
+
+def check_no_notification_parameter():
+    if '--no-notification' in sys.argv:
+        log_info("Notifications are disabled.")
+        ui.app.allow_notification = False
+    else:
+        log_info("Notifications are enabled.")
+
 def check_time_parameter():
     global start_sim_time
     if '--time' in sys.argv:
@@ -18,13 +26,6 @@ def check_time_parameter():
             except ValueError:
                 log_error(f"Invalid date format: {sys.argv[idx + 1]}. Expected ISO format (YYYY-MM-DDTHH:MM:SS).")
                 sys.exit(1)
-
-def check_no_notification_parameter():
-    if '--no-notification' in sys.argv:
-        log_info("Notifications are disabled.")
-        ui.app.allow_notification = False
-    else:
-        log_info("Notifications are enabled.")
 
 def check_timelapse_speed_parameter():
     global timelapse_speed
