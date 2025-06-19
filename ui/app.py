@@ -80,7 +80,7 @@ class TimeboxApp(tk.Tk):
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.file_menu.add_command(label="Open")
+        self.file_menu.add_command(label="Open", command=self.open_file)
         self.file_menu.add_command(label="Close")
         self.file_menu.add_command(label="Save")
         self.file_menu.add_command(label="New")
@@ -126,6 +126,33 @@ class TimeboxApp(tk.Tk):
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.poll_mouse()
+
+    def open_file(self):
+        from tkinter import filedialog
+        import yaml
+        file_path = filedialog.askopenfilename(
+            title="Open Schedule File",
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'r') as f:
+                new_schedule = yaml.safe_load(f)
+            # Remove all current cards from canvas
+            for card_obj in self.cards:
+                card_obj.delete()
+            self.cards.clear()
+            self.schedule.clear()
+            # Load new schedule
+            self.schedule.extend(new_schedule)
+            self.cards = self.create_task_cards()
+            self.update_cards_after_size_change()
+            self.last_action = datetime.now()
+            log_info(f"Loaded schedule from {file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load file: {e}")
+            log_error(f"Failed to load file: {e}")
 
     def on_close(self):
         self.save_settings()
