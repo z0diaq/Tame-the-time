@@ -47,6 +47,30 @@ class TimeboxApp(tk.Tk):
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
 
+    def save_settings_to_yaml(self):
+        import yaml
+        import calendar
+        # Suggest filename based on current week day
+        today = self.now_provider().date()
+        weekday_name = calendar.day_name[today.weekday()]
+        filename = f"{weekday_name}_settings.yaml"
+        file_path = tk.filedialog.asksaveasfilename(
+            title="Save Settings As",
+            defaultextension=".yaml",
+            initialfile=filename,
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'w') as f:
+                yaml.safe_dump(self.schedule, f)
+            messagebox.showinfo("Saved", f"Settings saved to {file_path}")
+            log_info(f"Settings saved to {file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {e}")
+            log_error(f"Failed to save file: {e}")
+
     def __init__(self, schedule: List[Dict], now_provider=datetime.now):
         super().__init__()
         self.now_provider = now_provider
@@ -84,6 +108,7 @@ class TimeboxApp(tk.Tk):
         self.file_menu.add_command(label="Close")
         self.file_menu.add_command(label="Save")
         self.file_menu.add_command(label="New")
+        self.file_menu.add_command(label="Save As YAML", command=self.save_settings_to_yaml)
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.options_menu.add_command(label="Global options")
