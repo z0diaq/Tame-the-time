@@ -56,13 +56,13 @@ def main():
     # Init with current time
     start_real_time = start_sim_time = datetime.now()
     check_time_parameter()
-    schedule = load_schedule(config_path, now_provider=get_now)
+    schedule, config_path = load_schedule(config_path, now_provider=get_now)
     
     # Optionally override with command line parameters
     log_startup()
     check_no_notification_parameter()
     check_timelapse_speed_parameter()
-    app = ui.app.TimeboxApp(schedule, now_provider=get_now)
+    app = ui.app.TimeboxApp(schedule, config_path, now_provider=get_now)
     app.mainloop()
 
 if __name__ == "__main__":

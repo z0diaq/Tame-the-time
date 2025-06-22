@@ -38,7 +38,7 @@ def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[
                 except ValueError:
                     raise ValueError(f"Invalid time format in {activity['name']} for {time_key}")
         
-        return schedule
+        return schedule, config_path
     
     except FileNotFoundError:
         log_error(f"Configuration file '{config_path}' not found.")

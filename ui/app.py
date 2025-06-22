@@ -5,6 +5,7 @@ from ui.timeline import draw_timeline, reposition_timeline
 from ui.task_card import create_task_cards, TaskCard
 from utils.time_utils import get_current_activity, format_time
 from datetime import datetime, timedelta, time
+import yaml
 import json
 import os
 import utils.notification
@@ -47,35 +48,13 @@ class TimeboxApp(tk.Tk):
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
 
-    def save_settings_to_yaml(self):
-        import yaml
-        import calendar
-        # Suggest filename based on current week day
-        today = self.now_provider().date()
-        weekday_name = calendar.day_name[today.weekday()]
-        filename = f"{weekday_name}_settings.yaml"
-        file_path = tk.filedialog.asksaveasfilename(
-            title="Save Settings As",
-            defaultextension=".yaml",
-            initialfile=filename,
-            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
-        )
-        if not file_path:
-            return
-        try:
-            with open(file_path, 'w') as f:
-                yaml.safe_dump(self.schedule, f)
-            messagebox.showinfo("Saved", f"Settings saved to {file_path}")
-            log_info(f"Settings saved to {file_path}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save file: {e}")
-            log_error(f"Failed to save file: {e}")
-
-    def __init__(self, schedule: List[Dict], now_provider=datetime.now):
+    def __init__(self, schedule: List[Dict], config_path: str, now_provider=datetime.now):
         super().__init__()
         self.now_provider = now_provider
         self.settings = self.load_settings()
-        
+        self.config_path = config_path
+        self.schedule_changed = False
+
         now = now_provider().time()
         self.last_hour = now.hour
         self.last_minute = now.minute
@@ -104,11 +83,11 @@ class TimeboxApp(tk.Tk):
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.file_menu.add_command(label="Open", command=self.open_file)
+        self.file_menu.add_command(label="Open", command=self.open_schedule)
         self.file_menu.add_command(label="Close")
-        self.file_menu.add_command(label="Save")
         self.file_menu.add_command(label="New")
-        self.file_menu.add_command(label="Save As YAML", command=self.save_settings_to_yaml)
+        self.file_menu.add_command(label="Save", command=self.save_schedule)
+        self.file_menu.add_command(label="Save As", command=self.save_schedule_as)
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.options_menu.add_command(label="Global options")
@@ -152,7 +131,7 @@ class TimeboxApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.poll_mouse()
 
-    def open_file(self):
+    def open_schedule(self):
         from tkinter import filedialog
         import yaml
         file_path = filedialog.askopenfilename(
@@ -164,6 +143,7 @@ class TimeboxApp(tk.Tk):
         try:
             with open(file_path, 'r') as f:
                 new_schedule = yaml.safe_load(f)
+            self.config_path = file_path  # Update config path to the new file
             # Remove all current cards from canvas
             for card_obj in self.cards:
                 card_obj.delete()
@@ -179,8 +159,55 @@ class TimeboxApp(tk.Tk):
             messagebox.showerror("Error", f"Failed to load file: {e}")
             log_error(f"Failed to load file: {e}")
 
+    def save_schedule_as(self):
+        import calendar
+        from tkinter import filedialog
+        # Suggest filename based on current week day
+        today = self.now_provider().date()
+        weekday_name = calendar.day_name[today.weekday()]
+        filename = f"{weekday_name}_settings.yaml"
+        file_path = filedialog.asksaveasfilename(
+            title="Save Schedule As",
+            defaultextension=".yaml",
+            initialfile=filename,
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'w') as f:
+                yaml.safe_dump(self.schedule, f)
+            messagebox.showinfo("Saved", f"Schedule saved to {file_path}")
+            log_info(f"Schedule saved to {file_path}")
+            self.config_path = file_path  # Update config path to the new file
+            self.schedule_changed = False # Reset schedule changed flag
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {e}")
+            log_error(f"Failed to save file: {e}")
+    
+    def save_schedule(self, ask_for_confirmation: bool = True):
+        """Save current schedule to the default JSON file."""
+        # Ask for confirmation if file exists
+        if ask_for_confirmation and os.path.exists(self.SETTINGS_PATH):
+            if not messagebox.askyesno("Confirm", "Schedule file already exists. Do you want to overwrite it?"):
+                return
+        
+        try:
+            with open(self.config_path, 'w') as f:
+                yaml.safe_dump(self.schedule, f)
+            if ask_for_confirmation:
+                messagebox.showinfo("Saved", f"Schedule saved to {self.config_path}")
+            log_info(f"Schedule saved to {self.config_path}")
+            self.schedule_changed = False  # Reset schedule changed flag
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {e}")
+            log_error(f"Failed to save file: {e}")
+
     def on_close(self):
         self.save_settings()
+        if self.schedule_changed:
+            if messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to save them?"):
+                self.save_schedule(ask_for_confirmation=False)
         self.destroy()
 
     def on_resize(self, event):
@@ -406,6 +433,7 @@ class TimeboxApp(tk.Tk):
         self.last_action = datetime.now()
         self._drag_data["dragging"] = True
         dragged_id = self._drag_data["item_ids"][0]
+        self.schedule_changed = True  # Mark schedule as changed
         if self._drag_data.get("resize_mode") == "top":
             # Resize from top
             y_card_bottom = self.canvas.coords(dragged_id)[3]
@@ -670,6 +698,7 @@ class TimeboxApp(tk.Tk):
                 self.cards.append(new_card)
                 self.schedule.append(new_card.to_dict())
                 self.update_cards_after_size_change()
+                self.schedule_changed = True  # Mark schedule as changed
             menu.add_command(label="Clone", command=clone_card)
             def remove_card():
                 # Remove the card under cursor
@@ -677,6 +706,7 @@ class TimeboxApp(tk.Tk):
                     card_under_cursor.delete()
                     self.schedule.remove(card_under_cursor.to_dict())
                     self.update_cards_after_size_change()
+                    self.schedule_changed = True  # Mark schedule as changed
             menu.add_command(label="Remove", command=remove_card)
         elif event.y > 30:  # Not in top menu area
             def add_card():
@@ -712,6 +742,7 @@ class TimeboxApp(tk.Tk):
                 self.schedule.append(new_card.to_dict())
                 self.update_cards_after_size_change()
                 self.open_edit_card_window(new_card)
+                self.schedule_changed = True  # Mark schedule as changed
 
             menu.add_command(label="New", command=add_card)
             def remove_all_cards():
@@ -721,6 +752,7 @@ class TimeboxApp(tk.Tk):
                         card_obj.delete()
                     self.cards.clear()
                     self.schedule.clear()
+                    self.schedule_changed = True  # Mark schedule as changed
             menu.add_command(label="Remove all", command=remove_all_cards)
         else:
             return  # Don't show menu in top menu area
@@ -782,6 +814,7 @@ class TimeboxApp(tk.Tk):
                 desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(new_desc))
                 self.activity_label.config(text=f"Actions:\n{desc}")
             edit_win.destroy()
+            self.schedule_changed = True  # Mark schedule as changed
         def on_cancel():
             if on_cancel_callback:
                 on_cancel_callback(card_obj)
