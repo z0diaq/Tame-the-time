@@ -381,6 +381,9 @@ class TimeboxApp(tk.Tk):
         self._drag_data["dragging"] = False
         self._drag_data["resize_mode"] = None
         dragged_id = self._drag_data["item_ids"][0]
+        y_card_top = self.canvas.coords(dragged_id)[1]
+        self._drag_data["diff_y"] = event.y - y_card_top
+        log_debug(f"Dragging card: {dragged_id}, Tags: {tags}")
         # Detect if click is near top or bottom for resize
         y_card_top = self.canvas.coords(dragged_id)[1]
         y_card_bottom = self.canvas.coords(dragged_id)[3]
@@ -451,11 +454,12 @@ class TimeboxApp(tk.Tk):
         else:
             # Normal drag (move)
             y = event.y
-            y_relative = y - 100 - self.offset_y
+            y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
             total_minutes = int(y_relative * 60 / self.pixels_per_hour)
             snapped_minutes = self.round_to_nearest_5_minutes(total_minutes)
             snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
             delta_y = snapped_y - self.canvas.coords(dragged_id)[1]
+            log_debug(f"Item_ids: {self._drag_data['item_ids']}")
             for item_id in self._drag_data["item_ids"]:
                 self.canvas.move(item_id, 0, delta_y)
             self._drag_data["offset_y"] = event.y + (snapped_y - y)
@@ -474,16 +478,13 @@ class TimeboxApp(tk.Tk):
             self.handle_card_snap(card_id, event.y)
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         self.timeline_granularity = 60
-        #for card_obj in self.cards:
-        #    self.canvas.itemconfig(card_obj.card, stipple="")
-        #    if card_obj.label:
-        #        self.canvas.itemconfig(card_obj.label, fill="black")
         self.restore_card_visuals()
         self.show_timeline(granularity=60)
 
     def handle_card_snap(self, card_id: int, y: int):
         moved_card = next(card for card in self.cards if card.card == card_id)
-        y_relative = y - 100 - self.offset_y
+        log_debug(f"Moved card: {moved_card.card}")
+        y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
         new_hour = self.start_hour + total_minutes // 60
         new_minute = self.round_to_nearest_5_minutes(total_minutes % 60)
@@ -640,37 +641,26 @@ class TimeboxApp(tk.Tk):
         dragged_id = self.canvas.find_withtag(tags[0])[0]
         y_card_top = self.canvas.coords(dragged_id)[1]
         y_card_bottom = self.canvas.coords(dragged_id)[3]
-        if abs(event.y - y_card_top) <= 10:
+        if abs(event.y - y_card_top) <= 8:
             self.config(cursor="top_side")
-        elif abs(event.y - y_card_bottom) <= 10:
+        elif abs(event.y - y_card_bottom) <= 8:
             self.config(cursor="bottom_side")
         else:
             self.config(cursor="fleur")
     
-    def clone_card(card_obj):
-        # Create a new card object with the same properties as the original
-        new_card = card_obj.clone()
-        # Update the start time to be 5 minutes after the original
-        new_start_time = datetime.combine(datetime.today(), parse_time_str(new_card.activity['start_time'])) + timedelta(minutes=5)
-        new_card.start_hour = new_start_time.hour
-        new_card.start_minute = new_start_time.minute
-        # Update the visuals and add to canvas
-        new_card.update_card_visuals(
-            new_card.start_hour, new_card.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
-        )
-        return new_card
-
     def show_canvas_context_menu(self, event):
         # Determine if click is on a card
         items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
         card_ids = [card_obj.card for card_obj in self.cards]
+        log_debug(f"Context menu requested at {event.x}, {event.y}, items: {items}, card_ids: {card_ids}")
         menu = tk.Menu(self, tearoff=0)
         card_under_cursor = None
         for card_obj in self.cards:
             if card_obj.card in items:
                 card_under_cursor = card_obj
                 break
-        if any(item in card_ids for item in items):
+        if card_under_cursor:
+            # Show context menu for the card under cursor
             def edit_card():
                 self.open_edit_card_window(card_under_cursor)
             menu.add_command(label="Edit", command=edit_card)
@@ -703,6 +693,7 @@ class TimeboxApp(tk.Tk):
             def remove_card():
                 # Remove the card under cursor
                 if card_under_cursor in self.cards:
+                    self.cards.remove(card_under_cursor)
                     card_under_cursor.delete()
                     self.schedule.remove(card_under_cursor.to_dict())
                     self.update_cards_after_size_change()
