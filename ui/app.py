@@ -487,7 +487,7 @@ class TimeboxApp(tk.Tk):
         y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
         total_minutes = int(y_relative * 60 / self.pixels_per_hour)
         new_hour = self.start_hour + total_minutes // 60
-        new_minute = self.round_to_nearest_5_minutes(total_minutes % 60)
+        new_minute = self.round_to_nearest_5_minutes(total_minutes) % 60
         log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
         idx = self.cards.index(moved_card)
         # End time label is allowed if there is a gap to the next card
@@ -637,10 +637,21 @@ class TimeboxApp(tk.Tk):
         log_debug(f"Tags = {tags}")
         if not tags:
             self.config(cursor="")
+            # Show all progress rectangles again if not hovering over any card
+            for card_obj in self.cards:
+                if hasattr(card_obj, 'progress') and card_obj.progress:
+                    self.canvas.itemconfig(card_obj.progress, state="normal")
             return
         dragged_id = self.canvas.find_withtag(tags[0])[0]
         y_card_top = self.canvas.coords(dragged_id)[1]
         y_card_bottom = self.canvas.coords(dragged_id)[3]
+        # Hide progress for hovered card, show for others
+        for card_obj in self.cards:
+            if hasattr(card_obj, 'progress') and card_obj.progress:
+                if card_obj.card == dragged_id:
+                    self.canvas.itemconfig(card_obj.progress, state="hidden")
+                else:
+                    self.canvas.itemconfig(card_obj.progress, state="normal")
         if abs(event.y - y_card_top) <= 8:
             self.config(cursor="top_side")
         elif abs(event.y - y_card_bottom) <= 8:
