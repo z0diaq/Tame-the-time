@@ -1,6 +1,7 @@
 import os
 import traceback
 from datetime import datetime
+import platform
 
 loglevel_debug = 1
 loglevel_info = 2
@@ -238,7 +239,10 @@ def log_startup():
     log_info("Application started.")
     log_info(f"Log file: {file}")
     log_info(f"Python version: {os.sys.version}")
-    log_info(f"OS: {os.name} {os.uname().release}")
+    if platform.system() == "Windows":
+        log_info(f"OS: {os.name}")
+    else:
+        log_info(f"OS: {os.name} {os.uname().release}")
 
 def log_shutdown(file: str = "app.log"):
     """

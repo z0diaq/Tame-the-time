@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=TameTheTime
+Comment=Timeboxing Timeline Scheduler
+Exec=python3 /home/ictadmin/Nextcloud/backups/scripts-work/timeboxing/Tame-the-time/ui/TameTheTime.py
+Icon=clock
+Terminal=false
+Categories=Utility;Productivity;
+StartupNotify=true
+StartupWMClass=TameTheTime
