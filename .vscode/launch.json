@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "normal debug",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "TameTheTime.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "TTT no notifications",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "TameTheTime.py",
+            "console": "integratedTerminal",
+            "args": "--no-notification --log-level debug"
+        },
+        {
+            "name": "TTT at 16:55",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "TameTheTime.py",
+            "console": "integratedTerminal",
+            "args": "--time \"2025-06-04T16:55:00\" --no-notification"
+        }
+    ]
+}

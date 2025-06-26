@@ -84,7 +84,7 @@ class TimeboxApp(tk.Tk):
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.file_menu.add_command(label="Open", command=self.open_schedule)
-        self.file_menu.add_command(label="Close")
+        self.file_menu.add_command(label="Close", command=self.close_schedule)
         self.file_menu.add_command(label="New")
         self.file_menu.add_command(label="Save", command=self.save_schedule)
         self.file_menu.add_command(label="Save As", command=self.save_schedule_as)
@@ -202,6 +202,18 @@ class TimeboxApp(tk.Tk):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save file: {e}")
             log_error(f"Failed to save file: {e}")
+
+    def close_schedule(self):
+        """Clear all cards and schedule, with confirmation if there are unsaved changes."""
+        if self.schedule_changed:
+            if not messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to close and lose them?"):
+                return
+        for card_obj in self.cards:
+            card_obj.delete()
+        self.cards.clear()
+        self.schedule.clear()
+        self.schedule_changed = False
+        self.update_cards_after_size_change()
 
     def on_close(self):
         self.save_settings()
