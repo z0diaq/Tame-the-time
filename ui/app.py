@@ -84,13 +84,12 @@ class TimeboxApp(tk.Tk):
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.file_menu.add_command(label="Open", command=self.open_schedule)
-        self.file_menu.add_command(label="Close", command=self.close_schedule)
-        self.file_menu.add_command(label="New")
+        self.file_menu.add_command(label="Clear", command=self.clear_schedule)
         self.file_menu.add_command(label="Save", command=self.save_schedule)
         self.file_menu.add_command(label="Save As", command=self.save_schedule_as)
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.options_menu.add_command(label="Global options")
+        self.options_menu.add_command(label="Global options", command=self.open_global_options)
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
         self.menu_visible = False
         self.card_visual_changed = False  # Flag to track if card visuals have changed
@@ -203,7 +202,7 @@ class TimeboxApp(tk.Tk):
             messagebox.showerror("Error", f"Failed to save file: {e}")
             log_error(f"Failed to save file: {e}")
 
-    def close_schedule(self):
+    def clear_schedule(self):
         """Clear all cards and schedule, with confirmation if there are unsaved changes."""
         if self.schedule_changed:
             if not messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to close and lose them?"):
@@ -844,4 +843,41 @@ class TimeboxApp(tk.Tk):
         self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
         self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
         self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
+
+    def open_global_options(self):
+        options_win = tk.Toplevel(self)
+        options_win.title("Global Options")
+        options_win.geometry("300x180")
+        options_win.transient(self)
+        options_win.grab_set()
+
+        tk.Label(options_win, text="Start hour:").pack(anchor="w", padx=10, pady=(15, 0))
+        start_hour_var = tk.IntVar(value=self.start_hour)
+        start_hour_entry = tk.Entry(options_win, textvariable=start_hour_var)
+        start_hour_entry.pack(fill="x", padx=10)
+
+        tk.Label(options_win, text="End hour:").pack(anchor="w", padx=10, pady=(10, 0))
+        end_hour_var = tk.IntVar(value=self.end_hour)
+        end_hour_entry = tk.Entry(options_win, textvariable=end_hour_var)
+        end_hour_entry.pack(fill="x", padx=10)
+
+        btn_frame = tk.Frame(options_win)
+        btn_frame.pack(fill="x", pady=15)
+        def on_ok():
+            try:
+                new_start = int(start_hour_var.get())
+                new_end = int(end_hour_var.get())
+                if 0 <= new_start < 24 and 0 < new_end <= 24 and new_start < new_end:
+                    self.start_hour = new_start
+                    self.end_hour = new_end
+                    self.update_cards_after_size_change()
+                    options_win.destroy()
+                else:
+                    messagebox.showerror("Invalid Input", "Start hour must be >=0 and < End hour, End hour must be <=24.")
+            except Exception as e:
+                messagebox.showerror("Invalid Input", str(e))
+        def on_cancel():
+            options_win.destroy()
+        tk.Button(btn_frame, text="Ok", command=on_ok).pack(side="left", padx=20)
+        tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
 
