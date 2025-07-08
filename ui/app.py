@@ -496,9 +496,9 @@ class TimeboxApp(tk.Tk):
         moved_card = next(card for card in self.cards if card.card == card_id)
         log_debug(f"Moved card: {moved_card.card}")
         y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
-        total_minutes = int(y_relative * 60 / self.pixels_per_hour)
+        total_minutes = self.round_to_nearest_5_minutes(int(y_relative * 60 / self.pixels_per_hour))
         new_hour = self.start_hour + total_minutes // 60
-        new_minute = self.round_to_nearest_5_minutes(total_minutes) % 60
+        new_minute = total_minutes % 60
         log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
         idx = self.cards.index(moved_card)
         # End time label is allowed if there is a gap to the next card
