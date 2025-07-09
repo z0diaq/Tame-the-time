@@ -409,10 +409,6 @@ class TimeboxApp(tk.Tk):
             self._drag_data["resize_mode"] = None
         # Make all other cards barely visible
         for card_obj in self.cards:
-            # If card has fill rectangle, hide it until drag is done
-            if hasattr(card_obj, 'progress'):
-                self.canvas.itemconfig(card_obj.progress, state="hidden")
-
             if card_obj.card != dragged_id:
                 self.canvas.itemconfig(card_obj.card, stipple="gray25")
                 if card_obj.label:
@@ -648,21 +644,10 @@ class TimeboxApp(tk.Tk):
         log_debug(f"Tags = {tags}")
         if not tags:
             self.config(cursor="")
-            # Show all progress rectangles again if not hovering over any card
-            for card_obj in self.cards:
-                if hasattr(card_obj, 'progress') and card_obj.progress:
-                    self.canvas.itemconfig(card_obj.progress, state="normal")
             return
         dragged_id = self.canvas.find_withtag(tags[0])[0]
         y_card_top = self.canvas.coords(dragged_id)[1]
         y_card_bottom = self.canvas.coords(dragged_id)[3]
-        # Hide progress for hovered card, show for others
-        for card_obj in self.cards:
-            if hasattr(card_obj, 'progress') and card_obj.progress:
-                if card_obj.card == dragged_id:
-                    self.canvas.itemconfig(card_obj.progress, state="hidden")
-                else:
-                    self.canvas.itemconfig(card_obj.progress, state="normal")
         if abs(event.y - y_card_top) <= 8:
             self.config(cursor="top_side")
         elif abs(event.y - y_card_bottom) <= 8:

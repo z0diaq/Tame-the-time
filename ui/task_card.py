@@ -53,6 +53,24 @@ class TaskCard:
         clone.card_right = self.card_right
         return clone    
 
+    def setup_card_progress_actions(self, canvas: Canvas):
+        # On card enter event, hide the progress rectangle
+        def on_card_enter(event):
+            log_debug(f"Card {self.activity['name']} entered")
+            if hasattr(self, 'progress') and self.progress:
+                canvas.itemconfig(self.progress, state="hidden")
+        # On card leave event, show the progress rectangle
+        def on_card_leave(event):
+            log_debug(f"Card {self.activity['name']} left")
+            if hasattr(self, 'progress') and self.progress:
+                canvas.itemconfig(self.progress, state="normal")
+    
+        canvas.tag_bind(self.card, "<Enter>", on_card_enter)
+        canvas.tag_bind(self.progress, "<Enter>", on_card_enter)
+        canvas.tag_bind(self.label, "<Enter>", on_card_enter)
+        canvas.tag_bind(self.card, "<Leave>", on_card_leave)
+        canvas.tag_bind(self.progress, "<Leave>", on_card_leave)
+        canvas.tag_bind(self.label, "<Leave>", on_card_leave)
     
     def draw(self, canvas: Canvas, now: time = None, draw_end_time: bool = False):
         self.canvas = canvas
@@ -67,6 +85,7 @@ class TaskCard:
         )
         self.card = canvas.create_rectangle(self.card_left, self.y, self.card_right, self.y + self.height, fill=color, outline="black")
         # Progress bar for active card
+        self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
         if is_active:
             total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
             elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
@@ -74,7 +93,8 @@ class TaskCard:
             log_info(f"Drawing progress for card {self.activity['name']}: {progress:.2f}")
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
             self.progress = canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="black")
-        self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
+            self.setup_card_progress_actions(canvas)
+            canvas.tag_raise(self.label)
         tag = f"card_{self.card}"
         canvas.itemconfig(self.card, tags=(tag))
         canvas.itemconfig(self.label, tags=(tag))
@@ -146,6 +166,7 @@ class TaskCard:
         if should_show_progress:
             if not hasattr(self, 'progress') or self.progress is None:
                 self.progress = self.canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="")
+                self.setup_card_progress_actions(self.canvas)
             else:
                 self.canvas.coords(self.progress, self.card_left, self.y, fill_right, self.y + self.height)
             self.canvas.itemconfig(self.progress, state="normal")
