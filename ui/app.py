@@ -415,6 +415,7 @@ class TimeboxApp(tk.Tk):
                     self.canvas.itemconfig(card_obj.label, fill="#cccccc")
             else:
                 self.canvas.itemconfig(card_obj.card, stipple="")
+                card_obj.set_being_modified(True)
                 if card_obj.label:
                     self.canvas.itemconfig(card_obj.label, fill="black")
         self.card_visual_changed = True

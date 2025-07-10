@@ -27,6 +27,7 @@ class TaskCard:
         self.now_provider = now_provider
         self.time_label = None
         self.canvas = None
+        self.being_modified = False
 
         self.finished_color = "#cccccc"  # Color for finished tasks
         self.active_color = "#ffff99"
@@ -53,6 +54,10 @@ class TaskCard:
         clone.card_right = self.card_right
         return clone    
 
+    def set_being_modified(self, being_modified: bool):
+        """Set the being_modified flag to control visibility of progress bar."""
+        self.being_modified = being_modified
+
     def setup_card_progress_actions(self, canvas: Canvas):
         # On card enter event, hide the progress rectangle
         def on_card_enter(event):
@@ -62,7 +67,7 @@ class TaskCard:
         # On card leave event, show the progress rectangle
         def on_card_leave(event):
             log_debug(f"Card {self.activity['name']} left")
-            if hasattr(self, 'progress') and self.progress:
+            if hasattr(self, 'progress') and self.progress and not self.being_modified:
                 canvas.itemconfig(self.progress, state="normal")
     
         canvas.tag_bind(self.card, "<Enter>", on_card_enter)
@@ -190,6 +195,8 @@ class TaskCard:
 
         self.canvas.coords(self.label, (self.card_left + self.card_right) // 2, self.y + self.height // 2)
         self.canvas.itemconfig(self.label, text=self.activity["name"])
+
+        self.being_modified = False  # Reset being_modified flag after updating visuals
 
     def to_dict(self):
         """Convert the TaskCard to a dictionary representation."""
