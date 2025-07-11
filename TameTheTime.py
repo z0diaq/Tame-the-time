@@ -9,14 +9,14 @@ start_real_time = None
 start_sim_time = None
 
 
-def check_no_notification_parameter():
+def check_no_notification_parameter() -> None:
     if '--no-notification' in sys.argv:
         log_info("Notifications are disabled.")
         ui.app.allow_notification = False
     else:
         log_info("Notifications are enabled.")
 
-def check_time_parameter():
+def check_time_parameter() -> None:
     global start_sim_time
     if '--time' in sys.argv:
         idx = sys.argv.index('--time')
@@ -27,7 +27,7 @@ def check_time_parameter():
                 log_error(f"Invalid date format: {sys.argv[idx + 1]}. Expected ISO format (YYYY-MM-DDTHH:MM:SS).")
                 sys.exit(1)
 
-def check_timelapse_speed_parameter():
+def check_timelapse_speed_parameter() -> None:
     global timelapse_speed
     if '--timelapse-speed' in sys.argv:
         idx = sys.argv.index('--timelapse-speed')
@@ -43,13 +43,13 @@ def check_timelapse_speed_parameter():
                 log_error(f"Invalid timelapse-speed value: {sys.argv[idx + 1]}")
                 sys.exit(1)
 
-def get_now():
+def get_now() -> datetime:
     global start_real_time, start_sim_time
     elapsed_real = (datetime.now() - start_real_time).total_seconds()
     elapsed_sim = elapsed_real * timelapse_speed
     return start_sim_time + timedelta(seconds=elapsed_sim)
 
-def main():
+def main() -> None:
     global start_real_time, start_sim_time
     
     config_path = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else None

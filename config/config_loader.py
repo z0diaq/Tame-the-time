@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import yaml
 from utils.logging import log_error
@@ -16,8 +16,37 @@ def get_day_config_path(current_day) -> str:
     
     return "default_settings.yaml"
 
+def create_sample_schedule(now) -> Dict:
+    """Create a default configuration to be used if no specific config is found."""
+    # Create schedule with 3 sample activities
+    # Each 30 minutes long
+    # First that ended 10 minutes ago
+    # Second that is currently ongoing
+    # Third that starts in 20 minutes
+    return [
+        {
+            "name": "Past Activity",
+            "start_time": (now - timedelta(minutes=40)).strftime("%H:%M"),
+            "end_time": (now - timedelta(minutes=10)).strftime("%H:%M"),
+            "description": "This is a past activity."
+        },
+        {
+            "name": "Current Activity",
+            "start_time": (now - timedelta(minutes=10)).strftime("%H:%M"),
+            "end_time": (now + timedelta(minutes=20)).strftime("%H:%M"),
+            "description": "This is the current activity."
+        },
+        {
+            "name": "Future Activity",
+            "start_time": (now + timedelta(minutes=20)).strftime("%H:%M"),
+            "end_time": (now + timedelta(minutes=50)).strftime("%H:%M"),
+            "description": "This is a future activity."
+        }
+    ]
+
 def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[Dict]:
     """Load and validate the schedule from a YAML file."""
+    is_default_config = config_path is None or config_path == "default_settings.yaml"
     config_path = config_path or get_day_config_path(current_day=now_provider().date().weekday())
     
     try:
@@ -41,6 +70,8 @@ def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[
         return schedule, config_path
     
     except FileNotFoundError:
+        if is_default_config:
+            return create_sample_schedule(now_provider().time()), config_path
         log_error(f"Configuration file '{config_path}' not found.")
         sys.exit(1)
     except yaml.YAMLError as e:
