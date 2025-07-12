@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import yaml
 from utils.logging import log_error
+from utils.time_utils import round_to_nearest_5_minutes
 
 def get_day_config_path(current_day) -> str:
     """Determine the configuration file path based on the current day."""
@@ -16,7 +17,18 @@ def get_day_config_path(current_day) -> str:
     
     return "default_settings.yaml"
 
-def create_sample_schedule(now) -> Dict:
+def normalize_time_format(timepoint : datetime) -> str:
+    """Ensure time string has valid values and 5min granulity."""
+    hour = timepoint.hour
+    minutes = round_to_nearest_5_minutes(timepoint.minute)
+    if minutes == 60:
+        hour += 1
+        minutes = 0
+    if hour >= 24:
+        hour = 0
+    return f"{hour:02d}:{minutes:02d}"
+
+def create_sample_schedule(now: datetime) -> Dict:
     """Create a default configuration to be used if no specific config is found."""
     # Create schedule with 3 sample activities
     # Each 30 minutes long
@@ -26,21 +38,21 @@ def create_sample_schedule(now) -> Dict:
     return [
         {
             "name": "Past Activity",
-            "start_time": (now - timedelta(minutes=40)).strftime("%H:%M"),
-            "end_time": (now - timedelta(minutes=10)).strftime("%H:%M"),
-            "description": "This is a past activity."
+            "start_time": normalize_time_format(now - timedelta(minutes=40)),
+            "end_time": normalize_time_format(now - timedelta(minutes=10)),
+            "description": [ "This is a past activity." ]
         },
         {
             "name": "Current Activity",
-            "start_time": (now - timedelta(minutes=10)).strftime("%H:%M"),
-            "end_time": (now + timedelta(minutes=20)).strftime("%H:%M"),
-            "description": "This is the current activity."
+            "start_time": normalize_time_format(now - timedelta(minutes=10)),
+            "end_time": normalize_time_format(now + timedelta(minutes=20)),
+            "description": [ "This is the current activity." ]
         },
         {
             "name": "Future Activity",
-            "start_time": (now + timedelta(minutes=20)).strftime("%H:%M"),
-            "end_time": (now + timedelta(minutes=50)).strftime("%H:%M"),
-            "description": "This is a future activity."
+            "start_time": normalize_time_format(now + timedelta(minutes=20)),
+            "end_time": normalize_time_format(now + timedelta(minutes=50)),
+            "description": [ "This is a future activity." ]
         }
     ]
 
@@ -71,7 +83,7 @@ def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[
     
     except FileNotFoundError:
         if is_default_config:
-            return create_sample_schedule(now_provider().time()), config_path
+            return create_sample_schedule(now_provider()), config_path
         log_error(f"Configuration file '{config_path}' not found.")
         sys.exit(1)
     except yaml.YAMLError as e:

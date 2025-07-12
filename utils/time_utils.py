@@ -7,8 +7,11 @@ def format_time(t: time) -> str:
 
 def get_current_activity(schedule: list[Dict], current_time: datetime) -> Optional[Dict]:
     """Determine the current activity based on the current time."""
+
+    ''' Weekend handling
     if current_time.weekday() >= 5:
         return None
+    '''
     
     time_now = current_time.time()
     for activity in schedule:
@@ -25,3 +28,8 @@ def get_current_activity(schedule: list[Dict], current_time: datetime) -> Option
             return activity_with_time
     
     return None
+
+def round_to_nearest_5_minutes(minutes: int) -> int:
+    """Round minutes to the nearest 5 minutes."""
+    return 5 * round(minutes / 5)
+

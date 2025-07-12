@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 from ui.timeline import draw_timeline, reposition_timeline
 from ui.task_card import create_task_cards, TaskCard
-from utils.time_utils import get_current_activity, format_time
+from utils.time_utils import get_current_activity, round_to_nearest_5_minutes
 from datetime import datetime, timedelta, time
 import yaml
 import json
@@ -433,10 +433,6 @@ class TimeboxApp(tk.Tk):
                 self.canvas.itemconfig(card_obj.progress, state="normal")
         self.card_visual_changed = False
 
-    def round_to_nearest_5_minutes(self, minutes: int) -> int:
-        """Round minutes to the nearest 5 minutes."""
-        return 5 * round(minutes / 5)
-
     def on_card_drag(self, event):
         if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
             return
@@ -449,14 +445,14 @@ class TimeboxApp(tk.Tk):
             # Resize from top
             y_card_bottom = self.canvas.coords(dragged_id)[3]
             new_top = min(event.y, y_card_bottom - 20)
-            snapped_minutes = self.round_to_nearest_5_minutes(int((new_top - 100 - self.offset_y) * 60 / self.pixels_per_hour))
+            snapped_minutes = round_to_nearest_5_minutes(int((new_top - 100 - self.offset_y) * 60 / self.pixels_per_hour))
             snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
             self.canvas.coords(dragged_id, self.canvas.coords(dragged_id)[0], snapped_y, self.canvas.coords(dragged_id)[2], y_card_bottom)
         elif self._drag_data.get("resize_mode") == "bottom":
             # Resize from bottom
             y_card_top = self.canvas.coords(dragged_id)[1]
             new_bottom = max(event.y, y_card_top + 20)
-            snapped_minutes = self.round_to_nearest_5_minutes(int((new_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour))
+            snapped_minutes = round_to_nearest_5_minutes(int((new_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour))
             snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
             self.canvas.coords(dragged_id, self.canvas.coords(dragged_id)[0], y_card_top, self.canvas.coords(dragged_id)[2], snapped_y)
         else:
@@ -464,7 +460,7 @@ class TimeboxApp(tk.Tk):
             y = event.y
             y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
             total_minutes = int(y_relative * 60 / self.pixels_per_hour)
-            snapped_minutes = self.round_to_nearest_5_minutes(total_minutes)
+            snapped_minutes = round_to_nearest_5_minutes(total_minutes)
             snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
             delta_y = snapped_y - self.canvas.coords(dragged_id)[1]
             log_debug(f"Item_ids: {self._drag_data['item_ids']}")
@@ -493,7 +489,7 @@ class TimeboxApp(tk.Tk):
         moved_card = next(card for card in self.cards if card.card == card_id)
         log_debug(f"Moved card: {moved_card.card}")
         y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
-        total_minutes = self.round_to_nearest_5_minutes(int(y_relative * 60 / self.pixels_per_hour))
+        total_minutes = round_to_nearest_5_minutes(int(y_relative * 60 / self.pixels_per_hour))
         new_hour = self.start_hour + total_minutes // 60
         new_minute = total_minutes % 60
         log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
@@ -516,13 +512,13 @@ class TimeboxApp(tk.Tk):
         y_card_bottom = self.canvas.coords(card_id)[3]
         if mode == "top":
             new_top = min(y, y_card_bottom - 20)
-            snapped_minutes = self.round_to_nearest_5_minutes(int((new_top - 100 - self.offset_y) * 60 / self.pixels_per_hour))
+            snapped_minutes = round_to_nearest_5_minutes(int((new_top - 100 - self.offset_y) * 60 / self.pixels_per_hour))
             new_start_minutes = snapped_minutes
             new_end_minutes = int((y_card_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour)
         else:
             new_top = y_card_top
             new_bottom = max(y, y_card_top + 20)
-            snapped_minutes = self.round_to_nearest_5_minutes(int((new_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour))
+            snapped_minutes = round_to_nearest_5_minutes(int((new_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour))
             new_start_minutes = int((y_card_top - 100 - self.offset_y) * 60 / self.pixels_per_hour)
             new_end_minutes = snapped_minutes
         new_start_hour = self.start_hour + new_start_minutes // 60
@@ -589,9 +585,12 @@ class TimeboxApp(tk.Tk):
             last_activity = activity
         else:
             # --- Show time till next task if no active task ---
+            
+            ''' Weekend handling
             if now.weekday() >= 5:
                 text = "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM."
-            elif next_task is None:
+            el'''
+            if next_task is None:
                 text = "No scheduled task was found."
             else:
                 seconds_left = int((next_task_start - now).total_seconds())
@@ -617,9 +616,11 @@ class TimeboxApp(tk.Tk):
 
     def get_next_task_and_time(self, now):
         # Returns (next_task_dict, next_task_start_datetime)
-        if len(self.schedule) == 0:
+        if not self.schedule or len(self.schedule) == 0:
             return None, None
         today = now.date()
+        
+        ''' Weekend handling
         # If weekend, find first task on Monday
         if now.weekday() >= 5:
             # Find next Monday
@@ -628,6 +629,8 @@ class TimeboxApp(tk.Tk):
             first = self.schedule[0]
             next_time = datetime.combine(monday, parse_time_str(first['start_time']))
             return first, next_time
+        '''
+        
         # Find next task after now
         for task in self.schedule:
             t = parse_time_str(task['start_time'])
@@ -712,7 +715,7 @@ class TimeboxApp(tk.Tk):
                 # Create a new card at the clicked position
                 # Compute the start hour based on the clicked position
                 y_relative = event.y - 100 - self.offset_y
-                total_minutes = self.round_to_nearest_5_minutes(y_relative * 60 / self.pixels_per_hour)
+                total_minutes = round_to_nearest_5_minutes(y_relative * 60 / self.pixels_per_hour)
                 start_hour = self.start_hour + total_minutes // 60
                 start_minute = total_minutes % 60
                 total_minutes += 25
