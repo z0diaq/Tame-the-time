@@ -40,21 +40,45 @@ def create_sample_schedule(now: datetime) -> Dict:
             "name": "Past Activity",
             "start_time": normalize_time_format(now - timedelta(minutes=40)),
             "end_time": normalize_time_format(now - timedelta(minutes=10)),
-            "description": [ "This is a past activity." ]
+            "description": [ "This is a past activity." ],
+            "tasks": [ "Activity 1 task" ]
         },
         {
             "name": "Current Activity",
             "start_time": normalize_time_format(now - timedelta(minutes=10)),
             "end_time": normalize_time_format(now + timedelta(minutes=20)),
-            "description": [ "This is the current activity." ]
+            "description": [ "This is the current activity." ],
+            "tasks": [ "Activity 2 task" ]
         },
         {
             "name": "Future Activity",
             "start_time": normalize_time_format(now + timedelta(minutes=20)),
             "end_time": normalize_time_format(now + timedelta(minutes=50)),
-            "description": [ "This is a future activity." ]
+            "description": [ "This is a future activity." ],
+            "tasks": [ "Activity 3 task" ]
         }
     ]
+
+def validate_schedule(schedule: List[Dict]) -> bool:
+    """Validate the schedule structure and time formats."""
+    if not isinstance(schedule, list):
+        log_error("Schedule must be a list of activities.")
+        return False
+    
+    for activity in schedule:
+        if not all(key in activity for key in ["name", "start_time", "end_time", "description"]):
+            log_error(f"Invalid activity format: {activity}")
+            return False
+        
+        # Validate time format
+        for time_key in ["start_time", "end_time"]:
+            try:
+                datetime.strptime(activity[time_key], "%H:%M")
+            except ValueError:
+                log_error(f"Invalid time format in {activity['name']} for {time_key}")
+                return False
+    
+    return True
 
 def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[Dict]:
     """Load and validate the schedule from a YAML file."""
@@ -65,20 +89,9 @@ def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[
         with open(config_path, 'r') as file:
             schedule = yaml.safe_load(file)
         
-        if not isinstance(schedule, list):
+        if not validate_schedule(schedule):
             raise ValueError("Schedule must be a list of activities")
-        
-        for activity in schedule:
-            if not all(key in activity for key in ["name", "start_time", "end_time", "description"]):
-                raise ValueError(f"Invalid activity format in {config_path}")
-            
-            # Validate time format
-            for time_key in ["start_time", "end_time"]:
-                try:
-                    datetime.strptime(activity[time_key], "%H:%M")
-                except ValueError:
-                    raise ValueError(f"Invalid time format in {activity['name']} for {time_key}")
-        
+                
         return schedule, config_path
     
     except FileNotFoundError:

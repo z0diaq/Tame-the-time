@@ -710,6 +710,12 @@ class TimeboxApp(tk.Tk):
                     self.update_cards_after_size_change()
                     self.schedule_changed = True  # Mark schedule as changed
             menu.add_command(label="Remove", command=remove_card)
+            def open_card_tasks():
+                # Open tasks window for the card
+                self.open_card_tasks_window(card_under_cursor)
+            activity = self.find_activity_by_name(card_under_cursor.activity["name"])
+            if hasattr(activity, 'tasks'):
+                menu.add_command(label="Tasks", command=open_card_tasks)
         elif event.y > 30:  # Not in top menu area
             def add_card():
                 # Create a new card at the clicked position
@@ -769,6 +775,13 @@ class TimeboxApp(tk.Tk):
             self.cards.remove(card_obj)
             self.schedule.remove(card_obj.to_dict())
             self.update_cards_after_size_change()
+    
+    def find_activity_by_name(self, name):
+        """Find a schedule item by its name."""
+        for activity in self.schedule:
+            if activity["name"] == name:
+                return activity
+        return None
 
     def open_edit_card_window(self, card_obj, on_cancel_callback=None):
         edit_win = tk.Toplevel(self)
@@ -794,14 +807,11 @@ class TimeboxApp(tk.Tk):
             new_title = title_var.get().strip()
             new_desc = desc_text.get("1.0", "end-1c").strip().splitlines()
             # Update schedule and card activity
-            activity_found = False
-            for activity in self.schedule:
-                if activity["name"] == card_obj.activity["name"]:
-                    activity["name"] = new_title
-                    activity["description"] = new_desc
-                    activity_found = True
-                    break
-            if not activity_found:
+            activity = self.find_activity_by_name(new_title)
+            if activity:
+                activity["name"] = new_title
+                activity["description"] = new_desc
+            else:
                 log_error(f"Activity '{card_obj.activity['name']}' not found in schedule.")
             card_obj.activity["name"] = new_title
             card_obj.activity["description"] = new_desc
@@ -824,7 +834,35 @@ class TimeboxApp(tk.Tk):
         tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
         tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
         title_entry.focus_set()
-    
+
+    def open_card_tasks_window(self, card_obj):
+        # Open a new window to manage tasks for the card
+        # Each task is an action that user can mark as done or not done
+        tasks_win = tk.Toplevel(self)
+        tasks_win.title(f"Tasks for {card_obj.activity['name']}")
+        tasks_win.geometry("400x300")
+        tasks_win.transient(self)
+        tasks_win.grab_set()
+
+        # Create a listbox to display tasks
+        task_listbox = tk.Listbox(tasks_win)
+        task_listbox.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Add tasks to the listbox
+        for task in card_obj.activity.get("tasks", []):
+            task_listbox.insert("end", task)
+
+        # Add a button to mark tasks as done
+        def mark_task_done():
+            selected_task_index = task_listbox.curselection()
+            if selected_task_index:
+                task_listbox.delete(selected_task_index)
+                # Here you can also update the card_obj to reflect the task completion
+                # For example: card_obj.activity["tasks"].remove(card_obj.activity["tasks"][selected_task_index[0]])
+            tasks_win.lift()
+
+        tk.Button(tasks_win, text="Mark as Done", command=mark_task_done).pack(pady=(0, 10))
+
     def bind_mouse_actions(self, card):
         # Bind mouse actions to the card
         tag = f"card_{card.card}"
