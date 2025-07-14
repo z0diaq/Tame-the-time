@@ -714,7 +714,7 @@ class TimeboxApp(tk.Tk):
                 # Open tasks window for the card
                 self.open_card_tasks_window(card_under_cursor)
             activity = self.find_activity_by_name(card_under_cursor.activity["name"])
-            if hasattr(activity, 'tasks'):
+            if 'tasks' in activity and activity['tasks']:
                 menu.add_command(label="Tasks", command=open_card_tasks)
         elif event.y > 30:  # Not in top menu area
             def add_card():
@@ -857,11 +857,23 @@ class TimeboxApp(tk.Tk):
             selected_task_index = task_listbox.curselection()
             if selected_task_index:
                 task_listbox.delete(selected_task_index)
-                # Here you can also update the card_obj to reflect the task completion
-                # For example: card_obj.activity["tasks"].remove(card_obj.activity["tasks"][selected_task_index[0]])
             tasks_win.lift()
 
         tk.Button(tasks_win, text="Mark as Done", command=mark_task_done).pack(pady=(0, 10))
+
+        # Add Save and Cancel buttons
+        btn_frame = tk.Frame(tasks_win)
+        btn_frame.pack(fill="x", pady=10)
+        def on_save():
+            # Update card_obj.activity["tasks"] with remaining tasks in the listbox
+            new_tasks = list(task_listbox.get(0, "end"))
+            card_obj.activity["tasks"] = new_tasks
+            tasks_win.destroy()
+            self.schedule_changed = True
+        def on_cancel():
+            tasks_win.destroy()
+        tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
+        tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
 
     def bind_mouse_actions(self, card):
         # Bind mouse actions to the card
