@@ -786,7 +786,7 @@ class TimeboxApp(tk.Tk):
     def open_edit_card_window(self, card_obj, on_cancel_callback=None):
         edit_win = tk.Toplevel(self)
         edit_win.title("Edit Card")
-        edit_win.geometry("350x250")
+        edit_win.geometry("350x350")
         edit_win.transient(self)
         edit_win.grab_set()
 
@@ -801,20 +801,30 @@ class TimeboxApp(tk.Tk):
         desc_text.insert("1.0", desc)
         desc_text.pack(fill="both", expand=True, padx=10)
 
+        # --- Tasks edit box ---
+        tk.Label(edit_win, text="Tasks (one per line):").pack(anchor="w", padx=10, pady=(10, 0))
+        tasks_text = tk.Text(edit_win, height=5)
+        tasks = card_obj.activity.get("tasks", [])
+        tasks_text.insert("1.0", "\n".join(tasks))
+        tasks_text.pack(fill="both", expand=True, padx=10)
+
         btn_frame = tk.Frame(edit_win)
         btn_frame.pack(fill="x", pady=10)
         def on_save():
             new_title = title_var.get().strip()
             new_desc = desc_text.get("1.0", "end-1c").strip().splitlines()
+            new_tasks = [line.strip() for line in tasks_text.get("1.0", "end-1c").splitlines() if line.strip()]
             # Update schedule and card activity
             activity = self.find_activity_by_name(new_title)
             if activity:
                 activity["name"] = new_title
                 activity["description"] = new_desc
+                activity["tasks"] = new_tasks
             else:
                 log_error(f"Activity '{card_obj.activity['name']}' not found in schedule.")
             card_obj.activity["name"] = new_title
             card_obj.activity["description"] = new_desc
+            card_obj.activity["tasks"] = new_tasks
             # Update card label visual
             card_obj.update_card_visuals(
                 card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
@@ -868,6 +878,9 @@ class TimeboxApp(tk.Tk):
             # Update card_obj.activity["tasks"] with remaining tasks in the listbox
             new_tasks = list(task_listbox.get(0, "end"))
             card_obj.activity["tasks"] = new_tasks
+            card_obj.update_card_visuals(
+                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
+            )
             tasks_win.destroy()
             self.schedule_changed = True
         def on_cancel():

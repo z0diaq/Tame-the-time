@@ -118,6 +118,16 @@ class TaskCard:
         # Hide time_end_label if at 0 minutes
         if self.end_minute == 0 or not draw_end_time:
             canvas.itemconfig(self.time_end_label, state="hidden")
+        # Add tasks count label if tasks exist
+        if self.activity.get("tasks") and len(self.activity["tasks"]):
+            self.tasks_count_label = canvas.create_text(
+                self.card_right - 5, self.y + self.height - 5,
+                text=f"Tasks: {len(self.activity['tasks'])}",
+                font=("Arial", 8, "bold"), anchor="se", fill="#0a0a0a"
+            )
+            canvas.itemconfig(self.tasks_count_label, tags=(tag))
+        else:
+            self.tasks_count_label = None
         return self
 
     def delete(self):
@@ -137,6 +147,9 @@ class TaskCard:
         if hasattr(self, 'time_end_label') and self.time_end_label:
             self.canvas.delete(self.time_end_label)
             self.time_end_label = None
+        if hasattr(self, 'tasks_count_label') and self.tasks_count_label:
+            self.canvas.delete(self.tasks_count_label)
+            self.tasks_count_label = None
 
     def get_time_range(self):
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
@@ -195,6 +208,24 @@ class TaskCard:
 
         self.canvas.coords(self.label, (self.card_left + self.card_right) // 2, self.y + self.height // 2)
         self.canvas.itemconfig(self.label, text=self.activity["name"])
+
+        # Update or create tasks count label
+        if self.activity.get("tasks") and len(self.activity["tasks"]):
+            tasks_text = f"Tasks: {len(self.activity['tasks'])}"
+            if not hasattr(self, 'tasks_count_label') or self.tasks_count_label is None:
+                self.tasks_count_label = self.canvas.create_text(
+                    self.card_right - 5, self.y + self.height - 5,
+                    text=tasks_text,
+                    font=("Arial", 8, "bold"), anchor="se", fill="#0a0a0a"
+                )
+                tag = f"card_{self.card}"
+                self.canvas.itemconfig(self.tasks_count_label, tags=(tag))
+            else:
+                self.canvas.coords(self.tasks_count_label, self.card_right - 5, self.y + self.height - 5)
+                self.canvas.itemconfig(self.tasks_count_label, text=tasks_text, state="normal")
+        else:
+            if hasattr(self, 'tasks_count_label') and self.tasks_count_label is not None:
+                self.canvas.itemconfig(self.tasks_count_label, state="hidden")
 
         self.being_modified = False  # Reset being_modified flag after updating visuals
 
