@@ -782,6 +782,18 @@ class TimeboxApp(tk.Tk):
             if activity["name"] == name:
                 return activity
         return None
+    
+    def normalize_tasks_done(self, card_obj):
+        """Ensure that the _tasks_done list matches the number of tasks in the card's activity."""
+        if not hasattr(card_obj, '_tasks_done') or card_obj._tasks_done is None:
+            card_obj._tasks_done = [False] * len(card_obj.activity.get('tasks', []))
+        else:
+            tasks_length = len(card_obj.activity.get('tasks', []))
+            tasks_done_length = len(card_obj._tasks_done)
+            if tasks_done_length < tasks_length:
+                card_obj._tasks_done.extend([False] * (tasks_length - tasks_done_length))
+            elif tasks_done_length > tasks_length:
+                card_obj._tasks_done = card_obj._tasks_done[:tasks_length]
 
     def open_edit_card_window(self, card_obj, on_cancel_callback=None):
         edit_win = tk.Toplevel(self)
@@ -825,9 +837,19 @@ class TimeboxApp(tk.Tk):
             card_obj.activity["name"] = new_title
             card_obj.activity["description"] = new_desc
             card_obj.activity["tasks"] = new_tasks
+
+            # Normalize tasks_done list
+            self.normalize_tasks_done(card_obj)
+
             # Update card label visual
             card_obj.update_card_visuals(
-                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
+                card_obj.start_hour,
+                card_obj.start_minute,
+                self.start_hour,
+                self.pixels_per_hour,
+                self.offset_y,
+                now=self.now_provider().time(),
+                width=self.winfo_width()
             )
             # If this is the current activity, update activity_label
             now = self.now_provider()
@@ -847,7 +869,6 @@ class TimeboxApp(tk.Tk):
 
     def open_card_tasks_window(self, card_obj):
         # Open a new window to manage tasks for the card
-        # Each task is an action that user can mark as done or not done
         tasks_win = tk.Toplevel(self)
         tasks_win.title(f"Tasks for {card_obj.activity['name']}")
         tasks_win.geometry("400x300")
@@ -858,26 +879,34 @@ class TimeboxApp(tk.Tk):
         task_listbox = tk.Listbox(tasks_win)
         task_listbox.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Add tasks to the listbox
-        for task in card_obj.activity.get("tasks", []):
-            task_listbox.insert("end", task)
+        # Normalize tasks_done list to match the number of tasks
+        self.normalize_tasks_done(card_obj)
 
-        # Add a button to mark tasks as done
+        # Add tasks to the listbox
+        tasks = card_obj.activity.get("tasks", [])
+        for i, task in enumerate(tasks):
+            display = f"[Done] {task}" if card_obj._tasks_done[i] else task
+            task_listbox.insert("end", display)
+
         def mark_task_done():
             selected_task_index = task_listbox.curselection()
             if selected_task_index:
-                task_listbox.delete(selected_task_index)
+                idx = selected_task_index[0]
+                if not card_obj._tasks_done[idx]:
+                    card_obj._tasks_done[idx] = True
+                    task = tasks[idx]
+                    task_listbox.delete(idx)
+                    task_listbox.insert(idx, f"[Done] {task}")
+                    task_listbox.selection_clear(0, "end")
+                    task_listbox.selection_set(idx)
             tasks_win.lift()
 
         tk.Button(tasks_win, text="Mark as Done", command=mark_task_done).pack(pady=(0, 10))
 
-        # Add Save and Cancel buttons
         btn_frame = tk.Frame(tasks_win)
         btn_frame.pack(fill="x", pady=10)
         def on_save():
-            # Update card_obj.activity["tasks"] with remaining tasks in the listbox
-            new_tasks = list(task_listbox.get(0, "end"))
-            card_obj.activity["tasks"] = new_tasks
+            # No need to update tasks, just update visuals
             card_obj.update_card_visuals(
                 card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
             )

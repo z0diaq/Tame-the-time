@@ -119,10 +119,14 @@ class TaskCard:
         if self.end_minute == 0 or not draw_end_time:
             canvas.itemconfig(self.time_end_label, state="hidden")
         # Add tasks count label if tasks exist
-        if self.activity.get("tasks") and len(self.activity["tasks"]):
+        tasks = self.activity.get("tasks", [])
+        # Use _tasks_done if present, otherwise count all as not done
+        tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
+        remaining_tasks = [t for t, done in zip(tasks, tasks_done) if not done]
+        if remaining_tasks:
             self.tasks_count_label = canvas.create_text(
                 self.card_right - 5, self.y + self.height - 5,
-                text=f"Tasks: {len(self.activity['tasks'])}",
+                text=f"Tasks: {len(remaining_tasks)}",
                 font=("Arial", 8, "bold"), anchor="se", fill="#0a0a0a"
             )
             canvas.itemconfig(self.tasks_count_label, tags=(tag))
@@ -210,8 +214,11 @@ class TaskCard:
         self.canvas.itemconfig(self.label, text=self.activity["name"])
 
         # Update or create tasks count label
-        if self.activity.get("tasks") and len(self.activity["tasks"]):
-            tasks_text = f"Tasks: {len(self.activity['tasks'])}"
+        tasks = self.activity.get("tasks", [])
+        tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
+        remaining_tasks = [t for t, done in zip(tasks, tasks_done) if not done]
+        if remaining_tasks:
+            tasks_text = f"Tasks: {len(remaining_tasks)}"
             if not hasattr(self, 'tasks_count_label') or self.tasks_count_label is None:
                 self.tasks_count_label = self.canvas.create_text(
                     self.card_right - 5, self.y + self.height - 5,
