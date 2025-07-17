@@ -1,34 +1,21 @@
 import tkinter as tk, tkinter.messagebox as messagebox
 from datetime import datetime
-from typing import Dict, List, Tuple
-from ui.timeline import draw_timeline, reposition_timeline
-from ui.task_card import create_task_cards, TaskCard
-from utils.time_utils import get_current_activity, round_to_nearest_5_minutes
-from datetime import datetime, timedelta, time
+from typing import Dict, List
 import yaml
 import json
 import os
 import utils.notification
+
+from ui.timeline import draw_timeline, reposition_timeline
+from ui.task_card import create_task_cards, TaskCard
+from utils.time_utils import get_current_activity, round_to_nearest_5_minutes, parse_time_str
+from datetime import datetime, timedelta, time
 from utils.logging import log_debug, log_info, log_error
+from ui.global_options import open_global_options
+from ui.card_dialogs import open_edit_card_window, open_card_tasks_window
 
 last_activity = None  # Global variable to track the last activity for notifications
 allow_notification = True
-
-def parse_time_str(tstr):
-    # Accepts '8:00', '08:00', '8:00:00', '08:00:00' and returns a time object
-    parts = tstr.split(":")
-    if len(parts) == 2:
-        # e.g. '8:00' or '08:00'
-        hour = int(parts[0])
-        minute = int(parts[1])
-        return time(hour, minute)
-    elif len(parts) == 3:
-        hour = int(parts[0])
-        minute = int(parts[1])
-        second = int(parts[2])
-        return time(hour, minute, second)
-    else:
-        raise ValueError(f"Invalid time string: {tstr}")
 
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
@@ -89,7 +76,7 @@ class TimeboxApp(tk.Tk):
         self.file_menu.add_command(label="Save As", command=self.save_schedule_as)
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.options_menu.add_command(label="Global options", command=self.open_global_options)
+        self.options_menu.add_command(label="Global options", command=lambda: open_global_options(self))
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
         self.menu_visible = False
         self.card_visual_changed = False  # Flag to track if card visuals have changed
@@ -673,7 +660,7 @@ class TimeboxApp(tk.Tk):
         if card_under_cursor:
             # Show context menu for the card under cursor
             def edit_card():
-                self.open_edit_card_window(card_under_cursor)
+                open_edit_card_window(self, card_under_cursor)
             menu.add_command(label="Edit", command=edit_card)
             def clone_card():
                 # Clone the card under cursor
@@ -712,7 +699,7 @@ class TimeboxApp(tk.Tk):
             menu.add_command(label="Remove", command=remove_card)
             def open_card_tasks():
                 # Open tasks window for the card
-                self.open_card_tasks_window(card_under_cursor)
+                open_card_tasks_window(self, card_under_cursor)
             activity = self.find_activity_by_name(card_under_cursor.activity["name"])
             if 'tasks' in activity and activity['tasks']:
                 menu.add_command(label="Tasks", command=open_card_tasks)
@@ -749,7 +736,7 @@ class TimeboxApp(tk.Tk):
                 self.cards.append(new_card)
                 self.schedule.append(new_card.to_dict())
                 self.update_cards_after_size_change()
-                self.open_edit_card_window(new_card)
+                open_edit_card_window(self, new_card)
                 self.schedule_changed = True  # Mark schedule as changed
 
             menu.add_command(label="New", command=add_card)
@@ -795,128 +782,6 @@ class TimeboxApp(tk.Tk):
             elif tasks_done_length > tasks_length:
                 card_obj._tasks_done = card_obj._tasks_done[:tasks_length]
 
-    def open_edit_card_window(self, card_obj, on_cancel_callback=None):
-        edit_win = tk.Toplevel(self)
-        edit_win.title("Edit Card")
-        edit_win.geometry("350x350")
-        edit_win.transient(self)
-        edit_win.grab_set()
-
-        tk.Label(edit_win, text="Title:").pack(anchor="w", padx=10, pady=(10, 0))
-        title_var = tk.StringVar(value=card_obj.activity.get("name", ""))
-        title_entry = tk.Entry(edit_win, textvariable=title_var)
-        title_entry.pack(fill="x", padx=10)
-
-        tk.Label(edit_win, text="Description:").pack(anchor="w", padx=10, pady=(10, 0))
-        desc_text = tk.Text(edit_win, height=6)
-        desc = "\n".join(card_obj.activity.get("description", []))
-        desc_text.insert("1.0", desc)
-        desc_text.pack(fill="both", expand=True, padx=10)
-
-        # --- Tasks edit box ---
-        tk.Label(edit_win, text="Tasks (one per line):").pack(anchor="w", padx=10, pady=(10, 0))
-        tasks_text = tk.Text(edit_win, height=5)
-        tasks = card_obj.activity.get("tasks", [])
-        tasks_text.insert("1.0", "\n".join(tasks))
-        tasks_text.pack(fill="both", expand=True, padx=10)
-
-        btn_frame = tk.Frame(edit_win)
-        btn_frame.pack(fill="x", pady=10)
-        def on_save():
-            new_title = title_var.get().strip()
-            new_desc = desc_text.get("1.0", "end-1c").strip().splitlines()
-            new_tasks = [line.strip() for line in tasks_text.get("1.0", "end-1c").splitlines() if line.strip()]
-            # Update schedule and card activity
-            activity = self.find_activity_by_name(new_title)
-            if activity:
-                activity["name"] = new_title
-                activity["description"] = new_desc
-                activity["tasks"] = new_tasks
-            else:
-                log_error(f"Activity '{card_obj.activity['name']}' not found in schedule.")
-            card_obj.activity["name"] = new_title
-            card_obj.activity["description"] = new_desc
-            card_obj.activity["tasks"] = new_tasks
-
-            # Normalize tasks_done list
-            self.normalize_tasks_done(card_obj)
-
-            # Update card label visual
-            card_obj.update_card_visuals(
-                card_obj.start_hour,
-                card_obj.start_minute,
-                self.start_hour,
-                self.pixels_per_hour,
-                self.offset_y,
-                now=self.now_provider().time(),
-                width=self.winfo_width()
-            )
-            # If this is the current activity, update activity_label
-            now = self.now_provider()
-            current = get_current_activity(self.schedule, now)
-            if current and current["name"] == new_title:
-                desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(new_desc))
-                self.activity_label.config(text=f"Actions:\n{desc}")
-            edit_win.destroy()
-            self.schedule_changed = True  # Mark schedule as changed
-        def on_cancel():
-            if on_cancel_callback:
-                on_cancel_callback(card_obj)
-            edit_win.destroy()
-        tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
-        tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
-        title_entry.focus_set()
-
-    def open_card_tasks_window(self, card_obj):
-        # Open a new window to manage tasks for the card
-        tasks_win = tk.Toplevel(self)
-        tasks_win.title(f"Tasks for {card_obj.activity['name']}")
-        tasks_win.geometry("400x300")
-        tasks_win.transient(self)
-        tasks_win.grab_set()
-
-        # Create a listbox to display tasks
-        task_listbox = tk.Listbox(tasks_win)
-        task_listbox.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Normalize tasks_done list to match the number of tasks
-        self.normalize_tasks_done(card_obj)
-
-        # Add tasks to the listbox
-        tasks = card_obj.activity.get("tasks", [])
-        for i, task in enumerate(tasks):
-            display = f"[Done] {task}" if card_obj._tasks_done[i] else task
-            task_listbox.insert("end", display)
-
-        def mark_task_done():
-            selected_task_index = task_listbox.curselection()
-            if selected_task_index:
-                idx = selected_task_index[0]
-                if not card_obj._tasks_done[idx]:
-                    card_obj._tasks_done[idx] = True
-                    task = tasks[idx]
-                    task_listbox.delete(idx)
-                    task_listbox.insert(idx, f"[Done] {task}")
-                    task_listbox.selection_clear(0, "end")
-                    task_listbox.selection_set(idx)
-            tasks_win.lift()
-
-        tk.Button(tasks_win, text="Mark as Done", command=mark_task_done).pack(pady=(0, 10))
-
-        btn_frame = tk.Frame(tasks_win)
-        btn_frame.pack(fill="x", pady=10)
-        def on_save():
-            # No need to update tasks, just update visuals
-            card_obj.update_card_visuals(
-                card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=self.now_provider().time(), width=self.winfo_width()
-            )
-            tasks_win.destroy()
-            self.schedule_changed = True
-        def on_cancel():
-            tasks_win.destroy()
-        tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
-        tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
-
     def bind_mouse_actions(self, card):
         # Bind mouse actions to the card
         tag = f"card_{card.card}"
@@ -924,41 +789,3 @@ class TimeboxApp(tk.Tk):
         self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
         self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
         self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
-
-    def open_global_options(self):
-        options_win = tk.Toplevel(self)
-        options_win.title("Global Options")
-        options_win.geometry("300x180")
-        options_win.transient(self)
-        options_win.grab_set()
-
-        tk.Label(options_win, text="Start hour:").pack(anchor="w", padx=10, pady=(15, 0))
-        start_hour_var = tk.IntVar(value=self.start_hour)
-        start_hour_entry = tk.Entry(options_win, textvariable=start_hour_var)
-        start_hour_entry.pack(fill="x", padx=10)
-
-        tk.Label(options_win, text="End hour:").pack(anchor="w", padx=10, pady=(10, 0))
-        end_hour_var = tk.IntVar(value=self.end_hour)
-        end_hour_entry = tk.Entry(options_win, textvariable=end_hour_var)
-        end_hour_entry.pack(fill="x", padx=10)
-
-        btn_frame = tk.Frame(options_win)
-        btn_frame.pack(fill="x", pady=15)
-        def on_ok():
-            try:
-                new_start = int(start_hour_var.get())
-                new_end = int(end_hour_var.get())
-                if 0 <= new_start < 24 and 0 < new_end <= 24 and new_start < new_end:
-                    self.start_hour = new_start
-                    self.end_hour = new_end
-                    self.update_cards_after_size_change()
-                    options_win.destroy()
-                else:
-                    messagebox.showerror("Invalid Input", "Start hour must be >=0 and < End hour, End hour must be <=24.")
-            except Exception as e:
-                messagebox.showerror("Invalid Input", str(e))
-        def on_cancel():
-            options_win.destroy()
-        tk.Button(btn_frame, text="Ok", command=on_ok).pack(side="left", padx=20)
-        tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
-
