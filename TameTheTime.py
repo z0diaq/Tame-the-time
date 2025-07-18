@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from utils.logging import log_startup, log_info, log_error
 import ui.app
 from config.config_loader import load_schedule
+import utils.config
 
 timelapse_speed = 1.0
 start_real_time = None
@@ -12,7 +13,7 @@ start_sim_time = None
 def check_no_notification_parameter() -> None:
     if '--no-notification' in sys.argv:
         log_info("Notifications are disabled.")
-        ui.app.allow_notification = False
+        utils.config.allow_notification = False
     else:
         log_info("Notifications are enabled.")
 

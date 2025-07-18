@@ -13,9 +13,8 @@ from datetime import datetime, timedelta, time
 from utils.logging import log_debug, log_info, log_error
 from ui.global_options import open_global_options
 from ui.card_dialogs import open_edit_card_window, open_card_tasks_window
-
-last_activity = None  # Global variable to track the last activity for notifications
-allow_notification = True
+from ui.app_ui_events import hide_menu_bar, on_motion, on_close, on_resize, on_mouse_wheel
+from ui.app_ui_loop import update_ui
 
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
@@ -67,6 +66,7 @@ class TimeboxApp(tk.Tk):
         self.timeline_granularity = 60
         self.menu_hide_job = None
         self.last_action = datetime.now()
+        self.last_activity = None  # Track last activity for notifications
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
@@ -83,10 +83,10 @@ class TimeboxApp(tk.Tk):
 
         self.canvas = tk.Canvas(self, bg="white", width=400, height=700)
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.canvas.bind('<MouseWheel>', self.on_mouse_wheel)
-        self.canvas.bind('<Button-4>', self.on_mouse_wheel)
-        self.canvas.bind('<Button-5>', self.on_mouse_wheel)
-        self.canvas.bind("<Motion>", self.on_motion)
+        self.canvas.bind('<MouseWheel>', lambda event: on_mouse_wheel(self, event))
+        self.canvas.bind('<Button-4>', lambda event: on_mouse_wheel(self, event))
+        self.canvas.bind('<Button-5>', lambda event: on_mouse_wheel(self, event))
+        self.canvas.bind("<Motion>", lambda event: on_motion(self, event))
         self.canvas.bind("<Button-3>", self.show_canvas_context_menu)
 
         self.time_label = tk.Label(self, font=("Arial", 14, "bold"), bg="#0f8000")
@@ -94,7 +94,7 @@ class TimeboxApp(tk.Tk):
         self.activity_label = tk.Label(self, font=("Arial", 12), anchor="w", justify="left", bg="#ffff99", relief="solid", bd=2)
         self.activity_label.place(x=10, y=40, width=380)
         
-        self.bind("<Configure>", self.on_resize)
+        self.bind("<Configure>", lambda event: on_resize(self, event))
 
         # Center view on current time
         now = self.now_provider().time()
@@ -112,9 +112,9 @@ class TimeboxApp(tk.Tk):
         self.show_timeline(granularity=60)
         self.cards = self.create_task_cards()
         self.skip_redraw = False  # Allow redraws after initial setup
-        self.update_ui()
+        update_ui(self)
 
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.protocol("WM_DELETE_WINDOW", lambda: on_close(self))
         self.poll_mouse()
 
     def open_schedule(self):
@@ -201,23 +201,6 @@ class TimeboxApp(tk.Tk):
         self.schedule_changed = False
         self.update_cards_after_size_change()
 
-    def on_close(self):
-        self.save_settings()
-        if self.schedule_changed:
-            if messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to save them?"):
-                self.save_schedule(ask_for_confirmation=False)
-        self.destroy()
-
-    def on_resize(self, event):
-        if event.widget == self:
-            width, height = event.width, event.height
-            last_width, last_height = self._last_size
-            if any(abs(d) >= 10 for d in [width - last_width, height - last_height]):
-                self._last_size = (width, height)
-                self.canvas.config(width=width, height=height)
-                if not self.skip_redraw:
-                    self.resize_timelines_and_cards()
-
     def create_timeline(self, granularity=60):
         now = self.now_provider().time()
         return draw_timeline(
@@ -248,47 +231,7 @@ class TimeboxApp(tk.Tk):
             card_obj.update_card_visuals(
                 card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, width=self.winfo_width()
             )
-
-    def on_mouse_wheel(self, event):
-        ctrl_held = (event.state & 0x0004) != 0
-        log_debug(f"Mouse Wheel Event: {event.num}, Delta: {event.delta}, Ctrl Held: {ctrl_held}")
-        delta = 0
-        if event.num == 4 or event.delta > 0:  # Scroll up
-            delta = -1
-        elif event.num == 5 or event.delta < 0:  # Scroll down
-            delta = 1
-        
-        if ctrl_held:
-            self.zoom(event, delta)
-        else:
-            self.scroll(event, delta)
     
-    def show_menu_bar(self):
-        if not self.menu_visible:
-            self.config(menu=self.menu_bar)
-            self.menu_visible = True
-        if self.menu_hide_job:
-            self.after_cancel(self.menu_hide_job)
-            self.menu_hide_job = None
-
-    def hide_menu_bar(self):
-        self.config(menu="")
-        self.menu_visible = False
-        self.menu_hide_job = None
-
-    def on_motion(self, event):
-        # Show menu bar if mouse is near the top of the canvas
-        if event.y < 30:
-            self.show_menu_bar()
-        else:
-            if self.menu_visible and not self.menu_hide_job:
-                self.menu_hide_job = self.after(500, self.hide_menu_bar)
-        # Reset mouse cursor if not hovering over a card
-        items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
-        card_ids = [card_obj.card for card_obj in self.cards]
-        if not any(item in card_ids for item in items):
-            self.config(cursor="")
-
     def is_mouse_in_window(self):
         x, y = self.winfo_pointerx(), self.winfo_pointery()
         x0, y0 = self.winfo_rootx(), self.winfo_rooty()
@@ -302,7 +245,7 @@ class TimeboxApp(tk.Tk):
     def poll_mouse(self):
         if self.menu_visible and not self.is_mouse_in_window():
             # Mouse is outside the window, hide menu bar or take action
-            self.hide_menu_bar()
+            hide_menu_bar(self)
         self.after(200, self.poll_mouse)  # Check every 200ms
 
     def zoom(self, event, delta: int):
@@ -542,64 +485,6 @@ class TimeboxApp(tk.Tk):
             card_obj.update_card_visuals(
                 card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, width=self.winfo_width()
             )
-
-    def update_ui(self):
-        global last_activity
-        now = self.now_provider()
-        self.time_label.config(text=now.strftime("%H:%M:%S %A, %Y-%m-%d"))
-        activity = get_current_activity(self.schedule, now)
-        next_task, next_task_start = self.get_next_task_and_time(now)
-        # --- 30 seconds before next task notification ---
-        if allow_notification and next_task and 0 <= (next_task_start - now).total_seconds() <= 30:
-            if not hasattr(self, '_notified_next_task') or self._notified_next_task != next_task['name']:
-                utils.notification.send_gotify_notification({
-                    'name': f"30 seconds to start {next_task['name']}",
-                    'description': [f"{next_task['name']} starts at {next_task['start_time']}"]
-                }, is_delayed=True)
-                self._notified_next_task = next_task['name']
-        elif hasattr(self, '_notified_next_task') and (not next_task or (next_task_start - now).total_seconds() > 30 or (next_task_start - now).total_seconds() < 0):
-            self._notified_next_task = None
-        # --- UI update logic ---
-        if activity:
-            desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(activity["description"]))
-            self.activity_label.config(
-                text=f"Actions:\n{desc}"
-            )
-            # Send notification if activity changed and notifications are allowed
-            if (last_activity is None or last_activity["name"] != activity["name"]) and allow_notification:
-                utils.notification.send_gotify_notification(activity)
-                log_debug(f"Notification sent for activity: {activity['name']}")
-            last_activity = activity
-        else:
-            # --- Show time till next task if no active task ---
-            
-            ''' Weekend handling
-            if now.weekday() >= 5:
-                text = "WEEKEND\nEnjoy your time off!\nSchedule resumes Monday 8:00 AM."
-            el'''
-            if next_task is None:
-                text = "No scheduled task was found."
-            else:
-                seconds_left = int((next_task_start - now).total_seconds())
-                if seconds_left < 0:
-                    # Handle over-midnight: add 24h
-                    seconds_left += 24*3600
-                hours, remainder = divmod(seconds_left, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                text = f"No active task\nNext: {next_task['name']} at {next_task['start_time']}\nTime left: {hours:02d}:{minutes:02d}:{seconds:02d}"
-            self.activity_label.config(text=text)
-        # Redraw everything every 20 seconds
-        seconds_since_last_action = (datetime.now() - self.last_action).total_seconds()
-
-        # Redraw timeline and cards if no action for 20 seconds or at the start of each minute
-        if seconds_since_last_action >= 20 or (now.second == 0 and seconds_since_last_action > 5):
-            #self.config(cursor="")
-            log_debug("Redrawing timeline and cards due to inactivity...")
-            self.redraw_timeline_and_cards(self.winfo_width(), self.winfo_height())
-            if self.card_visual_changed:
-                self.restore_card_visuals()
-
-        self.after(1000, self.update_ui)
 
     def get_next_task_and_time(self, now):
         # Returns (next_task_dict, next_task_start_datetime)
