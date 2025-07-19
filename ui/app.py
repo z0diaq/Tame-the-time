@@ -15,6 +15,7 @@ from ui.global_options import open_global_options
 from ui.card_dialogs import open_edit_card_window, open_card_tasks_window
 from ui.app_ui_events import hide_menu_bar, on_motion, on_close, on_resize, on_mouse_wheel
 from ui.app_ui_loop import update_ui
+from ui.app_card_handling import on_card_press, on_card_drag, on_card_release, on_card_motion
 
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
@@ -313,46 +314,6 @@ class TimeboxApp(tk.Tk):
         self.show_timeline(granularity=self.timeline_granularity)
         self.last_action = datetime.now()
 
-    def on_card_press(self, event):
-        tags = self.canvas.gettags(tk.CURRENT)
-        log_debug(f"Card pressed: {tags}")
-        self._drag_data["item_ids"] = self.canvas.find_withtag(tags[0])
-        self._drag_data["offset_y"] = event.y
-        self._drag_data["start_y"] = event.y
-        self._drag_data["dragging"] = False
-        self._drag_data["resize_mode"] = None
-        dragged_id = self._drag_data["item_ids"][0]
-        y_card_top = self.canvas.coords(dragged_id)[1]
-        self._drag_data["diff_y"] = event.y - y_card_top
-        log_debug(f"Dragging card: {dragged_id}, Tags: {tags}")
-        # Detect if click is near top or bottom for resize
-        y_card_top = self.canvas.coords(dragged_id)[1]
-        y_card_bottom = self.canvas.coords(dragged_id)[3]
-        if abs(event.y - y_card_top) <= 10:
-            self.config(cursor="top_side")
-            self._drag_data["resize_mode"] = "top"
-        elif abs(event.y - y_card_bottom) <= 10:
-            self.config(cursor="bottom_side")
-            self._drag_data["resize_mode"] = "bottom"
-        else:
-            self.config(cursor="fleur")
-            self._drag_data["resize_mode"] = None
-        # Make all other cards barely visible
-        for card_obj in self.cards:
-            if card_obj.card != dragged_id:
-                self.canvas.itemconfig(card_obj.card, stipple="gray25")
-                if card_obj.label:
-                    self.canvas.itemconfig(card_obj.label, fill="#cccccc")
-            else:
-                self.canvas.itemconfig(card_obj.card, stipple="")
-                card_obj.set_being_modified(True)
-                if card_obj.label:
-                    self.canvas.itemconfig(card_obj.label, fill="black")
-        self.card_visual_changed = True
-        if self.timeline_granularity != 5:
-            self.timeline_granularity = 5
-            self.show_timeline(granularity=5)
-
     def restore_card_visuals(self):
         """Restore visuals of all cards after drag or resize."""
         for card_obj in self.cards:
@@ -362,121 +323,6 @@ class TimeboxApp(tk.Tk):
             if hasattr(card_obj, 'progress'):
                 self.canvas.itemconfig(card_obj.progress, state="normal")
         self.card_visual_changed = False
-
-    def on_card_drag(self, event):
-        if not self._drag_data["item_ids"] or abs(event.y - self._drag_data["start_y"]) <= 20:
-            return
-        
-        self.last_action = datetime.now()
-        self._drag_data["dragging"] = True
-        dragged_id = self._drag_data["item_ids"][0]
-        self.schedule_changed = True  # Mark schedule as changed
-        if self._drag_data.get("resize_mode") == "top":
-            # Resize from top
-            y_card_bottom = self.canvas.coords(dragged_id)[3]
-            new_top = min(event.y, y_card_bottom - 20)
-            snapped_minutes = round_to_nearest_5_minutes(int((new_top - 100 - self.offset_y) * 60 / self.pixels_per_hour))
-            snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
-            self.canvas.coords(dragged_id, self.canvas.coords(dragged_id)[0], snapped_y, self.canvas.coords(dragged_id)[2], y_card_bottom)
-        elif self._drag_data.get("resize_mode") == "bottom":
-            # Resize from bottom
-            y_card_top = self.canvas.coords(dragged_id)[1]
-            new_bottom = max(event.y, y_card_top + 20)
-            snapped_minutes = round_to_nearest_5_minutes(int((new_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour))
-            snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
-            self.canvas.coords(dragged_id, self.canvas.coords(dragged_id)[0], y_card_top, self.canvas.coords(dragged_id)[2], snapped_y)
-        else:
-            # Normal drag (move)
-            y = event.y
-            y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
-            total_minutes = int(y_relative * 60 / self.pixels_per_hour)
-            snapped_minutes = round_to_nearest_5_minutes(total_minutes)
-            snapped_y = int(snapped_minutes * self.pixels_per_hour / 60) + 100 + self.offset_y
-            delta_y = snapped_y - self.canvas.coords(dragged_id)[1]
-            log_debug(f"Item_ids: {self._drag_data['item_ids']}")
-            for item_id in self._drag_data["item_ids"]:
-                self.canvas.move(item_id, 0, delta_y)
-            self._drag_data["offset_y"] = event.y + (snapped_y - y)
-
-    def on_card_release(self, event):
-        self.config(cursor="")
-        if not self._drag_data["item_ids"] or not self._drag_data["dragging"]:
-            self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
-            self.timeline_granularity = 60
-            self.show_timeline(granularity=60)
-            return
-        card_id = self._drag_data["item_ids"][0]
-        if self._drag_data.get("resize_mode"):
-            self.handle_card_resize(card_id, event.y, self._drag_data["resize_mode"])
-        else:
-            self.handle_card_snap(card_id, event.y)
-        self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
-        self.timeline_granularity = 60
-        self.restore_card_visuals()
-        self.show_timeline(granularity=60)
-
-    def handle_card_snap(self, card_id: int, y: int):
-        moved_card = next(card for card in self.cards if card.card == card_id)
-        log_debug(f"Moved card: {moved_card.card}")
-        y_relative = y - 100 - self.offset_y - self._drag_data["diff_y"]
-        total_minutes = round_to_nearest_5_minutes(int(y_relative * 60 / self.pixels_per_hour))
-        new_hour = self.start_hour + total_minutes // 60
-        new_minute = total_minutes % 60
-        log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
-        idx = self.cards.index(moved_card)
-        # End time label is allowed if there is a gap to the next card
-        allow_end_time_label = True
-        if idx < len(self.cards) - 1:
-            next_card = self.cards[idx + 1]
-            if next_card.start_hour == moved_card.end_hour and next_card.start_minute == moved_card.end_minute:
-                allow_end_time_label = False
-        now = self.now_provider().time()
-        self.cards[idx].update_card_visuals(
-            new_hour, new_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, show_end_time=allow_end_time_label, width=self.winfo_width()
-        )
-        self.schedule[idx] = self.cards[idx].to_dict()  # Update schedule with new time
-
-    def handle_card_resize(self, card_id: int, y: int, mode: str):
-        moved_card = next(card for card in self.cards if card.card == card_id)
-        y_card_top = self.canvas.coords(card_id)[1]
-        y_card_bottom = self.canvas.coords(card_id)[3]
-        if mode == "top":
-            new_top = min(y, y_card_bottom - 20)
-            snapped_minutes = round_to_nearest_5_minutes(int((new_top - 100 - self.offset_y) * 60 / self.pixels_per_hour))
-            new_start_minutes = snapped_minutes
-            new_end_minutes = int((y_card_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour)
-        else:
-            new_top = y_card_top
-            new_bottom = max(y, y_card_top + 20)
-            snapped_minutes = round_to_nearest_5_minutes(int((new_bottom - 100 - self.offset_y) * 60 / self.pixels_per_hour))
-            new_start_minutes = int((y_card_top - 100 - self.offset_y) * 60 / self.pixels_per_hour)
-            new_end_minutes = snapped_minutes
-        new_start_hour = self.start_hour + new_start_minutes // 60
-        new_start_minute = new_start_minutes % 60
-        new_end_hour = self.start_hour + new_end_minutes // 60
-        new_end_minute = new_end_minutes % 60
-        # Update schedule for this card only
-        for activity in self.schedule:
-            if activity["name"] == moved_card.activity["name"]:
-                activity["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
-                activity["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
-                break
-        # End time label is allowed if there is a gap to the next card
-        allow_end_time_label = True
-        idx = self.cards.index(moved_card)
-        if idx < len(self.cards) - 1:
-            next_card = self.cards[idx + 1]
-            if next_card.start_hour == new_end_hour and next_card.start_minute == new_end_minute:
-                allow_end_time_label = False
-        now = self.now_provider().time()
-        # Update the card's start and end time attributes before calling update_card_visuals
-        moved_card.start_hour = new_start_hour
-        moved_card.start_minute = new_start_minute
-        moved_card.end_hour = new_end_hour
-        moved_card.end_minute = new_end_minute
-        moved_card.update_card_visuals(
-            new_start_hour, new_start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, show_end_time=allow_end_time_label, width=self.winfo_width()
-        )
 
     def update_cards_after_size_change(self):
         # Update all cards after window size change
@@ -515,21 +361,6 @@ class TimeboxApp(tk.Tk):
         next_time = datetime.combine(tomorrow, parse_time_str(first['start_time']))
         return first, next_time
 
-    def on_card_motion(self, event):
-        tags = self.canvas.gettags(tk.CURRENT)
-        log_debug(f"Tags = {tags}")
-        if not tags:
-            self.config(cursor="")
-            return
-        dragged_id = self.canvas.find_withtag(tags[0])[0]
-        y_card_top = self.canvas.coords(dragged_id)[1]
-        y_card_bottom = self.canvas.coords(dragged_id)[3]
-        if abs(event.y - y_card_top) <= 8:
-            self.config(cursor="top_side")
-        elif abs(event.y - y_card_bottom) <= 8:
-            self.config(cursor="bottom_side")
-        else:
-            self.config(cursor="fleur")
     
     def show_canvas_context_menu(self, event):
         # Determine if click is on a card
@@ -670,7 +501,7 @@ class TimeboxApp(tk.Tk):
     def bind_mouse_actions(self, card):
         # Bind mouse actions to the card
         tag = f"card_{card.card}"
-        self.canvas.tag_bind(tag, "<ButtonPress-1>", self.on_card_press)
-        self.canvas.tag_bind(tag, "<B1-Motion>", self.on_card_drag)
-        self.canvas.tag_bind(tag, "<ButtonRelease-1>", self.on_card_release)
-        self.canvas.tag_bind(tag, "<Motion>", self.on_card_motion)
+        self.canvas.tag_bind(tag, "<ButtonPress-1>", lambda event: on_card_press(self, event))
+        self.canvas.tag_bind(tag, "<B1-Motion>", lambda event: on_card_drag(self, event))
+        self.canvas.tag_bind(tag, "<ButtonRelease-1>", lambda event: on_card_release(self, event))
+        self.canvas.tag_bind(tag, "<Motion>", lambda event: on_card_motion(self, event))
