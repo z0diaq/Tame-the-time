@@ -3,8 +3,6 @@ from tkinter import Canvas
 from typing import Dict, List
 from utils.logging import log_info, log_debug
 
-
-
 class TaskCard:
     def __init__(
             self,

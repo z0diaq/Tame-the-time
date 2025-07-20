@@ -1,5 +1,6 @@
 import tkinter.messagebox as messagebox
 from utils.logging import log_debug
+from ui.zoom_and_scroll import zoom, scroll, resize_timelines_and_cards
 
 def show_menu_bar(app):
     if not app.menu_visible:
@@ -42,7 +43,7 @@ def on_resize(app, event):
             app._last_size = (width, height)
             app.canvas.config(width=width, height=height)
             if not app.skip_redraw:
-                app.resize_timelines_and_cards()
+                resize_timelines_and_cards(app)
 
 def on_mouse_wheel(app, event):
     ctrl_held = (event.state & 0x0004) != 0
@@ -54,6 +55,6 @@ def on_mouse_wheel(app, event):
         delta = 1
     
     if ctrl_held:
-        app.zoom(event, delta)
+        zoom(app, event, delta)
     else:
-        app.scroll(event, delta)
+        scroll(app, event, delta)

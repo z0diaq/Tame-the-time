@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from utils.time_utils import get_current_activity
-from utils.logging import log_debug, log_error
+from utils.logging import log_error
 
 def open_edit_card_window(app, card_obj, on_cancel_callback=None):
     edit_win = tk.Toplevel(app)
