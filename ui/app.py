@@ -84,6 +84,9 @@ class TimeboxApp(tk.Tk):
         self.menu_visible = False
         self.card_visual_changed = False  # Flag to track if card visuals have changed
 
+        self.status_bar = tk.Label(self, font=("Arial", 10), anchor="w", bg="#e0e0e0", relief="sunken", bd=1)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
         self.canvas = tk.Canvas(self, bg="white", width=400, height=700)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<MouseWheel>', lambda event: on_mouse_wheel(self, event))
@@ -119,6 +122,8 @@ class TimeboxApp(tk.Tk):
 
         self.protocol("WM_DELETE_WINDOW", lambda: on_close(self))
         poll_mouse(self)
+
+        self.update_status_bar()
 
     def create_timeline(self, granularity=60):
         now = self.now_provider().time()
@@ -181,6 +186,39 @@ class TimeboxApp(tk.Tk):
                 self.canvas.itemconfig(card_obj.progress, state="normal")
         self.card_visual_changed = False
 
+    def update_status_bar(self):
+        today = self.now_provider().date()
+        missed = 0
+        done = 0
+        incoming = 0
+        now = self.now_provider()
+        for card_obj in self.cards:
+            activity = card_obj.activity
+            start_time = parse_time_str(activity["start_time"])
+            end_time = parse_time_str(activity["end_time"])
+            start_dt = datetime.combine(today, start_time)
+            end_dt = datetime.combine(today, end_time)
+            # Check if task is for today
+            if start_dt.date() != today:
+                continue
+            # Determine if done (all tasks done or card_obj._tasks_done is all True)
+            if hasattr(card_obj, '_tasks_done') and card_obj._tasks_done:
+                if all(card_obj._tasks_done):
+                    done += 1
+                elif end_dt < now:
+                    missed += 1
+                elif start_dt > now:
+                    incoming += 1
+                else:
+                    # Ongoing but not done
+                    pass
+            else:
+                if end_dt < now:
+                    missed += 1
+                elif start_dt > now:
+                    incoming += 1
+        self.status_bar.config(text=f"Tasks statistics for today - missed: {missed}, done: {done}, incoming: {incoming}")
+
     def update_cards_after_size_change(self):
         # Update all cards after window size change
         now = self.now_provider().time()
@@ -188,6 +226,7 @@ class TimeboxApp(tk.Tk):
             card_obj.update_card_visuals(
                 card_obj.start_hour, card_obj.start_minute, self.start_hour, self.pixels_per_hour, self.offset_y, now=now, width=self.winfo_width()
             )
+        #self.update_status_bar()
 
     def get_next_task_and_time(self, now):
         # Returns (next_task_dict, next_task_start_datetime)
@@ -250,7 +289,9 @@ class TimeboxApp(tk.Tk):
     def bind_mouse_actions(self, card):
         # Bind mouse actions to the card
         tag = f"card_{card.card}"
+        card._tasks_done_callback = self.update_status_bar
         self.canvas.tag_bind(tag, "<ButtonPress-1>", lambda event: on_card_press(self, event))
         self.canvas.tag_bind(tag, "<B1-Motion>", lambda event: on_card_drag(self, event))
         self.canvas.tag_bind(tag, "<ButtonRelease-1>", lambda event: on_card_release(self, event))
         self.canvas.tag_bind(tag, "<Motion>", lambda event: on_card_motion(self, event))
+            

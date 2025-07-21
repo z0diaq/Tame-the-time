@@ -114,7 +114,8 @@ def open_card_tasks_window(app, card_obj):
             card_obj.start_hour, card_obj.start_minute, app.start_hour, app.pixels_per_hour, app.offset_y, now=app.now_provider().time(), width=app.winfo_width()
         )
         tasks_win.destroy()
-        app.schedule_changed = True
+        if hasattr(card_obj, '_tasks_done_callback'):
+            card_obj._tasks_done_callback()
     def on_cancel():
         tasks_win.destroy()
     tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
