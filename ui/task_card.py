@@ -72,7 +72,6 @@ class TaskCard:
         canvas.tag_bind(self.progress, "<Enter>", on_card_enter)
         canvas.tag_bind(self.label, "<Enter>", on_card_enter)
         canvas.tag_bind(self.card, "<Leave>", on_card_leave)
-        canvas.tag_bind(self.progress, "<Leave>", on_card_leave)
         canvas.tag_bind(self.label, "<Leave>", on_card_leave)
     
     def draw(self, canvas: Canvas, now: time = None, draw_end_time: bool = False):
