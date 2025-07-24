@@ -1,11 +1,12 @@
 from utils.time_utils import round_to_nearest_5_minutes
 from utils.logging import log_debug
 import tkinter as tk
+from datetime import datetime
 
 def on_card_drag(app, event):
     if not app._drag_data["item_ids"] or abs(event.y - app._drag_data["start_y"]) <= 20:
         return
-    app.last_action = app.now_provider()
+    app.last_action = datetime.now()
     app._drag_data["dragging"] = True
     dragged_id = app._drag_data["item_ids"][0]
     app.schedule_changed = True  # Mark schedule as changed
@@ -71,6 +72,7 @@ def on_card_press(app, event):
             card_obj.set_being_modified(True)
             if card_obj.label:
                 app.canvas.itemconfig(card_obj.label, fill="black")
+            card_obj.remove_card_progress_actions(app.canvas)
     app.card_visual_changed = True
     if app.timeline_granularity != 5:
         app.timeline_granularity = 5
@@ -109,7 +111,15 @@ def handle_card_snap(app, card_id: int, y: int):
             allow_end_time_label = False
     now = app.now_provider().time()
     app.cards[idx].update_card_visuals(
-        new_hour, new_minute, app.start_hour, app.pixels_per_hour, app.offset_y, now=now, show_end_time=allow_end_time_label, width=app.winfo_width()
+        new_hour,
+        new_minute,
+        app.start_hour,
+        app.pixels_per_hour,
+        app.offset_y,
+        now=now,
+        show_end_time=allow_end_time_label,
+        width=app.winfo_width(),
+        is_moving = True
     )
     app.schedule[idx] = app.cards[idx].to_dict()
 

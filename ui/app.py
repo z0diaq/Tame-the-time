@@ -184,6 +184,7 @@ class TimeboxApp(tk.Tk):
                 self.canvas.itemconfig(card_obj.label, fill="black")
             if hasattr(card_obj, 'progress'):
                 self.canvas.itemconfig(card_obj.progress, state="normal")
+                card_obj.setup_card_progress_actions(self.canvas)
         self.card_visual_changed = False
 
     def update_status_bar(self):

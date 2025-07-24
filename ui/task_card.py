@@ -57,6 +57,7 @@ class TaskCard:
         self.being_modified = being_modified
 
     def setup_card_progress_actions(self, canvas: Canvas):
+        log_debug("Binding card actions")
         # On card enter event, hide the progress rectangle
         def on_card_enter(event):
             log_debug(f"Card {self.activity['name']} entered")
@@ -69,11 +70,22 @@ class TaskCard:
                 canvas.itemconfig(self.progress, state="normal")
     
         canvas.tag_bind(self.card, "<Enter>", on_card_enter)
-        canvas.tag_bind(self.progress, "<Enter>", on_card_enter)
+        if hasattr(self, 'progress') and self.progress:
+            canvas.tag_bind(self.progress, "<Enter>", on_card_enter)
         canvas.tag_bind(self.label, "<Enter>", on_card_enter)
         canvas.tag_bind(self.card, "<Leave>", on_card_leave)
         canvas.tag_bind(self.label, "<Leave>", on_card_leave)
-    
+
+    def remove_card_progress_actions(self, canvas: Canvas):
+        log_debug("Unbinding card actions")
+        canvas.tag_unbind(self.card, "<Enter>")
+        canvas.tag_unbind(self.label, "<Enter>")
+        canvas.tag_unbind(self.card, "<Leave>")
+        canvas.tag_unbind(self.label, "<Leave>")
+        if hasattr(self, 'progress') and self.progress:
+            canvas.tag_unbind(self.progress, "<Enter>")
+            canvas.tag_unbind(self.progress, "<Leave>")
+
     def draw(self, canvas: Canvas, now: time = None, draw_end_time: bool = False):
         self.canvas = canvas
         if now is None:
@@ -155,7 +167,7 @@ class TaskCard:
     def get_time_range(self):
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
 
-    def update_card_visuals(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y, now=None, show_start_time=True, show_end_time=True, width=None):
+    def update_card_visuals(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y, now=None, show_start_time=True, show_end_time=True, width=None, is_moving=False):
         """Move/resize the card, update progress bar, and update label positions/visibility. Also update width if provided."""
         if now is None:
             now = self.now_provider().time() if self.now_provider else time(0, 0)
@@ -164,7 +176,7 @@ class TaskCard:
             self.card_right = int(width * 0.85)
         # Calculate new end time
         card_duration_minutes = (self.end_hour - self.start_hour) * 60 + (self.end_minute - self.start_minute)
-        log_debug(f"Cards duration in minutes: {card_duration_minutes}")
+        #log_debug(f"Cards duration in minutes: {card_duration_minutes}")
         total_minutes = new_start_hour * 60 + new_start_minute + card_duration_minutes
         total_minutes = total_minutes % (24 * 60)
         self.end_hour = total_minutes // 60
@@ -177,12 +189,12 @@ class TaskCard:
         # Move/resize card
         self.canvas.coords(self.card, self.card_left, self.y, self.card_right, self.y + height)
         # Update progress bar - always move it with the card even when hidden
-        should_show_progress = time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute)
-        total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
-        elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
-        progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
-        fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
+        should_show_progress = not is_moving and ( time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute) )
         if should_show_progress:
+            total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
+            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
+            progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
+            fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
             if not hasattr(self, 'progress') or self.progress is None:
                 self.progress = self.canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="")
                 self.setup_card_progress_actions(self.canvas)

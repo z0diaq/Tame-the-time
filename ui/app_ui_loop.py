@@ -46,8 +46,10 @@ def update_ui(app):
     # Redraw everything every 20 seconds
     seconds_since_last_action = (datetime.now() - app.last_action).total_seconds()
 
+
     # Redraw timeline and cards if no action for 20 seconds or at the start of each minute
     if seconds_since_last_action >= 20 or (now.second == 0 and seconds_since_last_action > 5):
+        log_debug(f"Seconds since last action: {seconds_since_last_action}")
         log_debug("Redrawing timeline and cards due to inactivity...")
         app.redraw_timeline_and_cards(app.winfo_width(), app.winfo_height())
         if app.card_visual_changed:
