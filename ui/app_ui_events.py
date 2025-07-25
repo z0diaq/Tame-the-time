@@ -29,7 +29,7 @@ def on_motion(app, event):
         app.config(cursor="")
 
 def on_close(app):
-    app.save_settings()
+    app.save_settings(immediate=True)  # Save immediately on close
     if app.schedule_changed:
         if messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to save them?"):
             app.save_schedule(ask_for_confirmation=False)

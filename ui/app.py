@@ -5,6 +5,7 @@ import yaml
 import json
 import os
 import utils.notification
+from constants import UIConstants
 
 from ui.timeline import draw_timeline
 from ui.task_card import create_task_cards, TaskCard
@@ -28,7 +29,15 @@ class TimeboxApp(tk.Tk):
                 return json.load(f)
         return {}
 
-    def save_settings(self):
+    def save_settings(self, immediate=False):
+        """Save settings with optional debouncing to prevent frequent file I/O."""
+        if immediate:
+            self._save_settings_immediate()
+        else:
+            self._schedule_settings_save()
+    
+    def _save_settings_immediate(self):
+        """Immediately save settings to file."""
         settings = {
             "window_position": self.geometry(),
             "gotify_token": utils.notification.gotify_token,
@@ -36,6 +45,15 @@ class TimeboxApp(tk.Tk):
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
+    
+    def _schedule_settings_save(self):
+        """Schedule a debounced settings save operation."""
+        # Cancel any existing save timer
+        if hasattr(self, '_save_timer') and self._save_timer:
+            self.after_cancel(self._save_timer)
+        
+        # Schedule new save operation
+        self._save_timer = self.after(UIConstants.SETTINGS_SAVE_DEBOUNCE_MS, self._save_settings_immediate)
 
     def __init__(self, schedule: List[Dict], config_path: str, now_provider=datetime.now):
         super().__init__()

@@ -4,14 +4,15 @@ from utils.logging import log_startup, log_info, log_error
 import ui.app
 from config.config_loader import load_schedule
 import utils.config
+from constants import AppConstants, ValidationConstants
 
-timelapse_speed = 1.0
+timelapse_speed = AppConstants.DEFAULT_TIMELAPSE_SPEED
 start_real_time = None
 start_sim_time = None
 
 
 def check_no_notification_parameter() -> None:
-    if '--no-notification' in sys.argv:
+    if AppConstants.ARG_NO_NOTIFICATION in sys.argv:
         log_info("Notifications are disabled.")
         utils.config.allow_notification = False
     else:
@@ -19,8 +20,8 @@ def check_no_notification_parameter() -> None:
 
 def check_time_parameter() -> None:
     global start_sim_time
-    if '--time' in sys.argv:
-        idx = sys.argv.index('--time')
+    if AppConstants.ARG_TIME in sys.argv:
+        idx = sys.argv.index(AppConstants.ARG_TIME)
         if idx + 1 < len(sys.argv):
             try:
                 start_sim_time = datetime.fromisoformat(sys.argv[idx + 1])
@@ -30,15 +31,15 @@ def check_time_parameter() -> None:
 
 def check_timelapse_speed_parameter() -> None:
     global timelapse_speed
-    if '--timelapse-speed' in sys.argv:
-        idx = sys.argv.index('--timelapse-speed')
+    if AppConstants.ARG_TIMELAPSE_SPEED in sys.argv:
+        idx = sys.argv.index(AppConstants.ARG_TIMELAPSE_SPEED)
         if idx + 1 < len(sys.argv):
             try:
                 val = float(sys.argv[idx + 1])
-                if 0.0 < val <= 1000.0:
+                if ValidationConstants.MIN_TIMELAPSE_SPEED < val <= ValidationConstants.MAX_TIMELAPSE_SPEED:
                     timelapse_speed = val
                 else:
-                    log_error(f"Invalid timelapse-speed: {val}. Must be in (0.0, 1000.0].")
+                    log_error(f"Invalid timelapse-speed: {val}. Must be in ({ValidationConstants.MIN_TIMELAPSE_SPEED}, {ValidationConstants.MAX_TIMELAPSE_SPEED}].")
                     sys.exit(1)
             except ValueError:
                 log_error(f"Invalid timelapse-speed value: {sys.argv[idx + 1]}")

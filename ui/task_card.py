@@ -1,7 +1,9 @@
 from datetime import datetime, time
 from tkinter import Canvas
+import tkinter as tk
 from typing import Dict, List
 from utils.logging import log_info, log_debug
+from constants import UIConstants, Colors
 
 class TaskCard:
     def __init__(
@@ -18,8 +20,8 @@ class TaskCard:
         self.end_hour, self.end_minute = map(int, activity["end_time"].split(":"))
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         self.height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
-        self.card_left = int(width * 0.15)
-        self.card_right = int(width * 0.85)
+        self.card_left = int(width * UIConstants.CARD_LEFT_RATIO)
+        self.card_right = int(width * UIConstants.CARD_RIGHT_RATIO)
         self.card = None
         self.label = None
         self.now_provider = now_provider
@@ -27,9 +29,9 @@ class TaskCard:
         self.canvas = None
         self.being_modified = False
 
-        self.finished_color = "#cccccc"  # Color for finished tasks
-        self.active_color = "#ffff99"
-        self.inactive_color = "#add8e6"  # Color for inactive tasks
+        self.finished_color = Colors.FINISHED_TASK
+        self.active_color = Colors.ACTIVE_TASK
+        self.inactive_color = Colors.INACTIVE_TASK
 
     # Make a clone function that will set the same properties as the original TaskCard
     def clone(self):
@@ -97,7 +99,7 @@ class TaskCard:
             self.active_color if is_active else
             self.inactive_color
         )
-        self.card = canvas.create_rectangle(self.card_left, self.y, self.card_right, self.y + self.height, fill=color, outline="black")
+        self.card = canvas.create_rectangle(self.card_left, self.y, self.card_right, self.y + self.height, fill=color, outline=Colors.CARD_OUTLINE)
         # Progress bar for active card
         self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
         if is_active:
@@ -145,24 +147,28 @@ class TaskCard:
 
     def delete(self):
         """Delete the card and its associated elements from the canvas."""
-        if self.card:
-            self.canvas.delete(self.card)
-            self.card = None
-        if self.label:
-            self.canvas.delete(self.label)
-            self.label = None
-        if hasattr(self, 'progress') and self.progress:
-            self.canvas.delete(self.progress)
-            self.progress = None
-        if hasattr(self, 'time_start_label') and self.time_start_label:
-            self.canvas.delete(self.time_start_label)
-            self.time_start_label = None
-        if hasattr(self, 'time_end_label') and self.time_end_label:
-            self.canvas.delete(self.time_end_label)
-            self.time_end_label = None
-        if hasattr(self, 'tasks_count_label') and self.tasks_count_label:
-            self.canvas.delete(self.tasks_count_label)
-            self.tasks_count_label = None
+        # List of all canvas objects that need cleanup
+        canvas_objects = [
+            ('card', self.card),
+            ('label', self.label),
+            ('progress', getattr(self, 'progress', None)),
+            ('time_start_label', getattr(self, 'time_start_label', None)),
+            ('time_end_label', getattr(self, 'time_end_label', None)),
+            ('tasks_count_label', getattr(self, 'tasks_count_label', None))
+        ]
+        
+        # Clean up all canvas objects
+        for attr_name, obj_id in canvas_objects:
+            if obj_id is not None:
+                try:
+                    self.canvas.delete(obj_id)
+                except tk.TclError:
+                    # Object may have already been deleted
+                    pass
+                setattr(self, attr_name, None)
+        
+        # Clear canvas reference to prevent memory leaks
+        self.canvas = None
 
     def get_time_range(self):
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
