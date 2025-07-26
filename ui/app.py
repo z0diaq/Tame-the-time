@@ -6,6 +6,7 @@ import json
 import os
 import utils.notification
 from constants import UIConstants
+from services.notification_service import NotificationService
 
 from ui.timeline import draw_timeline
 from ui.task_card import create_task_cards, TaskCard
@@ -61,6 +62,9 @@ class TimeboxApp(tk.Tk):
         self.settings = self.load_settings()
         self.config_path = config_path
         self.schedule_changed = False
+        
+        # Initialize notification service
+        self.notification_service = NotificationService(now_provider)
 
         now = now_provider().time()
         self.last_hour = now.hour
@@ -115,7 +119,7 @@ class TimeboxApp(tk.Tk):
 
         self.time_label = tk.Label(self, font=("Arial", 14, "bold"), bg="#0f8000")
         self.time_label.place(x=10, y=10)
-        self.activity_label = tk.Label(self, font=("Arial", 12), anchor="w", justify="left", bg="#ffff99", relief="solid", bd=2)
+        self.activity_label = tk.Label(self, font=("Arial", 12), anchor="w", justify="left", bg="#ffff99", fg="black", relief="solid", bd=2)
         self.activity_label.place(x=10, y=40, width=380)
         
         self.bind("<Configure>", lambda event: on_resize(self, event))
@@ -196,13 +200,20 @@ class TimeboxApp(tk.Tk):
 
     def restore_card_visuals(self):
         """Restore visuals of all cards after drag or resize."""
+        now = self.now_provider().time()
         for card_obj in self.cards:
             self.canvas.itemconfig(card_obj.card, stipple="")
             if card_obj.label:
                 self.canvas.itemconfig(card_obj.label, fill="black")
-            if hasattr(card_obj, 'progress'):
-                self.canvas.itemconfig(card_obj.progress, state="normal")
-                card_obj.setup_card_progress_actions(self.canvas)
+            card_obj.set_being_modified(False)
+            
+            # Immediately restore progress bar if card is currently active
+            if card_obj.is_active_at(now):
+                card_obj.update_card_visuals(
+                    card_obj.start_hour, card_obj.start_minute, 
+                    self.start_hour, self.pixels_per_hour, self.offset_y, 
+                    now=now, width=self.winfo_width()
+                )
         self.card_visual_changed = False
 
     def update_status_bar(self):

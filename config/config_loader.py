@@ -1,14 +1,14 @@
 import os
 import sys
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Any, Callable
 import yaml
 from utils.logging import log_error
 from utils.time_utils import round_to_nearest_5_minutes
 
-def get_day_config_path(current_day) -> str:
+def get_day_config_path(current_day: int) -> str:
     """Determine the configuration file path based on the current day."""
-    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    day_names: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     if 0 <= current_day <= 6:
         day_config = f"{day_names[current_day]}_settings.yaml"
@@ -17,10 +17,10 @@ def get_day_config_path(current_day) -> str:
     
     return "default_settings.yaml"
 
-def normalize_time_format(timepoint : datetime) -> str:
+def normalize_time_format(timepoint: datetime) -> str:
     """Ensure time string has valid values and 5min granulity."""
-    hour = timepoint.hour
-    minutes = round_to_nearest_5_minutes(timepoint.minute)
+    hour: int = timepoint.hour
+    minutes: int = round_to_nearest_5_minutes(timepoint.minute)
     if minutes == 60:
         hour += 1
         minutes = 0
@@ -28,7 +28,7 @@ def normalize_time_format(timepoint : datetime) -> str:
         hour = 0
     return f"{hour:02d}:{minutes:02d}"
 
-def create_sample_schedule(now: datetime) -> Dict:
+def create_sample_schedule(now: datetime) -> List[Dict[str, Any]]:
     """Create a default configuration to be used if no specific config is found."""
     # Create schedule with 3 sample activities
     # Each 30 minutes long
@@ -59,11 +59,8 @@ def create_sample_schedule(now: datetime) -> Dict:
         }
     ]
 
-def validate_schedule(schedule: List[Dict]) -> bool:
+def validate_schedule(schedule: List[Dict[str, Any]]) -> bool:
     """Validate the schedule structure and time formats."""
-    if not isinstance(schedule, list):
-        log_error("Schedule must be a list of activities.")
-        return False
     
     for activity in schedule:
         if not all(key in activity for key in ["name", "start_time", "end_time", "description"]):
@@ -80,7 +77,7 @@ def validate_schedule(schedule: List[Dict]) -> bool:
     
     return True
 
-def load_schedule(config_path: Optional[str] = None, now_provider=None) -> List[Dict]:
+def load_schedule(config_path: Optional[str] = None, now_provider: Optional[Callable[[], datetime]] = None) -> Tuple[List[Dict[str, Any]], str]:
     """Load and validate the schedule from a YAML file."""
     is_default_config = config_path is None or config_path == "default_settings.yaml"
     config_path = config_path or get_day_config_path(current_day=now_provider().date().weekday())

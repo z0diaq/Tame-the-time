@@ -51,7 +51,15 @@ def show_canvas_context_menu(app, event):
         menu.add_command(label="Remove", command=remove_card)
         def open_card_tasks():
             open_card_tasks_window(app, card_under_cursor)
-        activity = app.find_activity_by_name(card_under_cursor.activity["name"])
+        # Check for tasks in the card's activity directly, then fallback to schedule lookup
+        activity = card_under_cursor.activity
+        if 'tasks' not in activity or not activity['tasks']:
+            # Fallback: try to find updated activity in schedule
+            schedule_activity = app.find_activity_by_name(card_under_cursor.activity["name"])
+            if schedule_activity:
+                activity = schedule_activity
+        
+        # Show Tasks menu option if there are tasks
         if 'tasks' in activity and activity['tasks']:
             menu.add_command(label="Tasks", command=open_card_tasks)
     elif event.y > 30:

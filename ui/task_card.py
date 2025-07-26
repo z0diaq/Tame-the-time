@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import time
 from tkinter import Canvas
 import tkinter as tk
 from typing import Dict, List
@@ -92,7 +92,7 @@ class TaskCard:
         self.canvas = canvas
         if now is None:
             now = self.now_provider().time()
-        is_active = time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute)
+        is_active = self.is_active_at(now)
         is_finished = time(self.end_hour, self.end_minute) <= now
         color = (
             self.finished_color if is_finished else
@@ -172,6 +172,12 @@ class TaskCard:
 
     def get_time_range(self):
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
+    
+    def is_active_at(self, current_time: time) -> bool:
+        """Check if this card is active at the given time."""
+        start_time = time(self.start_hour, self.start_minute)
+        end_time = time(self.end_hour, self.end_minute)
+        return start_time <= current_time < end_time
 
     def update_card_visuals(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y, now=None, show_start_time=True, show_end_time=True, width=None, is_moving=False):
         """Move/resize the card, update progress bar, and update label positions/visibility. Also update width if provided."""

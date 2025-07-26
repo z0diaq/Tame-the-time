@@ -1,9 +1,9 @@
 from utils.time_utils import get_current_activity
 from utils.logging import log_debug
-import utils.notification
 from datetime import datetime
 import utils.config
-from constants import UIConstants, NotificationConstants
+from constants import UIConstants
+from models.schedule import ScheduledActivity
 
 def update_ui(app):
     now = app.now_provider()
@@ -16,26 +16,27 @@ def update_ui(app):
     
     activity = get_current_activity(app.schedule, now)
     next_task, next_task_start = app.get_next_task_and_time(now)
-    # --- Advance notification for next task ---
-    if utils.config.allow_notification and next_task and 0 <= (next_task_start - now).total_seconds() <= NotificationConstants.ADVANCE_WARNING_SECONDS:
-        if not hasattr(app, '_notified_next_task') or app._notified_next_task != next_task['name']:
-            utils.notification.send_gotify_notification({
-                'name': f"30 seconds to start {next_task['name']}",
-                'description': [f"{next_task['name']} starts at {next_task['start_time']}"]
-            }, is_delayed=True)
-            app._notified_next_task = next_task['name']
-    elif hasattr(app, '_notified_next_task') and (not next_task or (next_task_start - now).total_seconds() > NotificationConstants.ADVANCE_WARNING_SECONDS or (next_task_start - now).total_seconds() < 0):
-        app._notified_next_task = None
+    
+    # Convert dictionary activities to ScheduledActivity objects for notification service
+    current_activity_obj = None
+    if activity:
+        current_activity_obj = ScheduledActivity.from_dict(activity)
+    
+    next_activity_obj = None
+    if next_task:
+        next_activity_obj = ScheduledActivity.from_dict(next_task)
+    
+    # Use notification service for all notification logic
+    app.notification_service.check_and_send_notifications(
+        current_activity_obj, next_activity_obj, next_task_start
+    )
     # --- UI update logic ---
     if activity:
         desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(activity["description"]))
         app.activity_label.config(
             text=f"Actions:\n{desc}"
         )
-        # Send notification if activity changed and notifications are allowed
-        if (app.last_activity is None or app.last_activity["name"] != activity["name"]) and utils.config.allow_notification:
-            utils.notification.send_gotify_notification(activity)
-            log_debug(f"Notification sent for activity: {activity['name']}")
+        # Activity change notifications are now handled by the notification service
         app.last_activity = activity
     else:
         # --- Show time till next task if no active task ---
