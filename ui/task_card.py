@@ -3,6 +3,7 @@ from tkinter import Canvas
 import tkinter as tk
 from typing import Dict, List
 from utils.logging import log_info, log_debug
+from utils.time_utils import TimeUtils
 from constants import UIConstants, Colors
 
 class TaskCard:
@@ -16,8 +17,13 @@ class TaskCard:
             now_provider=None
         ):
         self.activity = activity
-        self.start_hour, self.start_minute = map(int, activity["start_time"].split(":"))
-        self.end_hour, self.end_minute = map(int, activity["end_time"].split(":"))
+        
+        # Use TimeUtils for consistent time parsing
+        start_time_obj = TimeUtils.parse_time_with_validation(activity["start_time"])
+        end_time_obj = TimeUtils.parse_time_with_validation(activity["end_time"])
+        
+        self.start_hour, self.start_minute = start_time_obj.hour, start_time_obj.minute
+        self.end_hour, self.end_minute = end_time_obj.hour, end_time_obj.minute
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         self.height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
         self.card_left = int(width * UIConstants.CARD_LEFT_RATIO)
@@ -286,7 +292,8 @@ def create_task_cards(
         # Draw end time if there is a gap between this and the next card
         if index < count - 1:
             next_activity = schedule[index + 1]
-            next_start_hour, next_start_minute = map(int, next_activity["start_time"].split(":"))
+            next_start_time = TimeUtils.parse_time_with_validation(next_activity["start_time"])
+            next_start_hour, next_start_minute = next_start_time.hour, next_start_time.minute
             if (next_start_hour, next_start_minute) != (card_obj.end_hour, card_obj.end_minute):
                 draw_end_time = True
         else:

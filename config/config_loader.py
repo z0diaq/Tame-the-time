@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any, Callable
 import yaml
 from utils.logging import log_error
-from utils.time_utils import round_to_nearest_5_minutes
+from utils.time_utils import TimeUtils
 
 def get_day_config_path(current_day: int) -> str:
     """Determine the configuration file path based on the current day."""
@@ -19,14 +19,7 @@ def get_day_config_path(current_day: int) -> str:
 
 def normalize_time_format(timepoint: datetime) -> str:
     """Ensure time string has valid values and 5min granulity."""
-    hour: int = timepoint.hour
-    minutes: int = round_to_nearest_5_minutes(timepoint.minute)
-    if minutes == 60:
-        hour += 1
-        minutes = 0
-    if hour >= 24:
-        hour = 0
-    return f"{hour:02d}:{minutes:02d}"
+    return TimeUtils.normalize_time_format(timepoint)
 
 def create_sample_schedule(now: datetime) -> List[Dict[str, Any]]:
     """Create a default configuration to be used if no specific config is found."""
@@ -67,12 +60,12 @@ def validate_schedule(schedule: List[Dict[str, Any]]) -> bool:
             log_error(f"Invalid activity format: {activity}")
             return False
         
-        # Validate time format
+        # Validate time format using TimeUtils
         for time_key in ["start_time", "end_time"]:
             try:
-                datetime.strptime(activity[time_key], "%H:%M")
-            except ValueError:
-                log_error(f"Invalid time format in {activity['name']} for {time_key}")
+                TimeUtils.parse_time_with_validation(activity[time_key])
+            except ValueError as e:
+                log_error(f"Invalid time format in {activity['name']} for {time_key}: {e}")
                 return False
     
     return True

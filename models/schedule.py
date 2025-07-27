@@ -6,7 +6,7 @@ Contains data structures and operations for managing tasks and schedules.
 from datetime import datetime, time
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
-from utils.time_utils import parse_time_str
+from utils.time_utils import TimeUtils
 
 
 @dataclass
@@ -35,46 +35,27 @@ class ScheduledActivity:
     tasks: List[str] = field(default_factory=list)
     
     def __post_init__(self) -> None:
-        """Validate time formats after initialization."""
-        self._validate_time_format(self.start_time)
-        self._validate_time_format(self.end_time)
-    
-    @staticmethod
-    def _validate_time_format(time_str: str) -> None:
-        """Validate that time string is in HH:MM format."""
+        """Validate time formats after initialization using TimeUtils."""
         try:
-            parts = time_str.split(":")
-            if len(parts) != 2:
-                raise ValueError(f"Invalid time format: {time_str}")
-            hour, minute = int(parts[0]), int(parts[1])
-            if not (0 <= hour <= 23 and 0 <= minute <= 59):
-                raise ValueError(f"Invalid time values: {time_str}")
-        except (ValueError, AttributeError) as e:
-            raise ValueError(f"Invalid time format: {time_str}") from e
+            TimeUtils.parse_time_with_validation(self.start_time)
+            TimeUtils.parse_time_with_validation(self.end_time)
+        except ValueError as e:
+            raise ValueError(f"Invalid time format in ScheduledActivity: {e}") from e
     
     @property
     def start_time_obj(self) -> time:
         """Get start time as a time object."""
-        return parse_time_str(self.start_time)
+        return TimeUtils.parse_time_with_validation(self.start_time)
     
     @property
     def end_time_obj(self) -> time:
         """Get end time as a time object."""
-        return parse_time_str(self.end_time)
+        return TimeUtils.parse_time_with_validation(self.end_time)
     
     @property
     def duration_minutes(self) -> int:
         """Get duration in minutes."""
-        start = self.start_time_obj
-        end = self.end_time_obj
-        start_minutes = start.hour * 60 + start.minute
-        end_minutes = end.hour * 60 + end.minute
-        
-        # Handle overnight activities
-        if end_minutes <= start_minutes:
-            end_minutes += 24 * 60
-        
-        return end_minutes - start_minutes
+        return TimeUtils.calculate_duration_minutes(self.start_time, self.end_time)
     
     def is_active_at(self, current_time: time) -> bool:
         """Check if this activity is active at the given time."""
