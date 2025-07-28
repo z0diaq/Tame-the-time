@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.messagebox as messagebox
 
 def open_global_options(app):
+    """Open a dialog to edit global options."""
     options_win = tk.Toplevel(app)
     options_win.title("Global Options")
     options_win.geometry("300x180")

@@ -7,6 +7,7 @@ from tkinter import filedialog
 from utils.logging import log_info, log_error
 
 def open_schedule(app):
+    """Open a dialog to load a schedule file."""
     file_path = filedialog.askopenfilename(
         title="Open Schedule File",
         filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
@@ -33,6 +34,7 @@ def open_schedule(app):
         log_error(f"Failed to load file: {e}")
 
 def save_schedule_as(app):
+    """Open a dialog to save the schedule to a file."""
     # Suggest filename based on current week day
     today = app.now_provider().date()
     weekday_name = calendar.day_name[today.weekday()]
@@ -57,7 +59,7 @@ def save_schedule_as(app):
         log_error(f"Failed to save file: {e}")
 
 def save_schedule(app, ask_for_confirmation: bool = True):
-    """Save current schedule to the default JSON file."""
+    """Save current schedule to the default YAML file."""
     # Ask for confirmation if file exists
     if ask_for_confirmation and os.path.exists(app.SETTINGS_PATH):
         if not messagebox.askyesno("Confirm", "Schedule file already exists. Do you want to overwrite it?"):

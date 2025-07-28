@@ -25,6 +25,7 @@ class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
 
     def load_settings(self):
+        """Load settings from file."""
         if os.path.exists(self.SETTINGS_PATH):
             with open(self.SETTINGS_PATH, "r") as f:
                 return json.load(f)
@@ -57,6 +58,7 @@ class TimeboxApp(tk.Tk):
         self._save_timer = self.after(UIConstants.SETTINGS_SAVE_DEBOUNCE_MS, self._save_settings_immediate)
 
     def __init__(self, schedule: List[Dict], config_path: str, now_provider=datetime.now):
+        """Initialize the application with the given schedule and configuration."""
         super().__init__()
         self.now_provider = now_provider
         self.settings = self.load_settings()
@@ -106,7 +108,7 @@ class TimeboxApp(tk.Tk):
         self.menu_visible = False
         self.card_visual_changed = False  # Flag to track if card visuals have changed
 
-        self.status_bar = tk.Label(self, font=("Arial", 10), anchor="w", bg="#e0e0e0", relief="sunken", bd=1)
+        self.status_bar = tk.Label(self, font=("Arial", 10), anchor="w", bg="#e0e0e0", fg="black", relief="sunken", bd=1)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
         self.canvas = tk.Canvas(self, bg="white", width=400, height=700)
@@ -148,6 +150,7 @@ class TimeboxApp(tk.Tk):
         self.update_status_bar()
 
     def create_timeline(self, granularity=60):
+        """Create timeline with the given granularity."""
         now = self.now_provider().time()
         return draw_timeline(
             self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y,
@@ -155,13 +158,14 @@ class TimeboxApp(tk.Tk):
         )
 
     def show_timeline(self, granularity=60):
-        # Show only the timeline with the given granularity
+        """Show only the timeline with the given granularity."""
         for tid in getattr(self, 'timeline_1h_ids', []):
             self.canvas.itemconfig(tid, state="normal" if granularity == 60 else "hidden")
         for tid in getattr(self, 'timeline_5m_ids', []):
             self.canvas.itemconfig(tid, state="normal" if granularity == 5 else "hidden")
 
     def scroll(self, event, delta: int):
+        """Handle scroll events."""
         log_debug(f"Scrolling: {delta}, PPH: {self.pixels_per_hour}, Current Offset Y: {self.offset_y}")
         if self.pixels_per_hour > 50:
             scroll_step = -40 if delta > 0 else 40
@@ -170,6 +174,7 @@ class TimeboxApp(tk.Tk):
             self.last_action = datetime.now()
 
     def create_task_cards(self):
+        """Create task cards from schedule."""
         cards = create_task_cards(
             self.canvas,
             self.schedule,
@@ -185,7 +190,7 @@ class TimeboxApp(tk.Tk):
         return cards
 
     def redraw_timeline_and_cards(self, width: int, height: int, center: bool = True):
-        # No deletion, just move/hide/show
+        """No deletion, just move/hide/show"""
         if center:
             now = self.now_provider().time()
             minutes_since_start = (now.hour - self.start_hour) * 60 + now.minute
@@ -217,40 +222,49 @@ class TimeboxApp(tk.Tk):
         self.card_visual_changed = False
 
     def update_status_bar(self):
+        """Update status bar with today's tasks statistics"""
         today = self.now_provider().date()
         missed = 0
+        todo = 0
         done = 0
         incoming = 0
         now = self.now_provider()
         for card_obj in self.cards:
             activity = card_obj.activity
-            start_time = parse_time_str(activity["start_time"])
-            end_time = parse_time_str(activity["end_time"])
-            start_dt = datetime.combine(today, start_time)
-            end_dt = datetime.combine(today, end_time)
-            # Check if task is for today
-            if start_dt.date() != today:
-                continue
-            # Determine if done (all tasks done or card_obj._tasks_done is all True)
-            if hasattr(card_obj, '_tasks_done') and card_obj._tasks_done:
-                if all(card_obj._tasks_done):
-                    done += 1
-                elif end_dt < now:
-                    missed += 1
-                elif start_dt > now:
-                    incoming += 1
-                else:
-                    # Ongoing but not done
-                    pass
-            else:
-                if end_dt < now:
-                    missed += 1
-                elif start_dt > now:
-                    incoming += 1
-        self.status_bar.config(text=f"Tasks statistics for today - missed: {missed}, done: {done}, incoming: {incoming}")
+            if 'tasks' in activity:
+                start_time = parse_time_str(activity["start_time"])
+                end_time = parse_time_str(activity["end_time"])
+                start_dt = datetime.combine(today, start_time)
+                end_dt = datetime.combine(today, end_time)
+                is_previous = end_dt < now
+                is_current = start_dt <= now <= end_dt
+                is_future = start_dt > now
+                done_count = 0
+                # Use _tasks_done if present, otherwise count all as not done
+                tasks_done = getattr(card_obj, '_tasks_done', [False] * len(activity.get('tasks', [])))
+                done_count = sum(tasks_done)
+                missed_count = len(activity.get('tasks', [])) - done_count
+                done += done_count
+                if is_previous:
+                    missed += missed_count
+                elif is_future or is_current:
+                    incoming += missed_count
+        tasks_info = "No tasks found for today"
+        if missed > 0 or todo > 0 or incoming > 0 or done > 0:
+            tasks_info = "Today tasks statistics: "
+            if missed > 0:
+                tasks_info += f"{missed} missed, "
+            if todo > 0:
+                tasks_info += f"{todo} todo, "
+            if incoming > 0:
+                tasks_info += f"{incoming} incoming, "
+            if done > 0:
+                tasks_info += f"{done} done"
+            tasks_info = tasks_info.rstrip(", ")
+        self.status_bar.config(text=tasks_info)
 
     def update_cards_after_size_change(self):
-        # Update all cards after window size change
+        """Update all cards after window size change."""
         now = self.now_provider().time()
         for card_obj in self.cards:
             card_obj.update_card_visuals(
@@ -259,7 +273,7 @@ class TimeboxApp(tk.Tk):
         #self.update_status_bar()
 
     def get_next_task_and_time(self, now):
-        # Returns (next_task_dict, next_task_start_datetime)
+        """Returns (next_task_dict, next_task_start_datetime)."""
         if not self.schedule or len(self.schedule) == 0:
             return None, None
         today = now.date()
@@ -288,7 +302,7 @@ class TimeboxApp(tk.Tk):
         return first, next_time
 
     def on_cancel_callback(self, card_obj):
-        # Callback for when the edit window is cancelled
+        """Callback for when the edit window is cancelled."""
         log_debug(f"Edit cancelled for card: {card_obj.activity['name']}")
         # Optionally, you can remove the card if it was created in the edit window
         if card_obj in self.cards:
@@ -317,7 +331,7 @@ class TimeboxApp(tk.Tk):
                 card_obj._tasks_done = card_obj._tasks_done[:tasks_length]
 
     def bind_mouse_actions(self, card):
-        # Bind mouse actions to the card
+        """Bind mouse actions to the card."""
         tag = f"card_{card.card}"
         card._tasks_done_callback = self.update_status_bar
         self.canvas.tag_bind(tag, "<ButtonPress-1>", lambda event: on_card_press(self, event))

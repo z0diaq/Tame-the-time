@@ -1,8 +1,9 @@
 from utils.logging import log_debug
 from ui.timeline import reposition_timeline
+from datetime import datetime
 
 def move_timelines_and_cards(app, delta_y):
-    # Move both timelines and all cards by delta_y
+    """Move both timelines and all cards by delta_y."""
     for tid in getattr(app, 'timeline_1h_ids', []):
         app.canvas.move(tid, 0, delta_y)
     for tid in getattr(app, 'timeline_5m_ids', []):
@@ -19,6 +20,7 @@ def move_timelines_and_cards(app, delta_y):
         )
 
 def is_mouse_in_window(app):
+    """Check if mouse is in the window."""
     x, y = app.winfo_pointerx(), app.winfo_pointery()
     x0, y0 = app.winfo_rootx(), app.winfo_rooty()
     x1, y1 = x0 + app.winfo_width(), y0 + app.winfo_height()
@@ -27,12 +29,14 @@ def is_mouse_in_window(app):
     return x0 <= x <= x1 and y0 <= y <= y1
 
 def poll_mouse(app):
+    """Poll mouse position and hide menu bar if mouse is not in window."""
     from ui.app_ui_events import hide_menu_bar
     if app.menu_visible and not is_mouse_in_window(app):
         hide_menu_bar(app)
     app.after(200, lambda: poll_mouse(app))
 
 def zoom(app, event, delta: int):
+    """Zoom in or out based on mouse wheel event."""
     zoom_step = 0.1
     a = app.zoom_factor + (-zoom_step if delta > 0 else zoom_step)
     app.zoom_factor = max(0.5, min(6, a))
@@ -43,9 +47,10 @@ def zoom(app, event, delta: int):
     scale = app.pixels_per_hour / old_pph
     app.offset_y = min(100, int(mouse_y - 100 - rel_y * scale))
     resize_timelines_and_cards(app)
-    app.last_action = app.now_provider()
+    app.last_action = datetime.now()
 
 def resize_timelines_and_cards(app):
+    """Resize timelines and cards based on new PPH and offset Y."""
     log_debug(f"Resizing timelines and cards, new PPH: {app.pixels_per_hour}, Offset Y: {app.offset_y}")
     now = app.now_provider().time()
     for card_obj in app.cards:
@@ -57,9 +62,10 @@ def resize_timelines_and_cards(app):
     app.activity_label.place(x=10, y=40, width=app.winfo_width() - 20)
 
 def scroll(app, event, delta: int):
+    """Scroll timelines and cards based on scroll event."""
     log_debug(f"Scrolling: {delta}, PPH: {app.pixels_per_hour}, Current Offset Y: {app.offset_y}")
     if app.pixels_per_hour > 50:
         scroll_step = -40 if delta > 0 else 40
         app.offset_y += scroll_step
         move_timelines_and_cards(app, scroll_step)
-        app.last_action = app.now_provider()
+        app.last_action = datetime.now()

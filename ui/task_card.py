@@ -16,6 +16,7 @@ class TaskCard:
             width: int,
             now_provider=None
         ):
+        """Initialize TaskCard with activity and layout parameters."""
         self.activity = activity
         
         # Use TimeUtils for consistent time parsing
@@ -64,18 +65,27 @@ class TaskCard:
         """Set the being_modified flag to control visibility of progress bar."""
         self.being_modified = being_modified
 
+    def hide_progress_bar(self):
+        """Hide the progress bar."""
+        if hasattr(self, 'progress') and self.progress:
+            self.canvas.itemconfig(self.progress, state="hidden")
+
+    def show_progress_bar(self):
+        """Show the progress bar."""
+        if hasattr(self, 'progress') and self.progress:
+            self.canvas.itemconfig(self.progress, state="normal")
+
     def setup_card_progress_actions(self, canvas: Canvas):
+        """Setup card progress actions."""
         log_debug("Binding card actions")
         # On card enter event, hide the progress rectangle
         def on_card_enter(event):
             log_debug(f"Card {self.activity['name']} entered")
-            if hasattr(self, 'progress') and self.progress:
-                canvas.itemconfig(self.progress, state="hidden")
+            self.hide_progress_bar()
         # On card leave event, show the progress rectangle
         def on_card_leave(event):
             log_debug(f"Card {self.activity['name']} left")
-            if hasattr(self, 'progress') and self.progress and not self.being_modified:
-                canvas.itemconfig(self.progress, state="normal")
+            self.show_progress_bar()
     
         canvas.tag_bind(self.card, "<Enter>", on_card_enter)
         if hasattr(self, 'progress') and self.progress:
@@ -85,6 +95,7 @@ class TaskCard:
         canvas.tag_bind(self.label, "<Leave>", on_card_leave)
 
     def remove_card_progress_actions(self, canvas: Canvas):
+        """Remove card progress actions.""" 
         log_debug("Unbinding card actions")
         canvas.tag_unbind(self.card, "<Enter>")
         canvas.tag_unbind(self.label, "<Enter>")
@@ -95,6 +106,7 @@ class TaskCard:
             canvas.tag_unbind(self.progress, "<Leave>")
 
     def draw(self, canvas: Canvas, now: time = None, draw_end_time: bool = False):
+        """Draw the task card on the canvas."""
         self.canvas = canvas
         if now is None:
             now = self.now_provider().time()
@@ -177,6 +189,7 @@ class TaskCard:
         self.canvas = None
 
     def get_time_range(self):
+        """Get the time range of the card."""
         return time(self.start_hour, self.start_minute), time(self.end_hour, self.end_minute)
     
     def is_active_at(self, current_time: time) -> bool:
@@ -218,6 +231,7 @@ class TaskCard:
                 self.setup_card_progress_actions(self.canvas)
             else:
                 self.canvas.coords(self.progress, self.card_left, self.y, fill_right, self.y + self.height)
+                self.show_progress_bar()
             self.canvas.itemconfig(self.progress, state="normal")
             self.canvas.itemconfig(self.card, fill=self.active_color)
             self.canvas.tag_raise(self.label)

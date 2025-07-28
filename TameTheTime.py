@@ -13,6 +13,7 @@ time_manager: Optional[TimeManager] = None
 
 
 def check_no_notification_parameter() -> None:
+    """Check and set notification parameter from command line arguments."""
     if AppConstants.ARG_NO_NOTIFICATION in sys.argv:
         log_info("Notifications are disabled.")
         utils.config.allow_notification = False

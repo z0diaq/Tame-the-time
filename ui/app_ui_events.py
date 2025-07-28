@@ -3,6 +3,7 @@ from utils.logging import log_debug
 from ui.zoom_and_scroll import zoom, scroll, resize_timelines_and_cards
 
 def show_menu_bar(app):
+    """Show the menu bar."""
     if not app.menu_visible:
         app.config(menu=app.menu_bar)
         app.menu_visible = True
@@ -11,11 +12,13 @@ def show_menu_bar(app):
         app.menu_hide_job = None
 
 def hide_menu_bar(app):
+    """Hide the menu bar."""
     app.config(menu="")
     app.menu_visible = False
     app.menu_hide_job = None
 
 def on_motion(app, event):
+    """Handle motion event."""
     # Show menu bar if mouse is near the top of the canvas
     if event.y < 30:
         show_menu_bar(app)
@@ -29,6 +32,7 @@ def on_motion(app, event):
         app.config(cursor="")
 
 def on_close(app):
+    """Handle close event - ask to save schedule if there are unsaved changes."""
     app.save_settings(immediate=True)  # Save immediately on close
     if app.schedule_changed:
         if messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to save them?"):
@@ -36,6 +40,7 @@ def on_close(app):
     app.destroy()
 
 def on_resize(app, event):
+    """Handle resize event."""
     if event.widget == app:
         width, height = event.width, event.height
         last_width, last_height = app._last_size
@@ -46,6 +51,7 @@ def on_resize(app, event):
                 resize_timelines_and_cards(app)
 
 def on_mouse_wheel(app, event):
+    """Handle mouse wheel event."""
     ctrl_held = (event.state & 0x0004) != 0
     log_debug(f"Mouse Wheel Event: {event.num}, Delta: {event.delta}, Ctrl Held: {ctrl_held}")
     delta = 0

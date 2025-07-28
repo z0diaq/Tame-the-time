@@ -4,6 +4,7 @@ import tkinter as tk
 from datetime import datetime
 
 def on_card_drag(app, event):
+    """Handle card drag event."""
     if not app._drag_data["item_ids"] or abs(event.y - app._drag_data["start_y"]) <= 20:
         return
     app.last_action = datetime.now()
@@ -38,6 +39,7 @@ def on_card_drag(app, event):
         app._drag_data["offset_y"] = event.y + (snapped_y - y)
 
 def on_card_press(app, event):
+    """Handle card press event."""
     tags = app.canvas.gettags(tk.CURRENT)
     log_debug(f"Card pressed: {tags}")
     app._drag_data["item_ids"] = app.canvas.find_withtag(tags[0])
@@ -72,6 +74,7 @@ def on_card_press(app, event):
             card_obj.set_being_modified(True)
             if card_obj.label:
                 app.canvas.itemconfig(card_obj.label, fill="black")
+            card_obj.hide_progress_bar()
             card_obj.remove_card_progress_actions(app.canvas)
     app.card_visual_changed = True
     if app.timeline_granularity != 5:
@@ -79,6 +82,7 @@ def on_card_press(app, event):
         app.show_timeline(granularity=5)
 
 def on_card_release(app, event):
+    """Handle card release event."""
     app.config(cursor="")
     if not app._drag_data["item_ids"] or not app._drag_data["dragging"]:
         app._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
@@ -96,6 +100,7 @@ def on_card_release(app, event):
     app.show_timeline(granularity=60)
 
 def handle_card_snap(app, card_id: int, y: int):
+    """Handle card snap event."""
     moved_card = next(card for card in app.cards if card.card == card_id)
     log_debug(f"Moved card: {moved_card.card}")
     y_relative = y - 100 - app.offset_y - app._drag_data["diff_y"]
@@ -124,6 +129,7 @@ def handle_card_snap(app, card_id: int, y: int):
     app.schedule[idx] = app.cards[idx].to_dict()
 
 def handle_card_resize(app, card_id: int, y: int, mode: str):
+    """Handle card resize event."""
     moved_card = next(card for card in app.cards if card.card == card_id)
     y_card_top = app.canvas.coords(card_id)[1]
     y_card_bottom = app.canvas.coords(card_id)[3]
@@ -163,6 +169,7 @@ def handle_card_resize(app, card_id: int, y: int, mode: str):
     )
 
 def on_card_motion(app, event):
+    """Handle card motion event."""
     tags = app.canvas.gettags(tk.CURRENT)
     log_debug(f"Tags = {tags}")
     if not tags:

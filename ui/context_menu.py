@@ -19,10 +19,11 @@ def show_canvas_context_menu(app, event):
     if card_under_cursor:
         # Show context menu for the card under cursor
         def edit_card():
+            """Open a dialog to edit the card under cursor."""
             open_edit_card_window(app, card_under_cursor)
         menu.add_command(label="Edit", command=edit_card)
         def clone_card():
-            # Clone the card under cursor
+            """Clone the card under cursor."""
             new_card = card_under_cursor.clone()
             new_card.start_hour = card_under_cursor.end_hour
             new_card.start_minute = card_under_cursor.end_minute
@@ -42,6 +43,7 @@ def show_canvas_context_menu(app, event):
             app.schedule_changed = True
         menu.add_command(label="Clone", command=clone_card)
         def remove_card():
+            """Remove the card under cursor."""
             if card_under_cursor in app.cards:
                 app.cards.remove(card_under_cursor)
                 card_under_cursor.delete()
@@ -50,6 +52,7 @@ def show_canvas_context_menu(app, event):
                 app.schedule_changed = True
         menu.add_command(label="Remove", command=remove_card)
         def open_card_tasks():
+            """Open a dialog to edit the tasks for the card under cursor."""
             open_card_tasks_window(app, card_under_cursor)
         # Check for tasks in the card's activity directly, then fallback to schedule lookup
         activity = card_under_cursor.activity
@@ -64,6 +67,7 @@ def show_canvas_context_menu(app, event):
             menu.add_command(label="Tasks", command=open_card_tasks)
     elif event.y > 30:
         def add_card():
+            """Add a new card at the cursor position."""
             y_relative = event.y - 100 - app.offset_y
             total_minutes = round_to_nearest_5_minutes(y_relative * 60 / app.pixels_per_hour)
             start_hour = app.start_hour + total_minutes // 60
@@ -94,6 +98,7 @@ def show_canvas_context_menu(app, event):
             app.schedule_changed = True
         menu.add_command(label="New", command=add_card)
         def remove_all_cards():
+            """Remove all cards from the schedule."""
             if messagebox.askyesno("Confirm", "Are you sure you want to remove all cards?"):
                 for card_obj in app.cards:
                     card_obj.delete()

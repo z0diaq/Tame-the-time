@@ -6,6 +6,7 @@ from constants import UIConstants
 from models.schedule import ScheduledActivity
 
 def update_ui(app):
+    """Update the UI based on time changes and state."""
     now = app.now_provider()
     
     # Check if we need to update UI based on time changes
@@ -63,6 +64,7 @@ def update_ui(app):
         app.redraw_timeline_and_cards(app.winfo_width(), app.winfo_height())
         if app.card_visual_changed:
             app.restore_card_visuals()
+            app.card_visual_changed = False
 
     # Store last update time for optimization
     app._last_ui_update = now
