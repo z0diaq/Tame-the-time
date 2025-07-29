@@ -15,16 +15,18 @@ from constants import NotificationConstants
 class NotificationService:
     """Service for managing notifications and alerts."""
     
-    def __init__(self, now_provider: Optional[Callable[[], datetime]] = None):
+    def __init__(self, now_provider: Optional[Callable[[], datetime]] = None, on_activity_change: Optional[Callable] = None):
         """
         Initialize NotificationService.
         
         Args:
             now_provider: Function that returns current datetime
+            on_activity_change: Callback function to call when activity changes
         """
         self.now_provider = now_provider or datetime.now
         self._notified_tasks: Dict[str, bool] = {}
         self._last_activity: Optional[ScheduledActivity] = None
+        self.on_activity_change = on_activity_change
     
     def check_and_send_notifications(self, 
                                    current_activity: Optional[ScheduledActivity],
@@ -80,6 +82,8 @@ class NotificationService:
             self._last_activity is None or 
             self._last_activity.name != current_activity.name
         ):
+            if self.on_activity_change:
+                self.on_activity_change()
             self._send_activity_start_notification(current_activity)
             log_debug(f"Notification sent for activity: {current_activity.name}")
         

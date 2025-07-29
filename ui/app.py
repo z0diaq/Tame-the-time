@@ -66,7 +66,7 @@ class TimeboxApp(tk.Tk):
         self.schedule_changed = False
         
         # Initialize notification service
-        self.notification_service = NotificationService(now_provider)
+        self.notification_service = NotificationService(now_provider, on_activity_change=self.update_status_bar)
 
         now = now_provider().time()
         self.last_hour = now.hour
