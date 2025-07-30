@@ -55,10 +55,8 @@ def update_ui(app):
     # Redraw everything every 20 seconds
     seconds_since_last_action = (datetime.now() - app.last_action).total_seconds()
 
-
     # Redraw timeline and cards if no action for threshold time or at the start of each minute
-    if (seconds_since_last_action >= UIConstants.INACTIVITY_REDRAW_THRESHOLD_SEC or 
-        (now.second == 0 and seconds_since_last_action > UIConstants.MINIMUM_REDRAW_INTERVAL_SEC)) and should_update:
+    if seconds_since_last_action >= _get_refresh_interval(app, activity) or should_update:
         log_debug(f"Seconds since last action: {seconds_since_last_action}")
         log_debug("Redrawing timeline and cards due to inactivity...")
         app.redraw_timeline_and_cards(app.winfo_width(), app.winfo_height())
@@ -68,8 +66,36 @@ def update_ui(app):
 
     # Store last update time for optimization
     app._last_ui_update = now
-    
+        
     app.after(UIConstants.UI_UPDATE_INTERVAL_MS, lambda: update_ui(app))
+
+
+def _get_refresh_interval(app, activity) -> int:
+    """Determine refresh interval based on current activity state."""
+    if activity and _has_undone_tasks(app, activity):
+        # Fast refresh (1 second) for current activity with undone tasks
+        return 1
+    else:
+        # Normal redraw interval
+        return UIConstants.INACTIVITY_REDRAW_THRESHOLD_SEC
+
+
+def _has_undone_tasks(app, activity) -> bool:
+    """Check if the current activity has any undone tasks."""
+    tasks = activity.get("tasks", [])
+    if not tasks:
+        return False
+    
+    # Find the corresponding card object to check _tasks_done
+    for card_obj in getattr(app, 'cards', []):
+        if (card_obj.activity.get('name') == activity.get('name') and 
+            card_obj.activity.get('start_time') == activity.get('start_time')):
+            # Use _tasks_done if present, otherwise assume all tasks are undone
+            tasks_done = getattr(card_obj, '_tasks_done', [False] * len(tasks))
+            return any(not done for done in tasks_done)
+    
+    # If no card found, assume tasks are undone
+    return True
 
 
 def _should_update_ui(app, now: datetime) -> bool:

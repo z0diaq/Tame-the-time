@@ -226,6 +226,7 @@ class TimeboxApp(tk.Tk):
         today = self.now_provider().date()
         missed = 0
         todo = 0
+        active = 0
         done = 0
         incoming = 0
         now = self.now_provider()
@@ -247,8 +248,10 @@ class TimeboxApp(tk.Tk):
                 done += done_count
                 if is_previous:
                     missed += missed_count
-                elif is_future or is_current:
+                elif is_future:
                     incoming += missed_count
+                elif is_current:
+                    active += missed_count
         tasks_info = "No tasks found for today"
         if missed > 0 or todo > 0 or incoming > 0 or done > 0:
             tasks_info = "Today tasks statistics: "
@@ -258,6 +261,8 @@ class TimeboxApp(tk.Tk):
                 tasks_info += f"{todo} todo, "
             if incoming > 0:
                 tasks_info += f"{incoming} incoming, "
+            if active > 0:
+                tasks_info += f"{active} active, "
             if done > 0:
                 tasks_info += f"{done} done"
             tasks_info = tasks_info.rstrip(", ")

@@ -3,6 +3,20 @@ from utils.logging import log_debug
 import tkinter as tk
 from datetime import datetime
 
+
+def _set_card_manipulation_state(app, card_id: int, is_being_manipulated: bool):
+    """Set the manipulation state for a card to control color alternation."""
+    # Find the card object corresponding to the canvas item ID
+    for card_obj in getattr(app, 'cards', []):
+        if card_obj.card == card_id:
+            if is_being_manipulated:
+                card_obj._being_dragged = True
+                card_obj._being_resized = True
+            else:
+                card_obj._being_dragged = False
+                card_obj._being_resized = False
+            break
+
 def on_card_drag(app, event):
     """Handle card drag event."""
     if not app._drag_data["item_ids"] or abs(event.y - app._drag_data["start_y"]) <= 20:
@@ -11,6 +25,9 @@ def on_card_drag(app, event):
     app._drag_data["dragging"] = True
     dragged_id = app._drag_data["item_ids"][0]
     app.schedule_changed = True  # Mark schedule as changed
+    
+    # Mark the card as being dragged/resized to disable color alternation
+    _set_card_manipulation_state(app, dragged_id, True)
     if app._drag_data.get("resize_mode") == "top":
         # Resize from top
         y_card_bottom = app.canvas.coords(dragged_id)[3]
@@ -90,6 +107,10 @@ def on_card_release(app, event):
         app.show_timeline(granularity=60)
         return
     card_id = app._drag_data["item_ids"][0]
+    
+    # Clear manipulation state to re-enable color alternation
+    _set_card_manipulation_state(app, card_id, False)
+    
     if app._drag_data.get("resize_mode"):
         handle_card_resize(app, card_id, event.y, app._drag_data["resize_mode"])
     else:
