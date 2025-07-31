@@ -153,23 +153,20 @@ class TaskCard:
         tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
         remaining_tasks = [t for t, done in zip(tasks, tasks_done) if not done]
         if remaining_tasks:
-            # Determine color for task count based on activity state and alternation
-            task_count_color = self._get_task_count_color(is_active, len(remaining_tasks))
-            
             self.tasks_count_label = canvas.create_text(
                 self.card_right - 5, self.y + self.height - 5,
                 text=f"Tasks: {len(remaining_tasks)}",
-                font=("Arial", 8, "bold"), anchor="se", fill=task_count_color
+                font=("Arial", 8, "bold"), anchor="se", fill="#0a0a0a"
             )
             canvas.itemconfig(self.tasks_count_label, tags=(tag))
         else:
             self.tasks_count_label = None
         return self
 
-    def _get_task_count_color(self, is_active: bool, remaining_tasks_count: int) -> str:
+    def _get_task_count_color(self, remaining_tasks_count: int) -> str:
         """Get the color for task count display with alternating behavior for active cards."""
         # Only alternate colors for active cards with undone tasks
-        if not is_active or remaining_tasks_count == 0:
+        if remaining_tasks_count == 0:
             return "#0a0a0a"  # Default black color
         
         # Check if card is being dragged or resized (disable alternation)
@@ -294,6 +291,13 @@ class TaskCard:
             else:
                 self.canvas.coords(self.tasks_count_label, self.card_right - 5, self.y + self.height - 5)
                 self.canvas.itemconfig(self.tasks_count_label, text=tasks_text, state="normal")
+            # Raise task count and label above other elements (i.e. progress bar)
+            self.canvas.tag_raise(self.tasks_count_label)
+            self.canvas.tag_raise(self.label)
+
+            # Alternate between black and red every second for active cards with undone tasks
+            if should_show_progress:
+                self.canvas.itemconfig(self.tasks_count_label, fill=self._get_task_count_color(len(remaining_tasks)))
         else:
             if hasattr(self, 'tasks_count_label') and self.tasks_count_label is not None:
                 self.canvas.itemconfig(self.tasks_count_label, state="hidden")
