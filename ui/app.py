@@ -12,7 +12,7 @@ from ui.timeline import draw_timeline
 from ui.task_card import create_task_cards, TaskCard
 from utils.time_utils import parse_time_str
 from datetime import datetime, timedelta, time
-from utils.logging import log_debug
+from utils.logging import log_debug, log_info, log_error
 from ui.global_options import open_global_options
 from ui.app_ui_events import on_motion, on_close, on_resize, on_mouse_wheel
 from ui.app_ui_loop import update_ui
@@ -20,6 +20,8 @@ from ui.app_card_handling import on_card_press, on_card_drag, on_card_release, o
 from ui.schedule_management import open_schedule, save_schedule_as, save_schedule, clear_schedule
 from ui.context_menu import show_canvas_context_menu
 from ui.zoom_and_scroll import move_timelines_and_cards, poll_mouse
+from services.task_tracking_service import TaskTrackingService
+from ui.statistics_dialog import open_task_statistics_dialog
 
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
@@ -67,6 +69,15 @@ class TimeboxApp(tk.Tk):
         
         # Initialize notification service
         self.notification_service = NotificationService(now_provider, on_activity_change=self.update_status_bar)
+        
+        # Initialize task tracking service
+        self.task_tracking_service = TaskTrackingService()
+        
+        # Store schedule reference
+        self.schedule = schedule
+        
+        # Create daily task entries for today if needed
+        self._ensure_daily_task_entries()
 
         now = now_provider().time()
         self.last_hour = now.hour
@@ -79,7 +90,6 @@ class TimeboxApp(tk.Tk):
         utils.notification.gotify_url = self.settings.get("gotify_url", "")
         self.title("Timeboxing Timeline")
         self.geometry("400x700")
-        self.schedule = schedule
         self.start_hour = 0
         self.end_hour = 24
         self.zoom_factor = 6.0
@@ -105,6 +115,11 @@ class TimeboxApp(tk.Tk):
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.options_menu.add_command(label="Global options", command=lambda: open_global_options(self))
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
+        
+        # Add Statistics menu
+        self.statistics_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.statistics_menu.add_command(label="Tasks", command=lambda: open_task_statistics_dialog(self))
+        self.menu_bar.add_cascade(label="Statistics", menu=self.statistics_menu)
         self.menu_visible = False
         self.card_visual_changed = False  # Flag to track if card visuals have changed
 
@@ -322,6 +337,15 @@ class TimeboxApp(tk.Tk):
             if activity["name"] == name:
                 return activity
         return None
+    
+    def _ensure_daily_task_entries(self):
+        """Ensure that task entries exist for today's tasks."""
+        try:
+            entries_created = self.task_tracking_service.create_daily_task_entries(self.schedule)
+            if entries_created > 0:
+                log_info(f"Created {entries_created} task entries for today")
+        except Exception as e:
+            log_error(f"Failed to create daily task entries: {e}")
     
     def normalize_tasks_done(self, card_obj):
         """Ensure that the _tasks_done list matches the number of tasks in the card's activity."""

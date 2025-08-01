@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from utils.time_utils import get_current_activity
-from utils.logging import log_error
+from utils.logging import log_error, log_info
 
 def open_edit_card_window(app, card_obj, on_cancel_callback=None):
     """Open a dialog to edit a card's details."""
@@ -35,8 +35,51 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
         new_title = title_var.get().strip()
         new_desc = desc_text.get("1.0", "end-1c").strip().splitlines()
         new_tasks = [line.strip() for line in tasks_text.get("1.0", "end-1c").splitlines() if line.strip()]
+        
+        # Check for duplicate task names within this activity
+        task_counts = {}
+        for task in new_tasks:
+            task_counts[task] = task_counts.get(task, 0) + 1
+        
+        duplicates = [task for task, count in task_counts.items() if count > 1]
+        if duplicates:
+            duplicate_list = ", ".join(duplicates)
+            result = messagebox.askyesno(
+                "Duplicate Task Names",
+                f"Two tasks have same name: {duplicate_list}. "
+                "Will not be able to compute statistics correctly. Do you want to continue?",
+                parent=edit_win
+            )
+            if not result:
+                return  # User chose "No", stay in dialog
+        
+        # Get original tasks for comparison
+        original_tasks = set(card_obj.activity.get("tasks", []))
+        new_tasks_set = set(new_tasks)
+        
+        # Find removed and added tasks
+        removed_tasks = original_tasks - new_tasks_set
+        added_tasks = new_tasks_set - original_tasks
+        
+        # Handle removed tasks - ask for confirmation and remove from database
+        if removed_tasks and hasattr(app, 'task_tracking_service'):
+            total_entries_to_remove = 0
+            for task_name in removed_tasks:
+                count = app.task_tracking_service.remove_task_entries(card_obj.activity["name"], task_name)
+                total_entries_to_remove += count
+            
+            if total_entries_to_remove > 0:
+                result = messagebox.askyesno(
+                    "Remove Task History",
+                    f"Removing tasks will delete {total_entries_to_remove} historical entries. Continue?",
+                    parent=edit_win
+                )
+                if not result:
+                    return  # User chose "No", stay in dialog
+                log_info(f"Removed {total_entries_to_remove} task entries for removed tasks")
+        
         # Update schedule and card activity
-        activity = app.find_activity_by_name(new_title)
+        activity = app.find_activity_by_name(card_obj.activity["name"])  # Use original name for lookup
         if activity:
             activity["name"] = new_title
             activity["description"] = new_desc
@@ -46,6 +89,12 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
         card_obj.activity["name"] = new_title
         card_obj.activity["description"] = new_desc
         card_obj.activity["tasks"] = new_tasks
+        
+        # Handle added tasks - add to database
+        if added_tasks and hasattr(app, 'task_tracking_service'):
+            for task_name in added_tasks:
+                app.task_tracking_service.add_new_task_entry(new_title, task_name)
+                log_info(f"Added new task entry for '{task_name}' in activity '{new_title}'")
 
         # Normalize tasks_done list
         app.normalize_tasks_done(card_obj)
@@ -89,6 +138,18 @@ def open_card_tasks_window(app, card_obj):
     task_listbox.pack(fill="both", expand=True, padx=10, pady=10)
 
     app.normalize_tasks_done(card_obj)
+    
+    # Load task done states from database if available
+    if hasattr(app, 'task_tracking_service'):
+        try:
+            done_states = app.task_tracking_service.get_task_done_states()
+            tasks = card_obj.activity.get("tasks", [])
+            for i, task_name in enumerate(tasks):
+                key = (card_obj.activity["name"], task_name)
+                if key in done_states:
+                    card_obj._tasks_done[i] = done_states[key]
+        except Exception as e:
+            log_error(f"Failed to load task done states from database: {e}")
 
     # Create a copy of tasks_done for editing (don't modify original until Save)
     tasks_done_copy = card_obj._tasks_done.copy()
@@ -98,9 +159,9 @@ def open_card_tasks_window(app, card_obj):
         display = f"[Done] {task}" if tasks_done_copy[i] else task
         task_listbox.insert("end", display)
 
-    # Create "Mark as Done" button (initially disabled)
-    mark_done_btn = tk.Button(tasks_win, text="Mark as Done", state="disabled")
-    mark_done_btn.pack(pady=(0, 10))
+    # Create "Toggle Done" button (initially disabled)
+    toggle_done_btn = tk.Button(tasks_win, text="Mark as Done", state="disabled")
+    toggle_done_btn.pack(pady=(0, 10))
 
     def find_first_not_done():
         """Find the index of the first task that is not marked as done."""
@@ -110,33 +171,43 @@ def open_card_tasks_window(app, card_obj):
         return None
 
     def update_button_state():
-        """Update the Mark as Done button state based on current selection."""
+        """Update the Toggle Done button state and text based on current selection."""
         selected_indices = task_listbox.curselection()
         if selected_indices:
             idx = selected_indices[0]
-            # Enable button only if selected task is not done
             if not tasks_done_copy[idx]:
-                mark_done_btn.config(state="normal")
+                toggle_done_btn.config(state="normal", text="Mark as Done")
             else:
-                mark_done_btn.config(state="disabled")
+                toggle_done_btn.config(state="normal", text="Mark as Undone")
         else:
-            mark_done_btn.config(state="disabled")
+            toggle_done_btn.config(state="disabled", text="Mark as Done")
 
     def on_listbox_select(event):
         """Handle listbox selection changes."""
         update_button_state()
 
-    def mark_task_done():
-        """Mark the selected task as done."""
+    def toggle_task_done():
+        """Toggle the done state of the selected task."""
         selected_task_index = task_listbox.curselection()
         if selected_task_index:
             idx = selected_task_index[0]
+            task = tasks[idx]
+            
             if not tasks_done_copy[idx]:
-                # Mark task as done in the copy
+                # Mark task as done
                 tasks_done_copy[idx] = True
-                task = tasks[idx]
                 task_listbox.delete(idx)
                 task_listbox.insert(idx, f"[Done] {task}")
+                
+                # Update database if task tracking service is available
+                if hasattr(app, 'task_tracking_service'):
+                    success = app.task_tracking_service.mark_task_done(
+                        card_obj.activity["name"], task
+                    )
+                    if success:
+                        log_info(f"Marked task '{task}' as done in database")
+                    else:
+                        log_error(f"Failed to mark task '{task}' as done in database")
                 
                 # Find and select next not-done task
                 next_not_done = find_first_not_done()
@@ -145,18 +216,36 @@ def open_card_tasks_window(app, card_obj):
                     task_listbox.selection_set(next_not_done)
                     task_listbox.see(next_not_done)  # Ensure it's visible
                 else:
-                    # No more not-done tasks, clear selection
-                    task_listbox.selection_clear(0, "end")
+                    # Keep current selection
+                    task_listbox.selection_set(idx)
+            else:
+                # Mark task as undone
+                tasks_done_copy[idx] = False
+                task_listbox.delete(idx)
+                task_listbox.insert(idx, task)
                 
-                # Update button state
-                update_button_state()
+                # Update database if task tracking service is available
+                if hasattr(app, 'task_tracking_service'):
+                    success = app.task_tracking_service.mark_task_undone(
+                        card_obj.activity["name"], task
+                    )
+                    if success:
+                        log_info(f"Marked task '{task}' as undone in database")
+                    else:
+                        log_error(f"Failed to mark task '{task}' as undone in database")
+                
+                # Keep current selection
+                task_listbox.selection_set(idx)
+            
+            # Update button state
+            update_button_state()
         tasks_win.lift()
 
     # Bind listbox selection event
     task_listbox.bind("<<ListboxSelect>>", on_listbox_select)
     
-    # Configure the mark_task_done command for the button
-    mark_done_btn.config(command=mark_task_done)
+    # Configure the toggle_task_done command for the button
+    toggle_done_btn.config(command=toggle_task_done)
 
     # Select first not-done task when dialog opens
     first_not_done = find_first_not_done()
