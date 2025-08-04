@@ -20,6 +20,7 @@ This will be fixed at a later time.
 | [ADR-008](adr_008_matplotlib_statistics.md) | Matplotlib for Statistics Visualization | Accepted | 2025-08-03 |
 | [ADR-009](adr_009_event_driven_ui.md) | Event-Driven UI Architecture | Accepted | 2025-08-03 |
 | [ADR-010](adr_010_configuration_management.md) | Configuration Management Strategy | Accepted | 2025-08-03 |
+| [ADR-011](adr_011_unique_activity_ids.md) | Unique Activity IDs for Activity Identification | Accepted | 2025-08-04 |
 
 ## ADR Categories
 
@@ -38,6 +39,7 @@ This will be fixed at a later time.
 ### Implementation Strategies
 - **ADR-007**: Canvas Rendering - Timeline visualization approach
 - **ADR-010**: Configuration Management - Multi-layered config strategy
+- **ADR-011**: Unique Activity IDs - Activity identification and duplicate name resolution
 
 ## How to Use ADRs
 

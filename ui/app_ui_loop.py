@@ -70,14 +70,17 @@ def update_ui(app):
 
 def _refresh_active_card_if_undone_tasks(app, activity):
     """Refresh only active card to show blinking tasks count."""
+    if not activity:
+        return
+    
     tasks = activity.get("tasks", [])
     if not tasks:
         return
     
-    # Find the corresponding card object to check _tasks_done
+    # Find the corresponding card object to check _tasks_done using ID-based matching
+    activity_id = activity.get("id")
     for card_obj in getattr(app, 'cards', []):
-        if (card_obj.activity.get('name') == activity.get('name') and 
-            card_obj.activity.get('start_time') == activity.get('start_time')):
+        if activity_id and card_obj.activity.get('id') == activity_id:
             # Use _tasks_done if present, otherwise assume all tasks are undone
             tasks_done = getattr(card_obj, '_tasks_done', [False] * len(tasks))
             if any(not done for done in tasks_done):

@@ -78,14 +78,18 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
                     return  # User chose "No", stay in dialog
                 log_info(f"Removed {total_entries_to_remove} task entries for removed tasks")
         
-        # Update schedule and card activity
-        activity = app.find_activity_by_name(card_obj.activity["name"])  # Use original name for lookup
-        if activity:
-            activity["name"] = new_title
-            activity["description"] = new_desc
-            activity["tasks"] = new_tasks
+        # Update schedule and card activity using ID-based lookup
+        activity_id = card_obj.activity.get("id")
+        if activity_id:
+            activity = app.find_activity_by_id(activity_id)
+            if activity:
+                activity["name"] = new_title
+                activity["description"] = new_desc
+                activity["tasks"] = new_tasks
+            else:
+                log_error(f"Activity with ID '{activity_id}' not found in schedule.")
         else:
-            log_error(f"Activity '{card_obj.activity['name']}' not found in schedule.")
+            log_error(f"Activity '{card_obj.activity['name']}' has no ID - cannot update schedule.")
         card_obj.activity["name"] = new_title
         card_obj.activity["description"] = new_desc
         card_obj.activity["tasks"] = new_tasks

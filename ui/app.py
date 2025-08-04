@@ -4,6 +4,7 @@ from typing import Dict, List
 import yaml
 import json
 import os
+import uuid
 import utils.notification
 from constants import UIConstants
 from services.notification_service import NotificationService
@@ -75,6 +76,9 @@ class TimeboxApp(tk.Tk):
         
         # Store schedule reference
         self.schedule = schedule
+        
+        # Ensure all activities have unique IDs (migrate existing data)
+        self.ensure_activity_ids()
         
         # Create daily task entries for today if needed
         self._ensure_daily_task_entries()
@@ -331,12 +335,23 @@ class TimeboxApp(tk.Tk):
             self.schedule.remove(card_obj.to_dict())
             self.update_cards_after_size_change()
     
-    def find_activity_by_name(self, name):
-        """Find a schedule item by its name."""
+    def find_activity_by_id(self, activity_id):
+        """Find a schedule item by its unique ID."""
         for activity in self.schedule:
-            if activity["name"] == name:
+            if activity.get("id") == activity_id:
                 return activity
         return None
+    
+    def ensure_activity_ids(self):
+        """Ensure all activities have unique IDs, generating them if missing."""
+        for activity in self.schedule:
+            if "id" not in activity or not activity["id"]:
+                activity["id"] = str(uuid.uuid4())
+                log_info(f"Generated ID {activity['id']} for activity '{activity['name']}'")
+    
+    def generate_activity_id(self):
+        """Generate a new unique activity ID."""
+        return str(uuid.uuid4())
     
     def _ensure_daily_task_entries(self):
         """Ensure that task entries exist for today's tasks."""

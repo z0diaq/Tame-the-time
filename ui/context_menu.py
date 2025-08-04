@@ -58,7 +58,8 @@ def show_canvas_context_menu(app, event):
         activity = card_under_cursor.activity
         if 'tasks' not in activity or not activity['tasks']:
             # Fallback: try to find updated activity in schedule
-            schedule_activity = app.find_activity_by_name(card_under_cursor.activity["name"])
+            activity_id = card_under_cursor.activity.get("id")
+            schedule_activity = app.find_activity_by_id(activity_id) if activity_id else None
             if schedule_activity:
                 activity = schedule_activity
         
@@ -76,6 +77,7 @@ def show_canvas_context_menu(app, event):
             end_hour = app.start_hour + total_minutes // 60
             end_minute = total_minutes % 60
             activity = {
+                "id": app.generate_activity_id(),
                 "name": "New Task",
                 "description": [],
                 "start_time": f"{start_hour:02d}:{start_minute:02d}",

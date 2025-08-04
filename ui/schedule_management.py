@@ -25,6 +25,8 @@ def open_schedule(app):
         app.schedule.clear()
         # Load new schedule
         app.schedule.extend(new_schedule)
+        # Ensure all loaded activities have unique IDs
+        app.ensure_activity_ids()
         app.cards = app.create_task_cards()
         app.update_cards_after_size_change()
         app.last_action = datetime.now()

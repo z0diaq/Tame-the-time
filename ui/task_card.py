@@ -306,12 +306,16 @@ class TaskCard:
 
     def to_dict(self):
         """Convert the TaskCard to a dictionary representation."""
-        return {
+        result = {
             "name": self.activity["name"],
             "start_time": f"{self.start_hour:02d}:{self.start_minute:02d}",
             "end_time": f"{self.end_hour:02d}:{self.end_minute:02d}",
             "description": self.activity["description"]
         }
+        # Include ID if present in activity
+        if "id" in self.activity:
+            result["id"] = self.activity["id"]
+        return result
 
 def create_task_cards(
     canvas: Canvas,
