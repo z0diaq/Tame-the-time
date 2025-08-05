@@ -12,6 +12,10 @@ def format_gotify_message(activity: Dict) -> str:
 def send_gotify_notification(activity: Dict, is_delayed: bool = False) -> None:
     """Send a notification to Gotify."""
 
+    if not gotify_url:
+        log_error("Can't send Gotify notification - URL is not known.")
+        return
+
     message = format_gotify_message(activity)
     payload = {
         "title": f"{'Starting: ' if not is_delayed else ''}{activity['name']}",

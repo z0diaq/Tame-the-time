@@ -160,6 +160,10 @@ class TimeboxApp(tk.Tk):
         self.timeline_5m_ids = self.create_timeline(granularity=5)
         self.show_timeline(granularity=60)
         self.cards = self.create_task_cards()
+        
+        # Load task done states from database after cards are created
+        self._load_daily_task_entries()
+        
         self.skip_redraw = False  # Allow redraws after initial setup
         update_ui(self)
 
@@ -347,7 +351,7 @@ class TimeboxApp(tk.Tk):
         for activity in self.schedule:
             if "id" not in activity or not activity["id"]:
                 activity["id"] = str(uuid.uuid4())
-                log_info(f"Generated ID {activity['id']} for activity '{activity['name']}'")
+                log_debug(f"Generated ID {activity['id']} for activity '{activity['name']}'")
     
     def generate_activity_id(self):
         """Generate a new unique activity ID."""
@@ -362,6 +366,37 @@ class TimeboxApp(tk.Tk):
         except Exception as e:
             log_error(f"Failed to create daily task entries: {e}")
     
+    def _load_daily_task_entries(self):
+        """Load task done states for current date from database."""
+        try:
+            # Get task done states from database for today
+            done_states = self.task_tracking_service.get_task_done_states()
+            
+            if not done_states:
+                log_debug("No task done states found in database for today")
+                return
+            
+            # Update task cards with loaded done states
+            for card_obj in self.cards:
+                activity_name = card_obj.activity.get("name", "")
+                tasks = card_obj.activity.get("tasks", [])
+                
+                # Initialize _tasks_done if not present
+                if not hasattr(card_obj, '_tasks_done') or card_obj._tasks_done is None:
+                    card_obj._tasks_done = [False] * len(tasks)
+                
+                # Update done states from database
+                for i, task_name in enumerate(tasks):
+                    key = (activity_name, task_name)
+                    if key in done_states:
+                        card_obj._tasks_done[i] = done_states[key]
+                        log_debug(f"Loaded done state for '{task_name}': {done_states[key]}")
+            
+            log_info(f"Loaded {len(done_states)} task done states from database")
+            
+        except Exception as e:
+            log_error(f"Failed to load daily task entries: {e}")
+
     def normalize_tasks_done(self, card_obj):
         """Ensure that the _tasks_done list matches the number of tasks in the card's activity."""
         if not hasattr(card_obj, '_tasks_done') or card_obj._tasks_done is None:
