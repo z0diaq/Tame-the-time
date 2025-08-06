@@ -369,7 +369,7 @@ class TimeboxApp(tk.Tk):
     def _load_daily_task_entries(self):
         """Load task done states for current date from database."""
         try:
-            # Get task done states from database for today
+            # Get task done states from database for today (UUID -> bool mapping)
             done_states = self.task_tracking_service.get_task_done_states()
             
             if not done_states:
@@ -378,19 +378,34 @@ class TimeboxApp(tk.Tk):
             
             # Update task cards with loaded done states
             for card_obj in self.cards:
-                activity_name = card_obj.activity.get("name", "")
+                activity_id = card_obj.activity.get("id")
+                if not activity_id:
+                    log_debug(f"Activity '{card_obj.activity.get('name', 'Unknown')}' has no ID, skipping task loading")
+                    continue
+                    
                 tasks = card_obj.activity.get("tasks", [])
                 
                 # Initialize _tasks_done if not present
                 if not hasattr(card_obj, '_tasks_done') or card_obj._tasks_done is None:
                     card_obj._tasks_done = [False] * len(tasks)
                 
-                # Update done states from database
+                # Initialize _task_uuids to store UUID mappings for each task
+                if not hasattr(card_obj, '_task_uuids') or card_obj._task_uuids is None:
+                    card_obj._task_uuids = [None] * len(tasks)
+                
+                # Update done states from database using UUIDs
                 for i, task_name in enumerate(tasks):
-                    key = (activity_name, task_name)
-                    if key in done_states:
-                        card_obj._tasks_done[i] = done_states[key]
-                        log_debug(f"Loaded done state for '{task_name}': {done_states[key]}")
+                    # Get task UUIDs for this activity and task name
+                    task_uuids = self.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
+                    
+                    if task_uuids:
+                        # Use the first UUID found (there should typically be only one per day)
+                        task_uuid = task_uuids[0]
+                        card_obj._task_uuids[i] = task_uuid
+                        
+                        if task_uuid in done_states:
+                            card_obj._tasks_done[i] = done_states[task_uuid]
+                            log_debug(f"Loaded done state for '{task_name}' (UUID: {task_uuid}): {done_states[task_uuid]}")
             
             log_info(f"Loaded {len(done_states)} task done states from database")
             
@@ -398,16 +413,28 @@ class TimeboxApp(tk.Tk):
             log_error(f"Failed to load daily task entries: {e}")
 
     def normalize_tasks_done(self, card_obj):
-        """Ensure that the _tasks_done list matches the number of tasks in the card's activity."""
+        """Ensure that the _tasks_done and _task_uuids lists match the number of tasks in the card's activity."""
+        tasks_length = len(card_obj.activity.get('tasks', []))
+        
+        # Normalize _tasks_done
         if not hasattr(card_obj, '_tasks_done') or card_obj._tasks_done is None:
-            card_obj._tasks_done = [False] * len(card_obj.activity.get('tasks', []))
+            card_obj._tasks_done = [False] * tasks_length
         else:
-            tasks_length = len(card_obj.activity.get('tasks', []))
             tasks_done_length = len(card_obj._tasks_done)
             if tasks_done_length < tasks_length:
                 card_obj._tasks_done.extend([False] * (tasks_length - tasks_done_length))
             elif tasks_done_length > tasks_length:
                 card_obj._tasks_done = card_obj._tasks_done[:tasks_length]
+        
+        # Normalize _task_uuids
+        if not hasattr(card_obj, '_task_uuids') or card_obj._task_uuids is None:
+            card_obj._task_uuids = [None] * tasks_length
+        else:
+            task_uuids_length = len(card_obj._task_uuids)
+            if task_uuids_length < tasks_length:
+                card_obj._task_uuids.extend([None] * (tasks_length - task_uuids_length))
+            elif task_uuids_length > tasks_length:
+                card_obj._task_uuids = card_obj._task_uuids[:tasks_length]
 
     def bind_mouse_actions(self, card):
         """Bind mouse actions to the card."""

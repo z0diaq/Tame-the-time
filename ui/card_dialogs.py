@@ -63,20 +63,30 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
         
         # Handle removed tasks - ask for confirmation and remove from database
         if removed_tasks and hasattr(app, 'task_tracking_service'):
-            total_entries_to_remove = 0
-            for task_name in removed_tasks:
-                count = app.task_tracking_service.remove_task_entries(card_obj.activity["name"], task_name)
-                total_entries_to_remove += count
-            
-            if total_entries_to_remove > 0:
-                result = messagebox.askyesno(
-                    "Remove Task History",
-                    f"Removing tasks will delete {total_entries_to_remove} historical entries. Continue?",
-                    parent=edit_win
-                )
-                if not result:
-                    return  # User chose "No", stay in dialog
-                log_info(f"Removed {total_entries_to_remove} task entries for removed tasks")
+            activity_id = card_obj.activity.get("id")
+            if not activity_id:
+                log_error(f"Activity '{card_obj.activity.get('name', 'Unknown')}' has no ID, cannot remove task entries")
+            else:
+                total_entries_to_remove = 0
+                task_uuids_to_remove = []
+                
+                for task_name in removed_tasks:
+                    # Get all UUIDs for this task across all dates
+                    task_uuids = app.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
+                    for task_uuid in task_uuids:
+                        count = app.task_tracking_service.remove_task_entries(task_uuid)
+                        total_entries_to_remove += count
+                        task_uuids_to_remove.append(task_uuid)
+                
+                if total_entries_to_remove > 0:
+                    result = messagebox.askyesno(
+                        "Remove Task History",
+                        f"Removing tasks will delete {total_entries_to_remove} historical entries. Continue?",
+                        parent=edit_win
+                    )
+                    if not result:
+                        return  # User chose "No", stay in dialog
+                    log_info(f"Removed {total_entries_to_remove} task entries for removed tasks")
         
         # Update schedule and card activity using ID-based lookup
         activity_id = card_obj.activity.get("id")
@@ -96,9 +106,16 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
         
         # Handle added tasks - add to database
         if added_tasks and hasattr(app, 'task_tracking_service'):
-            for task_name in added_tasks:
-                app.task_tracking_service.add_new_task_entry(new_title, task_name)
-                log_info(f"Added new task entry for '{task_name}' in activity '{new_title}'")
+            activity_id = card_obj.activity.get("id")
+            if not activity_id:
+                log_error(f"Activity '{new_title}' has no ID, cannot add task entries")
+            else:
+                for task_name in added_tasks:
+                    task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task_name)
+                    if task_uuid:
+                        log_info(f"Added new task entry for '{task_name}' with UUID '{task_uuid}' in activity '{new_title}'")
+                    else:
+                        log_error(f"Failed to add task entry for '{task_name}' in activity '{new_title}'")
 
         # Normalize tasks_done list
         app.normalize_tasks_done(card_obj)
@@ -147,11 +164,18 @@ def open_card_tasks_window(app, card_obj):
     if hasattr(app, 'task_tracking_service'):
         try:
             done_states = app.task_tracking_service.get_task_done_states()
-            tasks = card_obj.activity.get("tasks", [])
-            for i, task_name in enumerate(tasks):
-                key = (card_obj.activity["name"], task_name)
-                if key in done_states:
-                    card_obj._tasks_done[i] = done_states[key]
+            activity_id = card_obj.activity.get("id")
+            if activity_id:
+                tasks = card_obj.activity.get("tasks", [])
+                for i, task_name in enumerate(tasks):
+                    # Get task UUIDs for this activity and task name
+                    task_uuids = app.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
+                    if task_uuids and task_uuids[0] in done_states:
+                        card_obj._tasks_done[i] = done_states[task_uuids[0]]
+                        # Store UUID for later use
+                        if not hasattr(card_obj, '_task_uuids'):
+                            card_obj._task_uuids = [None] * len(tasks)
+                        card_obj._task_uuids[i] = task_uuids[0]
         except Exception as e:
             log_error(f"Failed to load task done states from database: {e}")
 
@@ -205,13 +229,28 @@ def open_card_tasks_window(app, card_obj):
                 
                 # Update database if task tracking service is available
                 if hasattr(app, 'task_tracking_service'):
-                    success = app.task_tracking_service.mark_task_done(
-                        card_obj.activity["name"], task
-                    )
-                    if success:
-                        log_info(f"Marked task '{task}' as done in database")
+                    # Get or create task UUID for this task
+                    task_uuid = None
+                    if hasattr(card_obj, '_task_uuids') and card_obj._task_uuids and idx < len(card_obj._task_uuids):
+                        task_uuid = card_obj._task_uuids[idx]
+                    
+                    if not task_uuid:
+                        # Create new task entry if UUID doesn't exist
+                        activity_id = card_obj.activity.get("id")
+                        if activity_id:
+                            task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task)
+                            if not hasattr(card_obj, '_task_uuids'):
+                                card_obj._task_uuids = [None] * len(tasks)
+                            card_obj._task_uuids[idx] = task_uuid
+                    
+                    if task_uuid:
+                        success = app.task_tracking_service.mark_task_done(task_uuid)
+                        if success:
+                            log_info(f"Marked task '{task}' (UUID: {task_uuid}) as done in database")
+                        else:
+                            log_error(f"Failed to mark task '{task}' (UUID: {task_uuid}) as done in database")
                     else:
-                        log_error(f"Failed to mark task '{task}' as done in database")
+                        log_error(f"Could not get or create UUID for task '{task}'")
                 
                 # Find and select next not-done task
                 next_not_done = find_first_not_done()
@@ -230,13 +269,19 @@ def open_card_tasks_window(app, card_obj):
                 
                 # Update database if task tracking service is available
                 if hasattr(app, 'task_tracking_service'):
-                    success = app.task_tracking_service.mark_task_undone(
-                        card_obj.activity["name"], task
-                    )
-                    if success:
-                        log_info(f"Marked task '{task}' as undone in database")
+                    # Get task UUID for this task
+                    task_uuid = None
+                    if hasattr(card_obj, '_task_uuids') and card_obj._task_uuids and idx < len(card_obj._task_uuids):
+                        task_uuid = card_obj._task_uuids[idx]
+                    
+                    if task_uuid:
+                        success = app.task_tracking_service.mark_task_undone(task_uuid)
+                        if success:
+                            log_info(f"Marked task '{task}' (UUID: {task_uuid}) as undone in database")
+                        else:
+                            log_error(f"Failed to mark task '{task}' (UUID: {task_uuid}) as undone in database")
                     else:
-                        log_error(f"Failed to mark task '{task}' as undone in database")
+                        log_error(f"Could not find UUID for task '{task}' to mark as undone")
                 
                 # Keep current selection
                 task_listbox.selection_set(idx)

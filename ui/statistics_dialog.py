@@ -139,9 +139,20 @@ class TaskStatisticsDialog:
             
             self.task_listbox.delete(0, tk.END)
             
-            for activity_name, task_name in unique_tasks:
-                display_text = f"{activity_name} - {task_name}"
+            # Store task info for later use (UUID mapping)
+            self.task_data = []
+            
+            for task_info in unique_tasks:
+                task_uuid = task_info['task_uuid']
+                activity_id = task_info['activity_id']
+                task_name = task_info['task_name']
+                
+                # Display format: task_name (we could add activity name if needed)
+                display_text = task_name
                 self.task_listbox.insert(tk.END, display_text)
+                
+                # Store the full task info for chart generation
+                self.task_data.append(task_info)
                 
             log_debug(f"Populated task list with {len(unique_tasks)} tasks")
             
@@ -191,15 +202,15 @@ class TaskStatisticsDialog:
                 self._show_empty_chart()
                 return
                 
-            # Parse selected tasks
-            selected_tasks = []
-            unique_tasks = self.task_service.get_all_unique_tasks()
+            # Parse selected tasks using stored task data
+            selected_task_uuids = []
             
             for index in selected_indices:
-                if index < len(unique_tasks):
-                    selected_tasks.append(unique_tasks[index])
+                if index < len(self.task_data):
+                    task_info = self.task_data[index]
+                    selected_task_uuids.append(task_info['task_uuid'])
             
-            if not selected_tasks:
+            if not selected_task_uuids:
                 self._show_empty_chart()
                 return
                 
@@ -207,9 +218,9 @@ class TaskStatisticsDialog:
             grouping = self.grouping_var.get()
             ignore_weekends = self.ignore_weekends_var.get()
             
-            # Get statistics data
+            # Get statistics data using task UUIDs
             stats_data = self.task_service.get_task_statistics(
-                selected_tasks, grouping, ignore_weekends, limit=10
+                selected_task_uuids, grouping, ignore_weekends, limit=10
             )
             
             if not stats_data:

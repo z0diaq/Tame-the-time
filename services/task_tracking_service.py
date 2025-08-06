@@ -5,6 +5,7 @@ Tracks task completion status across days for statistics and progress monitoring
 
 import sqlite3
 import os
+import uuid
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Tuple, Optional
 from utils.logging import log_debug, log_error, log_info
@@ -26,12 +27,13 @@ class TaskTrackingService:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Create tasks table with optimized structure
+                # Create tasks table with UUID-based structure
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS task_entries (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        activity_name TEXT NOT NULL,
-                        task_name TEXT NOT NULL,
+                        task_uuid TEXT NOT NULL,  -- UUID to identify the task
+                        activity_id TEXT NOT NULL,  -- UUID of the parent activity
+                        task_name TEXT NOT NULL,  -- Human-readable task name for display
                         date TEXT NOT NULL,  -- YYYY-MM-DD format
                         timestamp TEXT NOT NULL,  -- ISO format with time
                         done_state BOOLEAN NOT NULL DEFAULT 0,
@@ -46,8 +48,12 @@ class TaskTrackingService:
                     ON task_entries(date)
                 ''')
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_task_entries_activity_task 
-                    ON task_entries(activity_name, task_name)
+                    CREATE INDEX IF NOT EXISTS idx_task_entries_task_uuid 
+                    ON task_entries(task_uuid)
+                ''')
+                cursor.execute('''
+                    CREATE INDEX IF NOT EXISTS idx_task_entries_activity_id 
+                    ON task_entries(activity_id)
                 ''')
                 cursor.execute('''
                     CREATE INDEX IF NOT EXISTS idx_task_entries_done_state 
@@ -64,6 +70,7 @@ class TaskTrackingService:
     def create_daily_task_entries(self, activities: List[Dict], target_date: date = None) -> int:
         """
         Create task entries for all tasks in activities for a specific date.
+        Each task gets a unique UUID for identification.
         Returns the number of entries created.
         """
         if target_date is None:
@@ -78,26 +85,33 @@ class TaskTrackingService:
                 cursor = conn.cursor()
                 
                 for activity in activities:
-                    activity_name = activity.get("name", "")
+                    activity_id = activity.get("id")
+                    if not activity_id:
+                        log_error(f"Activity '{activity.get('name', 'Unknown')}' has no ID, skipping")
+                        continue
+                        
                     tasks = activity.get("tasks", [])
                     
                     for task_name in tasks:
                         if not task_name.strip():
                             continue
-                            
-                        # Check if entry already exists for this date
+                        
+                        # Generate a unique UUID for this task instance
+                        task_uuid = str(uuid.uuid4())
+                        
+                        # Check if entry already exists for this activity and task on this date
                         cursor.execute('''
                             SELECT id FROM task_entries 
-                            WHERE activity_name = ? AND task_name = ? AND date = ?
-                        ''', (activity_name, task_name, date_str))
+                            WHERE activity_id = ? AND task_name = ? AND date = ?
+                        ''', (activity_id, task_name, date_str))
                         
                         if cursor.fetchone() is None:
-                            # Create new entry
+                            # Create new entry with UUID
                             cursor.execute('''
                                 INSERT INTO task_entries 
-                                (activity_name, task_name, date, timestamp, done_state)
-                                VALUES (?, ?, ?, ?, 0)
-                            ''', (activity_name, task_name, date_str, timestamp))
+                                (task_uuid, activity_id, task_name, date, timestamp, done_state)
+                                VALUES (?, ?, ?, ?, ?, 0)
+                            ''', (task_uuid, activity_id, task_name, date_str, timestamp))
                             entries_created += 1
                 
                 conn.commit()
@@ -108,7 +122,7 @@ class TaskTrackingService:
             log_error(f"Failed to create daily task entries: {e}")
             raise
     
-    def mark_task_done(self, activity_name: str, task_name: str, target_date: date = None) -> bool:
+    def mark_task_done(self, task_uuid: str, target_date: date = None) -> bool:
         """
         Mark a task as done for a specific date and update timestamp.
         Returns True if successful, False otherwise.
@@ -126,22 +140,22 @@ class TaskTrackingService:
                 cursor.execute('''
                     UPDATE task_entries 
                     SET done_state = 1, timestamp = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE activity_name = ? AND task_name = ? AND date = ?
-                ''', (timestamp, activity_name, task_name, date_str))
+                    WHERE task_uuid = ? AND date = ?
+                ''', (timestamp, task_uuid, date_str))
                 
                 if cursor.rowcount > 0:
                     conn.commit()
-                    log_debug(f"Marked task '{task_name}' as done for {date_str}")
+                    log_debug(f"Marked task with UUID '{task_uuid}' as done for {date_str}")
                     return True
                 else:
-                    log_error(f"Task '{task_name}' not found for {date_str}")
+                    log_error(f"Task with UUID '{task_uuid}' not found for {date_str}")
                     return False
                     
         except sqlite3.Error as e:
             log_error(f"Failed to mark task as done: {e}")
             return False
     
-    def mark_task_undone(self, activity_name: str, task_name: str, target_date: date = None) -> bool:
+    def mark_task_undone(self, task_uuid: str, target_date: date = None) -> bool:
         """
         Mark a task as not done for a specific date and update timestamp.
         Returns True if successful, False otherwise.
@@ -159,64 +173,66 @@ class TaskTrackingService:
                 cursor.execute('''
                     UPDATE task_entries 
                     SET done_state = 0, timestamp = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE activity_name = ? AND task_name = ? AND date = ?
-                ''', (timestamp, activity_name, task_name, date_str))
+                    WHERE task_uuid = ? AND date = ?
+                ''', (timestamp, task_uuid, date_str))
                 
                 if cursor.rowcount > 0:
                     conn.commit()
-                    log_debug(f"Marked task '{task_name}' as undone for {date_str}")
+                    log_debug(f"Marked task with UUID '{task_uuid}' as undone for {date_str}")
                     return True
                 else:
-                    log_error(f"Task '{task_name}' not found for {date_str}")
+                    log_error(f"Task with UUID '{task_uuid}' not found for {date_str}")
                     return False
                     
         except sqlite3.Error as e:
             log_error(f"Failed to mark task as undone: {e}")
             return False
     
-    def add_new_task_entry(self, activity_name: str, task_name: str, target_date: date = None) -> bool:
+    def add_new_task_entry(self, activity_id: str, task_name: str, target_date: date = None) -> str:
         """
         Add a new task entry for a specific date.
-        Returns True if successful, False otherwise.
+        Returns the task UUID if successful, None otherwise.
         """
         if target_date is None:
             target_date = date.today()
         
         date_str = target_date.isoformat()
         timestamp = datetime.now().isoformat()
+        task_uuid = str(uuid.uuid4())
         
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Check if entry already exists
+                # Check if entry already exists for this activity and task on this date
                 cursor.execute('''
-                    SELECT id FROM task_entries 
-                    WHERE activity_name = ? AND task_name = ? AND date = ?
-                ''', (activity_name, task_name, date_str))
+                    SELECT task_uuid FROM task_entries 
+                    WHERE activity_id = ? AND task_name = ? AND date = ?
+                ''', (activity_id, task_name, date_str))
                 
-                if cursor.fetchone() is not None:
+                existing = cursor.fetchone()
+                if existing is not None:
                     log_debug(f"Task entry already exists for '{task_name}' on {date_str}")
-                    return True
+                    return existing[0]  # Return existing UUID
                 
-                # Create new entry
+                # Create new entry with UUID
                 cursor.execute('''
                     INSERT INTO task_entries 
-                    (activity_name, task_name, date, timestamp, done_state)
-                    VALUES (?, ?, ?, ?, 0)
-                ''', (activity_name, task_name, date_str, timestamp))
+                    (task_uuid, activity_id, task_name, date, timestamp, done_state)
+                    VALUES (?, ?, ?, ?, ?, 0)
+                ''', (task_uuid, activity_id, task_name, date_str, timestamp))
                 
                 conn.commit()
-                log_info(f"Added new task entry '{task_name}' for {date_str}")
-                return True
+                log_info(f"Added new task entry '{task_name}' with UUID '{task_uuid}' for {date_str}")
+                return task_uuid
                 
         except sqlite3.Error as e:
             log_error(f"Failed to add new task entry: {e}")
-            return False
+            return None
     
-    def remove_task_entries(self, activity_name: str, task_name: str) -> int:
+    def remove_task_entries(self, task_uuid: str) -> int:
         """
-        Remove all entries for a specific task across all dates.
+        Remove all entries for a specific task UUID across all dates.
         Returns the number of entries removed.
         """
         try:
@@ -226,8 +242,8 @@ class TaskTrackingService:
                 # Count entries to be removed
                 cursor.execute('''
                     SELECT COUNT(*) FROM task_entries 
-                    WHERE activity_name = ? AND task_name = ?
-                ''', (activity_name, task_name))
+                    WHERE task_uuid = ?
+                ''', (task_uuid,))
                 
                 count = cursor.fetchone()[0]
                 
@@ -235,11 +251,11 @@ class TaskTrackingService:
                     # Remove entries
                     cursor.execute('''
                         DELETE FROM task_entries 
-                        WHERE activity_name = ? AND task_name = ?
-                    ''', (activity_name, task_name))
+                        WHERE task_uuid = ?
+                    ''', (task_uuid,))
                     
                     conn.commit()
-                    log_info(f"Removed {count} entries for task '{task_name}'")
+                    log_info(f"Removed {count} entries for task UUID '{task_uuid}'")
                 
                 return count
                 
@@ -247,10 +263,10 @@ class TaskTrackingService:
             log_error(f"Failed to remove task entries: {e}")
             return 0
     
-    def get_task_done_states(self, target_date: date = None) -> Dict[Tuple[str, str], bool]:
+    def get_task_done_states(self, target_date: date = None) -> Dict[str, bool]:
         """
         Get done states for all tasks on a specific date.
-        Returns dict with (activity_name, task_name) as key and done_state as value.
+        Returns dict with task_uuid as key and done_state as value.
         """
         if target_date is None:
             target_date = date.today()
@@ -262,15 +278,15 @@ class TaskTrackingService:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    SELECT activity_name, task_name, done_state 
+                    SELECT task_uuid, done_state 
                     FROM task_entries 
                     WHERE date = ?
                 ''', (date_str,))
                 
                 results = {}
                 for row in cursor.fetchall():
-                    activity_name, task_name, done_state = row
-                    results[(activity_name, task_name)] = bool(done_state)
+                    task_uuid, done_state = row
+                    results[task_uuid] = bool(done_state)
                 
                 return results
                 
@@ -278,41 +294,50 @@ class TaskTrackingService:
             log_error(f"Failed to get task done states: {e}")
             return {}
     
-    def get_all_unique_tasks(self) -> List[Tuple[str, str]]:
+    def get_all_unique_tasks(self) -> List[Dict[str, str]]:
         """
-        Get all unique task combinations (activity_name, task_name) from database.
-        Returns list of tuples.
+        Get all unique tasks from database with their metadata.
+        Returns list of dictionaries with task_uuid, activity_id, and task_name.
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    SELECT DISTINCT activity_name, task_name 
+                    SELECT DISTINCT task_uuid, activity_id, task_name 
                     FROM task_entries 
-                    ORDER BY activity_name, task_name
+                    ORDER BY task_name
                 ''')
                 
-                return cursor.fetchall()
+                results = []
+                for row in cursor.fetchall():
+                    task_uuid, activity_id, task_name = row
+                    results.append({
+                        'task_uuid': task_uuid,
+                        'activity_id': activity_id,
+                        'task_name': task_name
+                    })
+                
+                return results
                 
         except sqlite3.Error as e:
             log_error(f"Failed to get unique tasks: {e}")
             return []
     
-    def get_task_statistics(self, task_list: List[Tuple[str, str]], 
+    def get_task_statistics(self, task_list: List[str], 
                           grouping: str = "Day", ignore_weekends: bool = False,
                           limit: int = 10) -> Dict[str, List[Dict]]:
         """
         Get statistics for specified tasks.
         
         Args:
-            task_list: List of (activity_name, task_name) tuples
+            task_list: List of task UUIDs
             grouping: "Day" or "Week"
             ignore_weekends: Skip Saturday and Sunday data
             limit: Maximum number of data points to return
         
         Returns:
-            Dict with task keys and list of data points
+            Dict with task UUIDs as keys and list of data points as values
         """
         if not task_list:
             return {}
@@ -323,17 +348,15 @@ class TaskTrackingService:
                 
                 results = {}
                 
-                for activity_name, task_name in task_list:
-                    task_key = f"{activity_name} - {task_name}"
-                    
+                for task_uuid in task_list:
                     if grouping == "Day":
-                        data = self._get_daily_statistics(cursor, activity_name, task_name, 
+                        data = self._get_daily_statistics(cursor, task_uuid, 
                                                         ignore_weekends, limit)
                     else:  # Week
-                        data = self._get_weekly_statistics(cursor, activity_name, task_name, 
+                        data = self._get_weekly_statistics(cursor, task_uuid, 
                                                          ignore_weekends, limit)
                     
-                    results[task_key] = data
+                    results[task_uuid] = data
                 
                 return results
                 
@@ -341,7 +364,7 @@ class TaskTrackingService:
             log_error(f"Failed to get task statistics: {e}")
             return {}
     
-    def _get_daily_statistics(self, cursor, activity_name: str, task_name: str,
+    def _get_daily_statistics(self, cursor, task_uuid: str,
                             ignore_weekends: bool, limit: int) -> List[Dict]:
         """Get daily statistics for a task."""
         # Get last N days of data
@@ -351,10 +374,10 @@ class TaskTrackingService:
         cursor.execute('''
             SELECT date, done_state 
             FROM task_entries 
-            WHERE activity_name = ? AND task_name = ? 
+            WHERE task_uuid = ? 
             AND date >= ? AND date <= ?
             ORDER BY date DESC
-        ''', (activity_name, task_name, start_date.isoformat(), end_date.isoformat()))
+        ''', (task_uuid, start_date.isoformat(), end_date.isoformat()))
         
         data = []
         for row in cursor.fetchall():
@@ -376,7 +399,7 @@ class TaskTrackingService:
         
         return data[:limit]
     
-    def _get_weekly_statistics(self, cursor, activity_name: str, task_name: str,
+    def _get_weekly_statistics(self, cursor, task_uuid: str,
                              ignore_weekends: bool, limit: int) -> List[Dict]:
         """Get weekly statistics for a task."""
         # Get data for last N weeks
@@ -386,10 +409,10 @@ class TaskTrackingService:
         cursor.execute('''
             SELECT date, done_state 
             FROM task_entries 
-            WHERE activity_name = ? AND task_name = ? 
+            WHERE task_uuid = ? 
             AND date >= ? AND date <= ?
             ORDER BY date
-        ''', (activity_name, task_name, start_date.isoformat(), end_date.isoformat()))
+        ''', (task_uuid, start_date.isoformat(), end_date.isoformat()))
         
         # Group by week (Monday to Sunday)
         weekly_data = {}
@@ -430,6 +453,62 @@ class TaskTrackingService:
                 break
         
         return data[:limit]
+    
+    def get_task_info_by_uuid(self, task_uuid: str) -> Optional[Dict[str, str]]:
+        """
+        Get task information by UUID.
+        Returns dict with task_uuid, activity_id, and task_name, or None if not found.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT DISTINCT task_uuid, activity_id, task_name 
+                    FROM task_entries 
+                    WHERE task_uuid = ?
+                    LIMIT 1
+                ''', (task_uuid,))
+                
+                row = cursor.fetchone()
+                if row:
+                    task_uuid, activity_id, task_name = row
+                    return {
+                        'task_uuid': task_uuid,
+                        'activity_id': activity_id,
+                        'task_name': task_name
+                    }
+                return None
+                
+        except sqlite3.Error as e:
+            log_error(f"Failed to get task info by UUID: {e}")
+            return None
+    
+    def get_task_uuids_by_activity_and_name(self, activity_id: str, task_name: str, target_date: date = None) -> List[str]:
+        """
+        Get task UUIDs for a specific activity and task name on a given date.
+        Returns list of task UUIDs.
+        """
+        if target_date is None:
+            target_date = date.today()
+        
+        date_str = target_date.isoformat()
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT task_uuid 
+                    FROM task_entries 
+                    WHERE activity_id = ? AND task_name = ? AND date = ?
+                ''', (activity_id, task_name, date_str))
+                
+                return [row[0] for row in cursor.fetchall()]
+                
+        except sqlite3.Error as e:
+            log_error(f"Failed to get task UUIDs: {e}")
+            return []
     
     def check_duplicate_task_names(self, activities: List[Dict]) -> List[Tuple[str, List[str]]]:
         """
