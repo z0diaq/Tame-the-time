@@ -149,6 +149,20 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
 
 def open_card_tasks_window(app, card_obj):
     """Open a dialog to edit the tasks for a card."""
+    # Check if the activity has unsaved tasks
+    if hasattr(app, 'task_tracking_service'):
+        if app.task_tracking_service.has_unsaved_tasks(card_obj.activity):
+            unsaved_tasks = app.task_tracking_service.get_unsaved_tasks(card_obj.activity)
+            unsaved_list = "\n".join([f"• {task}" for task in unsaved_tasks])
+            
+            messagebox.showwarning(
+                "Unsaved Tasks",
+                f"This activity contains unsaved tasks, please save schedule first.\n\n"
+                f"Unsaved tasks:\n{unsaved_list}",
+                parent=app
+            )
+            return  # Don't open the dialog
+    
     tasks_win = tk.Toplevel(app)
     tasks_win.title(f"Tasks for {card_obj.activity['name']}")
     tasks_win.geometry("400x350")

@@ -27,18 +27,29 @@ class TaskTrackingService:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Create tasks table with UUID-based structure
+                # Create task_to_uuid mapping table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS task_to_uuid (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        task_uuid TEXT NOT NULL UNIQUE,  -- UUID to identify the task
+                        activity_id TEXT NOT NULL,  -- UUID of the parent activity
+                        task_name TEXT NOT NULL,  -- Human-readable task name
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(activity_id, task_name)  -- Ensure unique task names per activity
+                    )
+                ''')
+                
+                # Create simplified task_entries table (only UUID and completion data)
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS task_entries (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        task_uuid TEXT NOT NULL,  -- UUID to identify the task
-                        activity_id TEXT NOT NULL,  -- UUID of the parent activity
-                        task_name TEXT NOT NULL,  -- Human-readable task name for display
+                        task_uuid TEXT NOT NULL,  -- Reference to task_to_uuid.task_uuid
                         date TEXT NOT NULL,  -- YYYY-MM-DD format
                         timestamp TEXT NOT NULL,  -- ISO format with time
                         done_state BOOLEAN NOT NULL DEFAULT 0,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (task_uuid) REFERENCES task_to_uuid(task_uuid)
                     )
                 ''')
                 
@@ -52,12 +63,16 @@ class TaskTrackingService:
                     ON task_entries(task_uuid)
                 ''')
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_task_entries_activity_id 
-                    ON task_entries(activity_id)
-                ''')
-                cursor.execute('''
                     CREATE INDEX IF NOT EXISTS idx_task_entries_done_state 
                     ON task_entries(done_state)
+                ''')
+                cursor.execute('''
+                    CREATE INDEX IF NOT EXISTS idx_task_to_uuid_activity_id 
+                    ON task_to_uuid(activity_id)
+                ''')
+                cursor.execute('''
+                    CREATE INDEX IF NOT EXISTS idx_task_to_uuid_task_name 
+                    ON task_to_uuid(task_name)
                 ''')
                 
                 conn.commit()
@@ -69,8 +84,8 @@ class TaskTrackingService:
     
     def create_daily_task_entries(self, activities: List[Dict], target_date: date = None) -> int:
         """
-        Create task entries for all tasks in activities for a specific date.
-        Each task gets a unique UUID for identification.
+        Create task entries for all saved tasks for a specific date.
+        Only creates entries for tasks that exist in the task_to_uuid table.
         Returns the number of entries created.
         """
         if target_date is None:
@@ -96,22 +111,25 @@ class TaskTrackingService:
                         if not task_name.strip():
                             continue
                         
-                        # Generate a unique UUID for this task instance
-                        task_uuid = str(uuid.uuid4())
+                        # Get task UUID from task_to_uuid table (only for saved tasks)
+                        task_uuid = self.get_task_uuid(activity_id, task_name)
+                        if not task_uuid:
+                            log_debug(f"Task '{task_name}' not found in database, skipping daily entry creation")
+                            continue
                         
-                        # Check if entry already exists for this activity and task on this date
+                        # Check if entry already exists for this task on this date
                         cursor.execute('''
                             SELECT id FROM task_entries 
-                            WHERE activity_id = ? AND task_name = ? AND date = ?
-                        ''', (activity_id, task_name, date_str))
+                            WHERE task_uuid = ? AND date = ?
+                        ''', (task_uuid, date_str))
                         
                         if cursor.fetchone() is None:
-                            # Create new entry with UUID
+                            # Create new entry
                             cursor.execute('''
                                 INSERT INTO task_entries 
-                                (task_uuid, activity_id, task_name, date, timestamp, done_state)
-                                VALUES (?, ?, ?, ?, ?, 0)
-                            ''', (task_uuid, activity_id, task_name, date_str, timestamp))
+                                (task_uuid, date, timestamp, done_state)
+                                VALUES (?, ?, ?, 0)
+                            ''', (task_uuid, date_str, timestamp))
                             entries_created += 1
                 
                 conn.commit()
@@ -191,6 +209,7 @@ class TaskTrackingService:
     def add_new_task_entry(self, activity_id: str, task_name: str, target_date: date = None) -> str:
         """
         Add a new task entry for a specific date.
+        First gets the task UUID from task_to_uuid table, then creates entry in task_entries.
         Returns the task UUID if successful, None otherwise.
         """
         if target_date is None:
@@ -198,29 +217,34 @@ class TaskTrackingService:
         
         date_str = target_date.isoformat()
         timestamp = datetime.now().isoformat()
-        task_uuid = str(uuid.uuid4())
         
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Check if entry already exists for this activity and task on this date
+                # First, get the task UUID from task_to_uuid table
+                task_uuid = self.get_task_uuid(activity_id, task_name)
+                if not task_uuid:
+                    log_error(f"Could not get or create UUID for task '{task_name}'")
+                    return None
+                
+                # Check if entry already exists for this task UUID on this date
                 cursor.execute('''
                     SELECT task_uuid FROM task_entries 
-                    WHERE activity_id = ? AND task_name = ? AND date = ?
-                ''', (activity_id, task_name, date_str))
+                    WHERE task_uuid = ? AND date = ?
+                ''', (task_uuid, date_str))
                 
                 existing = cursor.fetchone()
                 if existing is not None:
                     log_debug(f"Task entry already exists for '{task_name}' on {date_str}")
                     return existing[0]  # Return existing UUID
                 
-                # Create new entry with UUID
+                # Create new entry with UUID (only task_uuid, date, timestamp, done_state)
                 cursor.execute('''
                     INSERT INTO task_entries 
-                    (task_uuid, activity_id, task_name, date, timestamp, done_state)
-                    VALUES (?, ?, ?, ?, ?, 0)
-                ''', (task_uuid, activity_id, task_name, date_str, timestamp))
+                    (task_uuid, date, timestamp, done_state)
+                    VALUES (?, ?, ?, 0)
+                ''', (task_uuid, date_str, timestamp))
                 
                 conn.commit()
                 log_info(f"Added new task entry '{task_name}' with UUID '{task_uuid}' for {date_str}")
@@ -296,7 +320,7 @@ class TaskTrackingService:
     
     def get_all_unique_tasks(self) -> List[Dict[str, str]]:
         """
-        Get all unique tasks from database with their metadata.
+        Get all unique tasks from task_to_uuid table with their metadata.
         Returns list of dictionaries with task_uuid, activity_id, and task_name.
         """
         try:
@@ -304,8 +328,8 @@ class TaskTrackingService:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    SELECT DISTINCT task_uuid, activity_id, task_name 
-                    FROM task_entries 
+                    SELECT task_uuid, activity_id, task_name 
+                    FROM task_to_uuid 
                     ORDER BY task_name
                 ''')
                 
@@ -454,9 +478,153 @@ class TaskTrackingService:
         
         return data[:limit]
     
+    def register_task_uuid(self, activity_id: str, task_name: str) -> str:
+        """
+        Register a task in the task_to_uuid mapping table and return its UUID.
+        If the task already exists, return the existing UUID.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Check if task already exists
+                cursor.execute('''
+                    SELECT task_uuid FROM task_to_uuid 
+                    WHERE activity_id = ? AND task_name = ?
+                ''', (activity_id, task_name))
+                
+                result = cursor.fetchone()
+                if result:
+                    return result[0]  # Return existing UUID
+                
+                # Create new UUID and register the task
+                task_uuid = str(uuid.uuid4())
+                cursor.execute('''
+                    INSERT INTO task_to_uuid (task_uuid, activity_id, task_name)
+                    VALUES (?, ?, ?)
+                ''', (task_uuid, activity_id, task_name))
+                
+                conn.commit()
+                log_debug(f"Registered task '{task_name}' with UUID '{task_uuid}' for activity '{activity_id}'")
+                return task_uuid
+                
+        except sqlite3.Error as e:
+            log_error(f"Failed to register task UUID: {e}")
+            return None
+    
+    def get_task_uuid(self, activity_id: str, task_name: str) -> Optional[str]:
+        """
+        Get the UUID for a task by activity ID and task name.
+        Returns None if the task is not registered in the database.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT task_uuid FROM task_to_uuid 
+                    WHERE activity_id = ? AND task_name = ?
+                ''', (activity_id, task_name))
+                
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except sqlite3.Error as e:
+            log_error(f"Failed to get task UUID: {e}")
+            return None
+    
+    def is_task_saved_to_db(self, activity_id: str, task_name: str) -> bool:
+        """
+        Check if a task is already saved to the database (exists in task_to_uuid table).
+        """
+        return self.get_task_uuid(activity_id, task_name) is not None
+    
+    def save_tasks_to_db(self, activities: List[Dict]) -> int:
+        """
+        Save all tasks from activities to the database.
+        This should be called when the user saves the schedule.
+        Returns the number of new tasks registered.
+        """
+        new_tasks_count = 0
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                for activity in activities:
+                    activity_id = activity.get("id")
+                    if not activity_id:
+                        log_error(f"Activity '{activity.get('name', 'Unknown')}' has no ID, skipping")
+                        continue
+                    
+                    tasks = activity.get("tasks", [])
+                    for task_name in tasks:
+                        if not task_name.strip():
+                            continue
+                        
+                        # Check if task already exists
+                        cursor.execute('''
+                            SELECT task_uuid FROM task_to_uuid 
+                            WHERE activity_id = ? AND task_name = ?
+                        ''', (activity_id, task_name))
+                        
+                        if cursor.fetchone() is None:
+                            # Register new task
+                            task_uuid = str(uuid.uuid4())
+                            cursor.execute('''
+                                INSERT INTO task_to_uuid (task_uuid, activity_id, task_name)
+                                VALUES (?, ?, ?)
+                            ''', (task_uuid, activity_id, task_name))
+                            new_tasks_count += 1
+                            log_debug(f"Registered new task '{task_name}' with UUID '{task_uuid}'")
+                
+                conn.commit()
+                log_info(f"Saved {new_tasks_count} new tasks to database")
+                return new_tasks_count
+                
+        except sqlite3.Error as e:
+            log_error(f"Failed to save tasks to database: {e}")
+            return 0
+    
+    def has_unsaved_tasks(self, activity: Dict) -> bool:
+        """
+        Check if an activity has tasks that are not yet saved to the database.
+        Returns True if there are unsaved tasks, False otherwise.
+        """
+        activity_id = activity.get("id")
+        if not activity_id:
+            return False  # No ID means no tasks can be saved anyway
+        
+        tasks = activity.get("tasks", [])
+        for task_name in tasks:
+            if not task_name.strip():
+                continue
+            if not self.is_task_saved_to_db(activity_id, task_name):
+                return True
+        
+        return False
+    
+    def get_unsaved_tasks(self, activity: Dict) -> List[str]:
+        """
+        Get a list of task names that are not yet saved to the database for an activity.
+        """
+        activity_id = activity.get("id")
+        if not activity_id:
+            return []
+        
+        unsaved_tasks = []
+        tasks = activity.get("tasks", [])
+        for task_name in tasks:
+            if not task_name.strip():
+                continue
+            if not self.is_task_saved_to_db(activity_id, task_name):
+                unsaved_tasks.append(task_name)
+        
+        return unsaved_tasks
+    
     def get_task_info_by_uuid(self, task_uuid: str) -> Optional[Dict[str, str]]:
         """
-        Get task information by UUID.
+        Get task information by UUID from the task_to_uuid table.
         Returns dict with task_uuid, activity_id, and task_name, or None if not found.
         """
         try:
@@ -464,8 +632,8 @@ class TaskTrackingService:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    SELECT DISTINCT task_uuid, activity_id, task_name 
-                    FROM task_entries 
+                    SELECT task_uuid, activity_id, task_name 
+                    FROM task_to_uuid 
                     WHERE task_uuid = ?
                     LIMIT 1
                 ''', (task_uuid,))
@@ -498,10 +666,12 @@ class TaskTrackingService:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
+                # Join task_to_uuid and task_entries to get UUIDs for specific activity/task on date
                 cursor.execute('''
-                    SELECT task_uuid 
-                    FROM task_entries 
-                    WHERE activity_id = ? AND task_name = ? AND date = ?
+                    SELECT te.task_uuid 
+                    FROM task_entries te
+                    JOIN task_to_uuid tu ON te.task_uuid = tu.task_uuid
+                    WHERE tu.activity_id = ? AND tu.task_name = ? AND te.date = ?
                 ''', (activity_id, task_name, date_str))
                 
                 return [row[0] for row in cursor.fetchall()]

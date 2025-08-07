@@ -50,12 +50,23 @@ def save_schedule_as(app):
     if not file_path:
         return
     try:
+        # Save tasks to database first
+        if hasattr(app, 'task_tracking_service'):
+            new_tasks_count = app.task_tracking_service.save_tasks_to_db(app.schedule)
+            if new_tasks_count > 0:
+                log_info(f"Saved {new_tasks_count} new tasks to database")
+        
         with open(file_path, 'w') as f:
             yaml.safe_dump(app.schedule, f)
         messagebox.showinfo("Saved", f"Schedule saved to {file_path}")
         log_info(f"Schedule saved to {file_path}")
-        app.config_path = file_path  # Update config path to the new file
+        app.config_path = file_path
         app.schedule_changed = False  # Reset schedule changed flag
+        
+        # Create daily task entries for today if needed
+        if hasattr(app, 'task_tracking_service'):
+            app._ensure_daily_task_entries()
+            
     except Exception as e:
         messagebox.showerror("Error", f"Failed to save file: {e}")
         log_error(f"Failed to save file: {e}")
@@ -67,12 +78,23 @@ def save_schedule(app, ask_for_confirmation: bool = True):
         if not messagebox.askyesno("Confirm", "Schedule file already exists. Do you want to overwrite it?"):
             return
     try:
+        # Save tasks to database first
+        if hasattr(app, 'task_tracking_service'):
+            new_tasks_count = app.task_tracking_service.save_tasks_to_db(app.schedule)
+            if new_tasks_count > 0:
+                log_info(f"Saved {new_tasks_count} new tasks to database")
+        
         with open(app.config_path, 'w') as f:
             yaml.safe_dump(app.schedule, f)
         if ask_for_confirmation:
             messagebox.showinfo("Saved", f"Schedule saved to {app.config_path}")
         log_info(f"Schedule saved to {app.config_path}")
         app.schedule_changed = False  # Reset schedule changed flag
+        
+        # Create daily task entries for today if needed
+        if hasattr(app, 'task_tracking_service'):
+            app._ensure_daily_task_entries()
+            
     except Exception as e:
         messagebox.showerror("Error", f"Failed to save file: {e}")
         log_error(f"Failed to save file: {e}")
