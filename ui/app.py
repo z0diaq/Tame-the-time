@@ -245,7 +245,11 @@ class TimeboxApp(tk.Tk):
         self.card_visual_changed = False
 
     def update_status_bar(self):
-        """Update status bar with today's tasks statistics"""
+        """Update status bar with today's tasks statistics and unsaved task warnings"""
+        # Check for unsaved tasks first
+        has_unsaved_tasks = self._check_for_unsaved_tasks()
+        
+        # Calculate task statistics
         today = self.now_provider().date()
         missed = 0
         todo = 0
@@ -275,6 +279,8 @@ class TimeboxApp(tk.Tk):
                     incoming += missed_count
                 elif is_current:
                     active += missed_count
+        
+        # Build task statistics message
         tasks_info = "No tasks found for today"
         if missed > 0 or todo > 0 or incoming > 0 or done > 0:
             tasks_info = "Today tasks statistics: "
@@ -289,7 +295,85 @@ class TimeboxApp(tk.Tk):
             if done > 0:
                 tasks_info += f"{done} done"
             tasks_info = tasks_info.rstrip(", ")
-        self.status_bar.config(text=tasks_info)
+        
+        # Display logic: show warning if unsaved tasks, otherwise show statistics
+        log_debug(f"Status bar update: has_unsaved_tasks={has_unsaved_tasks}, tasks_info='{tasks_info}'")
+        if has_unsaved_tasks:
+            log_debug("Triggering unsaved task warning display")
+            self._show_unsaved_task_warning(tasks_info)
+        else:
+            log_debug("No unsaved tasks, showing normal status bar")
+            # Cancel any pending warning timers when no unsaved tasks
+            if hasattr(self, '_warning_timer_id') and self._warning_timer_id:
+                self.after_cancel(self._warning_timer_id)
+                self._warning_timer_id = None
+            if hasattr(self, '_normal_timer_id') and self._normal_timer_id:
+                self.after_cancel(self._normal_timer_id)
+                self._normal_timer_id = None
+            self.status_bar.config(text=tasks_info, fg="black")
+    
+    def _check_for_unsaved_tasks(self) -> bool:
+        """Check if there are any unsaved tasks in the current schedule"""
+        if not hasattr(self, 'task_tracking_service') or not self.task_tracking_service:
+            log_debug("No task tracking service available")
+            return False
+            
+        unsaved_count = 0
+        for card_obj in self.cards:
+            activity = card_obj.activity
+            if self.task_tracking_service.has_unsaved_tasks(activity):
+                unsaved_tasks = self.task_tracking_service.get_unsaved_tasks(activity)
+                log_debug(f"Activity '{activity.get('name', 'Unknown')}' has unsaved tasks: {unsaved_tasks}")
+                unsaved_count += len(unsaved_tasks)
+        
+        has_unsaved = unsaved_count > 0
+        log_debug(f"Total unsaved tasks found: {unsaved_count}, has_unsaved: {has_unsaved}")
+        return has_unsaved
+    
+    def _show_unsaved_task_warning(self, normal_text: str):
+        """Show red warning for 2 seconds, then return to normal text for 5 seconds"""
+        log_debug(f"Starting unsaved task warning cycle with normal_text: '{normal_text}'")
+        
+        # Cancel any existing timers
+        if hasattr(self, '_warning_timer_id') and self._warning_timer_id:
+            self.after_cancel(self._warning_timer_id)
+        if hasattr(self, '_normal_timer_id') and self._normal_timer_id:
+            self.after_cancel(self._normal_timer_id)
+        
+        # Show normal text for 5 seconds
+        self.status_bar.config(text=normal_text, fg="black")
+        log_debug("Status bar set to normal text (black)")
+        
+        # After 5 seconds, show red warning for 2 seconds
+        def show_warning():
+            log_debug("Showing white text on red background warning message")
+            self.status_bar.config(text="Save schedule to handle all tasks", fg="white", bg="red")
+            # After 2 seconds, return to normal text
+            self._normal_timer_id = self.after(2000, lambda: self._return_to_normal(normal_text))
+        
+        self._warning_timer_id = self.after(5000, show_warning)
+    
+    def _return_to_normal(self, normal_text: str):
+        """Return status bar to normal text and check if we need to continue cycling"""
+        log_debug("Returning to normal text")
+        self.status_bar.config(text=normal_text, fg="black", bg="#e0e0e0")
+        
+        # Check if we still have unsaved tasks and need to continue cycling
+        if self._check_for_unsaved_tasks():
+            log_debug("Still have unsaved tasks, continuing warning cycle")
+            # Continue the cycle by calling the warning method again
+            self._warning_timer_id = self.after(5000, lambda: self._show_red_warning(normal_text))
+        else:
+            log_debug("No more unsaved tasks, stopping warning cycle")
+            self._warning_timer_id = None
+            self._normal_timer_id = None
+    
+    def _show_red_warning(self, normal_text: str):
+        """Show the red warning part of the cycle"""
+        log_debug("Showing red warning message (cycle)")
+        self.status_bar.config(text="Save schedule to handle all tasks", fg="white", bg="red")
+        # After 2 seconds, return to normal text
+        self._normal_timer_id = self.after(2000, lambda: self._return_to_normal(normal_text))
 
     def update_cards_after_size_change(self):
         """Update all cards after window size change."""
