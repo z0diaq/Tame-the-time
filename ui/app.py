@@ -80,6 +80,9 @@ class TimeboxApp(tk.Tk):
         # Ensure all activities have unique IDs (migrate existing data)
         self.ensure_activity_ids()
         
+        # Ensure all tasks have UUIDs (migrate from string to object format)
+        self.ensure_task_uuids()
+        
         # Create daily task entries for today if needed
         self._ensure_daily_task_entries()
 
@@ -437,6 +440,39 @@ class TimeboxApp(tk.Tk):
                 activity["id"] = str(uuid.uuid4())
                 log_debug(f"Generated ID {activity['id']} for activity '{activity['name']}'")
     
+    def ensure_task_uuids(self):
+        """Ensure all tasks have UUIDs, migrating from string to object format if needed."""
+        migration_needed = False
+        
+        for activity in self.schedule:
+            if "tasks" in activity:
+                tasks = activity["tasks"]
+                for i, task in enumerate(tasks):
+                    if isinstance(task, str):
+                        # Convert string task to object with UUID
+                        task_uuid = str(uuid.uuid4())
+                        tasks[i] = {
+                            "name": task,
+                            "uuid": task_uuid
+                        }
+                        migration_needed = True
+                        log_debug(f"Migrated task '{task}' to object format with UUID: {task_uuid}")
+                    elif isinstance(task, dict) and "name" in task:
+                        # Ensure UUID exists for object tasks
+                        if "uuid" not in task:
+                            task_uuid = str(uuid.uuid4())
+                            task["uuid"] = task_uuid
+                            migration_needed = True
+                            log_debug(f"Added UUID to existing task object '{task['name']}': {task_uuid}")
+        
+        if migration_needed:
+            self.schedule_changed = True
+            log_info("Schedule migrated to include task UUIDs")
+            # Auto-save the migrated schedule to persist UUIDs
+            from ui.schedule_management import save_schedule
+            save_schedule(self, ask_for_confirmation=False)
+            log_info("Auto-saved schedule with persistent task UUIDs")
+    
     def generate_activity_id(self):
         """Generate a new unique activity ID."""
         return str(uuid.uuid4())
@@ -478,18 +514,37 @@ class TimeboxApp(tk.Tk):
                     card_obj._task_uuids = [None] * len(tasks)
                 
                 # Update done states from database using UUIDs
-                for i, task_name in enumerate(tasks):
-                    # Get task UUIDs for this activity and task name
-                    task_uuids = self.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
+                for i, task in enumerate(tasks):
+                    # Handle both string and object task formats
+                    if isinstance(task, str):
+                        task_name = task
+                        task_uuid = None
+                    elif isinstance(task, dict) and "name" in task:
+                        task_name = task["name"]
+                        task_uuid = task.get("uuid")
+                    else:
+                        log_error(f"Invalid task format: {task}")
+                        continue
                     
-                    if task_uuids:
-                        # Use the first UUID found (there should typically be only one per day)
-                        task_uuid = task_uuids[0]
+                    # Use UUID from YAML if available, otherwise look up in database
+                    if task_uuid:
+                        # UUID available from YAML - use it directly
                         card_obj._task_uuids[i] = task_uuid
-                        
                         if task_uuid in done_states:
                             card_obj._tasks_done[i] = done_states[task_uuid]
-                            log_debug(f"Loaded done state for '{task_name}' (UUID: {task_uuid}): {done_states[task_uuid]}")
+                            log_debug(f"Loaded done state for '{task_name}' (UUID from YAML: {task_uuid}): {done_states[task_uuid]}")
+                    else:
+                        # No UUID in YAML - look up in database for backward compatibility
+                        task_uuids = self.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
+                        
+                        if task_uuids:
+                            # Use the first UUID found (there should typically be only one per day)
+                            task_uuid = task_uuids[0]
+                            card_obj._task_uuids[i] = task_uuid
+                            
+                            if task_uuid in done_states:
+                                card_obj._tasks_done[i] = done_states[task_uuid]
+                                log_debug(f"Loaded done state for '{task_name}' (UUID from DB: {task_uuid}): {done_states[task_uuid]}")
             
             log_info(f"Loaded {len(done_states)} task done states from database")
             

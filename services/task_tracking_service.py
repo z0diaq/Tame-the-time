@@ -107,15 +107,27 @@ class TaskTrackingService:
                         
                     tasks = activity.get("tasks", [])
                     
-                    for task_name in tasks:
-                        if not task_name.strip():
+                    for task in tasks:
+                        # Handle both string and object task formats
+                        if isinstance(task, str):
+                            task_name = task.strip()
+                            task_uuid = None  # Will be looked up from database
+                        elif isinstance(task, dict) and "name" in task:
+                            task_name = task["name"].strip()
+                            task_uuid = task.get("uuid")  # Use UUID from YAML if available
+                        else:
+                            log_error(f"Invalid task format: {task}")
                             continue
                         
-                        # Get task UUID from task_to_uuid table (only for saved tasks)
-                        task_uuid = self.get_task_uuid(activity_id, task_name)
-                        if not task_uuid:
-                            log_debug(f"Task '{task_name}' not found in database, skipping daily entry creation")
+                        if not task_name:
                             continue
+                        
+                        # If no UUID from YAML, get from database (for backward compatibility)
+                        if not task_uuid:
+                            task_uuid = self.get_task_uuid(activity_id, task_name)
+                            if not task_uuid:
+                                log_debug(f"Task '{task_name}' not found in database, skipping daily entry creation")
+                                continue
                         
                         # Check if entry already exists for this task on this date
                         cursor.execute('''
@@ -558,25 +570,44 @@ class TaskTrackingService:
                         continue
                     
                     tasks = activity.get("tasks", [])
-                    for task_name in tasks:
-                        if not task_name.strip():
+                    for task in tasks:
+                        # Handle both string and object task formats
+                        if isinstance(task, str):
+                            task_name = task.strip()
+                            task_uuid = None  # Will generate new UUID
+                        elif isinstance(task, dict) and "name" in task:
+                            task_name = task["name"].strip()
+                            task_uuid = task.get("uuid")  # Use UUID from YAML
+                        else:
+                            log_error(f"Invalid task format: {task}")
                             continue
                         
-                        # Check if task already exists
+                        if not task_name:
+                            continue
+                        
+                        # Check if task already exists in database
                         cursor.execute('''
                             SELECT task_uuid FROM task_to_uuid 
                             WHERE activity_id = ? AND task_name = ?
                         ''', (activity_id, task_name))
                         
-                        if cursor.fetchone() is None:
-                            # Register new task
-                            task_uuid = str(uuid.uuid4())
+                        existing_result = cursor.fetchone()
+                        if existing_result is None:
+                            # Task doesn't exist in database, register it
+                            if not task_uuid:
+                                task_uuid = str(uuid.uuid4())  # Generate new UUID if not provided
+                            
                             cursor.execute('''
                                 INSERT INTO task_to_uuid (task_uuid, activity_id, task_name)
                                 VALUES (?, ?, ?)
                             ''', (task_uuid, activity_id, task_name))
                             new_tasks_count += 1
-                            log_debug(f"Registered new task '{task_name}' with UUID '{task_uuid}'")
+                            log_debug(f"Registered new task '{task_name}' with UUID '{task_uuid}'")  
+                        else:
+                            # Task exists, verify UUID matches if provided in YAML
+                            existing_uuid = existing_result[0]
+                            if task_uuid and task_uuid != existing_uuid:
+                                log_debug(f"Task '{task_name}' UUID mismatch: YAML={task_uuid}, DB={existing_uuid}. Using DB UUID.")
                 
                 conn.commit()
                 log_info(f"Saved {new_tasks_count} new tasks to database")
@@ -588,16 +619,23 @@ class TaskTrackingService:
     
     def has_unsaved_tasks(self, activity: Dict) -> bool:
         """
-        Check if an activity has tasks that are not yet saved to the database.
-        Returns True if there are unsaved tasks, False otherwise.
+        Check if an activity has any tasks that are not yet saved to the database.
         """
         activity_id = activity.get("id")
         if not activity_id:
-            return False  # No ID means no tasks can be saved anyway
+            return False
         
         tasks = activity.get("tasks", [])
-        for task_name in tasks:
-            if not task_name.strip():
+        for task in tasks:
+            # Handle both string and object task formats
+            if isinstance(task, str):
+                task_name = task.strip()
+            elif isinstance(task, dict) and "name" in task:
+                task_name = task["name"].strip()
+            else:
+                continue
+            
+            if not task_name:
                 continue
             if not self.is_task_saved_to_db(activity_id, task_name):
                 return True
@@ -614,8 +652,16 @@ class TaskTrackingService:
         
         unsaved_tasks = []
         tasks = activity.get("tasks", [])
-        for task_name in tasks:
-            if not task_name.strip():
+        for task in tasks:
+            # Handle both string and object task formats
+            if isinstance(task, str):
+                task_name = task.strip()
+            elif isinstance(task, dict) and "name" in task:
+                task_name = task["name"].strip()
+            else:
+                continue
+            
+            if not task_name:
                 continue
             if not self.is_task_saved_to_db(activity_id, task_name):
                 unsaved_tasks.append(task_name)

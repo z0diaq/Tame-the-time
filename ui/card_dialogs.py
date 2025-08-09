@@ -53,13 +53,49 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
             if not result:
                 return  # User chose "No", stay in dialog
         
-        # Get original tasks for comparison
-        original_tasks = set(card_obj.activity.get("tasks", []))
+        # Get original tasks for comparison (extract names from both formats)
+        original_tasks = set()
+        original_task_objects = card_obj.activity.get("tasks", [])
+        for task in original_task_objects:
+            if isinstance(task, str):
+                original_tasks.add(task)
+            elif isinstance(task, dict) and "name" in task:
+                original_tasks.add(task["name"])
+        
         new_tasks_set = set(new_tasks)
         
         # Find removed and added tasks
         removed_tasks = original_tasks - new_tasks_set
         added_tasks = new_tasks_set - original_tasks
+        
+        # Build new task objects preserving UUIDs for existing tasks
+        new_task_objects = []
+        for new_task_name in new_tasks:
+            # Find if this task existed before (to preserve UUID)
+            existing_task_obj = None
+            for orig_task in original_task_objects:
+                if isinstance(orig_task, str) and orig_task == new_task_name:
+                    existing_task_obj = orig_task
+                    break
+                elif isinstance(orig_task, dict) and orig_task.get("name") == new_task_name:
+                    existing_task_obj = orig_task
+                    break
+            
+            if existing_task_obj and isinstance(existing_task_obj, dict):
+                # Preserve existing task object with UUID
+                new_task_objects.append(existing_task_obj)
+            elif existing_task_obj and isinstance(existing_task_obj, str):
+                # Convert string to object format (will get UUID during migration)
+                new_task_objects.append({
+                    "name": new_task_name,
+                    "uuid": str(__import__('uuid').uuid4())
+                })
+            else:
+                # New task - create object format
+                new_task_objects.append({
+                    "name": new_task_name,
+                    "uuid": str(__import__('uuid').uuid4())
+                })
         
         # Handle removed tasks - ask for confirmation and remove from database
         if removed_tasks and hasattr(app, 'task_tracking_service'):
@@ -95,14 +131,14 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
             if activity:
                 activity["name"] = new_title
                 activity["description"] = new_desc
-                activity["tasks"] = new_tasks
+                activity["tasks"] = new_task_objects  # Use new task objects with UUIDs
             else:
                 log_error(f"Activity with ID '{activity_id}' not found in schedule.")
         else:
             log_error(f"Activity '{card_obj.activity['name']}' has no ID - cannot update schedule.")
         card_obj.activity["name"] = new_title
         card_obj.activity["description"] = new_desc
-        card_obj.activity["tasks"] = new_tasks
+        card_obj.activity["tasks"] = new_task_objects  # Use new task objects with UUIDs
         
         # Handle added tasks - add to database
         if added_tasks and hasattr(app, 'task_tracking_service'):
@@ -181,15 +217,29 @@ def open_card_tasks_window(app, card_obj):
             activity_id = card_obj.activity.get("id")
             if activity_id:
                 tasks = card_obj.activity.get("tasks", [])
-                for i, task_name in enumerate(tasks):
-                    # Get task UUIDs for this activity and task name
-                    task_uuids = app.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
-                    if task_uuids and task_uuids[0] in done_states:
-                        card_obj._tasks_done[i] = done_states[task_uuids[0]]
+                for i, task in enumerate(tasks):
+                    # Handle both string and object task formats
+                    if isinstance(task, str):
+                        task_name = task
+                        task_uuid = None
+                    elif isinstance(task, dict) and "name" in task:
+                        task_name = task["name"]
+                        task_uuid = task.get("uuid")
+                    else:
+                        continue
+                    
+                    # Get task UUIDs for this activity and task name (if not from YAML)
+                    if not task_uuid:
+                        task_uuids = app.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
+                        if task_uuids:
+                            task_uuid = task_uuids[0]
+                    
+                    if task_uuid and task_uuid in done_states:
+                        card_obj._tasks_done[i] = done_states[task_uuid]
                         # Store UUID for later use
                         if not hasattr(card_obj, '_task_uuids'):
                             card_obj._task_uuids = [None] * len(tasks)
-                        card_obj._task_uuids[i] = task_uuids[0]
+                        card_obj._task_uuids[i] = task_uuid
         except Exception as e:
             log_error(f"Failed to load task done states from database: {e}")
 
@@ -198,7 +248,15 @@ def open_card_tasks_window(app, card_obj):
 
     tasks = card_obj.activity.get("tasks", [])
     for i, task in enumerate(tasks):
-        display = f"[Done] {task}" if tasks_done_copy[i] else task
+        # Handle both string and object task formats for display
+        if isinstance(task, str):
+            task_name = task
+        elif isinstance(task, dict) and "name" in task:
+            task_name = task["name"]
+        else:
+            task_name = str(task)  # Fallback
+        
+        display = f"[Done] {task_name}" if tasks_done_copy[i] else task_name
         task_listbox.insert("end", display)
 
     # Create "Toggle Done" button (initially disabled)
@@ -235,24 +293,35 @@ def open_card_tasks_window(app, card_obj):
             idx = selected_task_index[0]
             task = tasks[idx]
             
+            # Handle both string and object task formats
+            if isinstance(task, str):
+                task_name = task
+                task_uuid_from_yaml = None
+            elif isinstance(task, dict) and "name" in task:
+                task_name = task["name"]
+                task_uuid_from_yaml = task.get("uuid")
+            else:
+                log_error(f"Invalid task format: {task}")
+                return
+            
             if not tasks_done_copy[idx]:
                 # Mark task as done
                 tasks_done_copy[idx] = True
                 task_listbox.delete(idx)
-                task_listbox.insert(idx, f"[Done] {task}")
+                task_listbox.insert(idx, f"[Done] {task_name}")
                 
                 # Update database if task tracking service is available
                 if hasattr(app, 'task_tracking_service'):
                     # Get or create task UUID for this task
-                    task_uuid = None
-                    if hasattr(card_obj, '_task_uuids') and card_obj._task_uuids and idx < len(card_obj._task_uuids):
+                    task_uuid = task_uuid_from_yaml  # Use UUID from YAML if available
+                    if not task_uuid and hasattr(card_obj, '_task_uuids') and card_obj._task_uuids and idx < len(card_obj._task_uuids):
                         task_uuid = card_obj._task_uuids[idx]
                     
                     if not task_uuid:
                         # Create new task entry if UUID doesn't exist
                         activity_id = card_obj.activity.get("id")
                         if activity_id:
-                            task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task)
+                            task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task_name)
                             if not hasattr(card_obj, '_task_uuids'):
                                 card_obj._task_uuids = [None] * len(tasks)
                             card_obj._task_uuids[idx] = task_uuid
@@ -260,11 +329,11 @@ def open_card_tasks_window(app, card_obj):
                     if task_uuid:
                         success = app.task_tracking_service.mark_task_done(task_uuid)
                         if success:
-                            log_info(f"Marked task '{task}' (UUID: {task_uuid}) as done in database")
+                            log_info(f"Marked task '{task_name}' (UUID: {task_uuid}) as done in database")
                         else:
-                            log_error(f"Failed to mark task '{task}' (UUID: {task_uuid}) as done in database")
+                            log_error(f"Failed to mark task '{task_name}' (UUID: {task_uuid}) as done in database")
                     else:
-                        log_error(f"Could not get or create UUID for task '{task}'")
+                        log_error(f"Could not get or create UUID for task '{task_name}'")
                 
                 # Find and select next not-done task
                 next_not_done = find_first_not_done()
@@ -279,23 +348,23 @@ def open_card_tasks_window(app, card_obj):
                 # Mark task as undone
                 tasks_done_copy[idx] = False
                 task_listbox.delete(idx)
-                task_listbox.insert(idx, task)
+                task_listbox.insert(idx, task_name)
                 
                 # Update database if task tracking service is available
                 if hasattr(app, 'task_tracking_service'):
-                    # Get task UUID for this task
-                    task_uuid = None
-                    if hasattr(card_obj, '_task_uuids') and card_obj._task_uuids and idx < len(card_obj._task_uuids):
+                    # Get task UUID for this task (prefer YAML UUID, then stored UUID)
+                    task_uuid = task_uuid_from_yaml
+                    if not task_uuid and hasattr(card_obj, '_task_uuids') and card_obj._task_uuids and idx < len(card_obj._task_uuids):
                         task_uuid = card_obj._task_uuids[idx]
                     
                     if task_uuid:
                         success = app.task_tracking_service.mark_task_undone(task_uuid)
                         if success:
-                            log_info(f"Marked task '{task}' (UUID: {task_uuid}) as undone in database")
+                            log_info(f"Marked task '{task_name}' (UUID: {task_uuid}) as undone in database")
                         else:
-                            log_error(f"Failed to mark task '{task}' (UUID: {task_uuid}) as undone in database")
+                            log_error(f"Failed to mark task '{task_name}' (UUID: {task_uuid}) as undone in database")
                     else:
-                        log_error(f"Could not find UUID for task '{task}' to mark as undone")
+                        log_error(f"Could not find UUID for task '{task_name}' to mark as undone")
                 
                 # Keep current selection
                 task_listbox.selection_set(idx)
