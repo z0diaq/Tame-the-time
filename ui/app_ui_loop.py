@@ -99,22 +99,22 @@ def _should_update_ui(app, now: datetime, activity: Dict) -> bool:
     """Determine if UI needs updating based on time changes and state."""
     # Always update on first run
     if not hasattr(app, '_last_ui_update'):
+        log_debug("No previous _last_ui_update")
         return True
     
     last_update = getattr(app, '_last_ui_update', None)
     if last_update is None:
+        log_debug("The last_update is not set")
         return True
     
-    # Update if minute changed (for time-sensitive displays)
-    if now.minute != last_update.minute:
-        return True
-    
-    # Update if schedule or cards changed
-    if getattr(app, 'schedule_changed', False) or getattr(app, 'card_visual_changed', False):
+    # Update if cards changed
+    if getattr(app, 'card_visual_changed', False):
+        log_debug("Cards visuals changed!")
         return True
     
     # Update every 10 seconds for active task progress
     if activity and (now - last_update).total_seconds() >= 10:
+        log_debug("More than 10 seconds since last_update")
         return True
 
     # Redraw everything every 20 seconds
@@ -122,10 +122,12 @@ def _should_update_ui(app, now: datetime, activity: Dict) -> bool:
     log_debug(f"Seconds since last action: {seconds_since_last_action}")
 
     if seconds_since_last_action >= UIConstants.INACTIVITY_REDRAW_THRESHOLD_SEC:
+        log_debug("Time since last acton above INACTIVE_REDRAW_THRESHOLD_SEC")
         return True 
     
     # Update every second at the start of each minute to show change of active card
-    if now.second == 0 and seconds_since_last_action > UIConstants.MINIMUM_REDRAW_INTERVAL_SEC:
+    if now.minute != last_update.minute and seconds_since_last_action > UIConstants.MINIMUM_REDRAW_INTERVAL_SEC:
+        log_debug("New minute and seconds since last action above MINIMUM_REDRAW_INTERVAL_SEC")
         return True
     
     return False

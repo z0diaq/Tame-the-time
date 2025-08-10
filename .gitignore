@@ -178,3 +178,4 @@ cython_debug/
 
 # custom files
 TODO.md
+default_settings.yaml
