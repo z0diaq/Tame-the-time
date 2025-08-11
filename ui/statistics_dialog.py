@@ -26,6 +26,7 @@ class TaskStatisticsDialog:
         self.chart_frame = None
         self.figure = None
         self.canvas = None
+        self.selected_task_indices = []  # Store selected task indices for persistence
         
     def show(self):
         """Show the statistics dialog."""
@@ -111,7 +112,7 @@ class TaskStatisticsDialog:
         grouping_combo = ttk.Combobox(
             grouping_frame,
             textvariable=self.grouping_var,
-            values=["Day", "Week"],
+            values=["Day", "Week", "Month", "Year"],
             state="readonly",
             width=8
         )
@@ -147,12 +148,20 @@ class TaskStatisticsDialog:
                 activity_id = task_info['activity_id']
                 task_name = task_info['task_name']
                 
-                # Display format: task_name (we could add activity name if needed)
-                display_text = task_name
+                # Get activity name for display format: "Activity name / task name"
+                activity_name = "Unknown Activity"
+                if self.parent and activity_id:
+                    activity = self.parent.find_activity_by_id(activity_id)
+                    if activity:
+                        activity_name = activity.get('name', 'Unknown Activity')
+                
+                display_text = f"{activity_name} / {task_name}"
                 self.task_listbox.insert(tk.END, display_text)
                 
                 # Store the full task info for chart generation
-                self.task_data.append(task_info)
+                task_info_with_activity = task_info.copy()
+                task_info_with_activity['activity_name'] = activity_name
+                self.task_data.append(task_info_with_activity)
                 
             log_debug(f"Populated task list with {len(unique_tasks)} tasks")
             
@@ -187,11 +196,26 @@ class TaskStatisticsDialog:
         
     def _on_task_selection_change(self, event=None):
         """Handle task selection change."""
+        # Store current selection for persistence
+        self.selected_task_indices = list(self.task_listbox.curselection())
         self._update_chart()
         
     def _on_options_change(self, event=None):
         """Handle chart options change."""
+        # Restore previous selection after grouping change
+        self._restore_task_selection()
         self._update_chart()
+        
+    def _restore_task_selection(self):
+        """Restore previously selected tasks after grouping change."""
+        if self.selected_task_indices and self.task_listbox:
+            # Clear current selection
+            self.task_listbox.selection_clear(0, tk.END)
+            
+            # Restore previous selection
+            for index in self.selected_task_indices:
+                if index < self.task_listbox.size():
+                    self.task_listbox.selection_set(index)
         
     def _update_chart(self):
         """Update the chart based on current selection and options."""
@@ -230,8 +254,12 @@ class TaskStatisticsDialog:
             # Create chart
             if grouping == "Day":
                 self._create_daily_chart(stats_data)
-            else:
+            elif grouping == "Week":
                 self._create_weekly_chart(stats_data)
+            elif grouping == "Month":
+                self._create_monthly_chart(stats_data)
+            else:  # Year
+                self._create_yearly_chart(stats_data)
                 
         except Exception as e:
             log_error(f"Failed to update chart: {e}")
@@ -262,7 +290,14 @@ class TaskStatisticsDialog:
         colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
                  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
         
-        for i, (task_name, task_data) in enumerate(stats_data.items()):
+        for i, (task_uuid, task_data) in enumerate(stats_data.items()):
+            # Get task display name from stored data
+            task_display_name = task_uuid  # fallback
+            for stored_task in self.task_data:
+                if stored_task['task_uuid'] == task_uuid:
+                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
+                    break
+            
             # Create completion data for each date
             completion_data = []
             for date_str in sorted_dates:
@@ -273,7 +308,7 @@ class TaskStatisticsDialog:
             # Plot bars
             x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
             color = colors[i % len(colors)]
-            ax.bar(x_offset, completion_data, bar_width, label=task_name, 
+            ax.bar(x_offset, completion_data, bar_width, label=task_display_name, 
                   color=color, alpha=0.7)
         
         ax.set_xlabel('Date')
@@ -296,7 +331,7 @@ class TaskStatisticsDialog:
         all_weeks = set()
         for task_data in stats_data.values():
             for entry in task_data:
-                all_weeks.add(entry['week_start'])
+                all_weeks.add(entry['date'])
         
         if not all_weeks:
             self._show_empty_chart()
@@ -312,14 +347,21 @@ class TaskStatisticsDialog:
         colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
                  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
         
-        for i, (task_name, task_data) in enumerate(stats_data.items()):
-            # Create completion rate data for each week
+        for i, (task_uuid, task_data) in enumerate(stats_data.items()):
+            # Get task display name from stored data
+            task_display_name = task_uuid  # fallback
+            for stored_task in self.task_data:
+                if stored_task['task_uuid'] == task_uuid:
+                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
+                    break
+            
+            # Create completion data for each week
             completion_rates = []
             for week_start in sorted_weeks:
                 rate = 0
                 for entry in task_data:
-                    if entry['week_start'] == week_start:
-                        rate = entry['completion_rate']
+                    if entry.get('date') == week_start:  
+                        rate = entry['completed']  
                         if i == 0:  # Only add label once
                             week_labels.append(entry['display_label'])
                         break
@@ -328,7 +370,7 @@ class TaskStatisticsDialog:
             # Plot bars
             x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
             color = colors[i % len(colors)]
-            ax.bar(x_offset, completion_rates, bar_width, label=task_name, 
+            ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
                   color=color, alpha=0.7)
         
         ax.set_xlabel('Week')
@@ -336,6 +378,130 @@ class TaskStatisticsDialog:
         ax.set_title('Weekly Task Completion Rate')
         ax.set_xticks(x_positions)
         ax.set_xticklabels(week_labels, rotation=45)
+        ax.set_ylim(0, 1.1)
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        self.figure.tight_layout()
+        self.canvas.draw()
+        
+    def _create_monthly_chart(self, stats_data: Dict):
+        """Create a monthly completion chart."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        # Prepare data for plotting
+        all_months = set()
+        for task_data in stats_data.values():
+            for entry in task_data:
+                all_months.add(entry['date'])
+        
+        if not all_months:
+            self._show_empty_chart()
+            return
+            
+        sorted_months = sorted(all_months, reverse=True)[:10]  # Last 10 months
+        month_labels = []
+        
+        # Plot each task
+        bar_width = 0.8 / len(stats_data) if stats_data else 0.8
+        x_positions = range(len(sorted_months))
+        
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        
+        for i, (task_uuid, task_data) in enumerate(stats_data.items()):
+            # Get task display name from stored data
+            task_display_name = task_uuid  # fallback
+            for stored_task in self.task_data:
+                if stored_task['task_uuid'] == task_uuid:
+                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
+                    break
+            
+            # Create completion data for each month
+            completion_rates = []
+            for month_date in sorted_months:
+                rate = 0
+                for entry in task_data:
+                    if entry['date'] == month_date:
+                        rate = entry['completed']
+                        if i == 0:  # Only add label once
+                            month_labels.append(entry['display_label'])
+                        break
+                completion_rates.append(rate)
+            
+            # Plot bars
+            x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
+            color = colors[i % len(colors)]
+            ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
+                  color=color, alpha=0.7)
+        
+        ax.set_xlabel('Month')
+        ax.set_ylabel('Completion Rate')
+        ax.set_title('Monthly Task Completion Rate')
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(month_labels, rotation=45)
+        ax.set_ylim(0, 1.1)
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        self.figure.tight_layout()
+        self.canvas.draw()
+        
+    def _create_yearly_chart(self, stats_data: Dict):
+        """Create a yearly completion chart."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        # Prepare data for plotting
+        all_years = set()
+        for task_data in stats_data.values():
+            for entry in task_data:
+                all_years.add(entry['date'])
+        
+        if not all_years:
+            self._show_empty_chart()
+            return
+            
+        sorted_years = sorted(all_years, reverse=True)[:10]  # Last 10 years
+        year_labels = []
+        
+        # Plot each task
+        bar_width = 0.8 / len(stats_data) if stats_data else 0.8
+        x_positions = range(len(sorted_years))
+        
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        
+        for i, (task_uuid, task_data) in enumerate(stats_data.items()):
+            # Get task display name from stored data
+            task_display_name = task_uuid  # fallback
+            for stored_task in self.task_data:
+                if stored_task['task_uuid'] == task_uuid:
+                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
+                    break
+            
+            # Create completion data for each year
+            completion_rates = []
+            for year_date in sorted_years:
+                rate = 0
+                for entry in task_data:
+                    if entry['date'] == year_date:
+                        rate = entry['completed']
+                        if i == 0:  # Only add label once
+                            year_labels.append(entry['display_label'])
+                        break
+                completion_rates.append(rate)
+            
+            # Plot bars
+            x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
+            color = colors[i % len(colors)]
+            ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
+                  color=color, alpha=0.7)
+        
+        ax.set_xlabel('Year')
+        ax.set_ylabel('Completion Rate')
+        ax.set_title('Yearly Task Completion Rate')
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(year_labels, rotation=45)
         ax.set_ylim(0, 1.1)
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         
@@ -357,4 +523,4 @@ def open_task_statistics_dialog(parent):
         dialog.show()
     except Exception as e:
         log_error(f"Failed to open task statistics dialog: {e}")
-        tk.messagebox.showerror("Error", f"Failed to open statistics dialog: {e}")
+        messagebox.showerror("Error", f"Failed to open statistics dialog: {e}")

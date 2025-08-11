@@ -368,7 +368,7 @@ class TaskTrackingService:
         
         Args:
             task_list: List of task UUIDs
-            grouping: "Day" or "Week"
+            grouping: "Day", "Week", "Month", or "Year"
             ignore_weekends: Skip Saturday and Sunday data
             limit: Maximum number of data points to return
         
@@ -388,8 +388,14 @@ class TaskTrackingService:
                     if grouping == "Day":
                         data = self._get_daily_statistics(cursor, task_uuid, 
                                                         ignore_weekends, limit)
-                    else:  # Week
+                    elif grouping == "Week":
                         data = self._get_weekly_statistics(cursor, task_uuid, 
+                                                         ignore_weekends, limit)
+                    elif grouping == "Month":
+                        data = self._get_monthly_statistics(cursor, task_uuid, 
+                                                          ignore_weekends, limit)
+                    else:  # Year
+                        data = self._get_yearly_statistics(cursor, task_uuid, 
                                                          ignore_weekends, limit)
                     
                     results[task_uuid] = data
@@ -438,51 +444,168 @@ class TaskTrackingService:
     def _get_weekly_statistics(self, cursor, task_uuid: str,
                              ignore_weekends: bool, limit: int) -> List[Dict]:
         """Get weekly statistics for a task."""
-        # Get data for last N weeks
+        # Get last N weeks of data
         end_date = date.today()
-        start_date = end_date - timedelta(weeks=limit + 2)  # Get extra weeks for safety
+        start_date = end_date - timedelta(weeks=limit * 2)  # Get extra weeks
         
         cursor.execute('''
             SELECT date, done_state 
             FROM task_entries 
             WHERE task_uuid = ? 
             AND date >= ? AND date <= ?
-            ORDER BY date
+            ORDER BY date DESC
         ''', (task_uuid, start_date.isoformat(), end_date.isoformat()))
         
-        # Group by week (Monday to Sunday)
+        # Group by week
         weekly_data = {}
         for row in cursor.fetchall():
             date_str, done_state = row
             task_date = datetime.fromisoformat(date_str).date()
             
             # Skip weekends if requested
-            if ignore_weekends and task_date.weekday() >= 5:
+            if ignore_weekends and task_date.weekday() >= 5:  # Saturday=5, Sunday=6
                 continue
             
-            # Get Monday of the week
-            monday = task_date - timedelta(days=task_date.weekday())
-            week_key = monday.isoformat()
+            # Get Monday of the week (ISO week starts on Monday)
+            week_start = task_date - timedelta(days=task_date.weekday())
+            week_key = week_start.isoformat()
             
             if week_key not in weekly_data:
-                weekly_data[week_key] = {'completed_count': 0, 'total_count': 0}
+                weekly_data[week_key] = {'completed_days': 0, 'total_days': 0}
             
-            weekly_data[week_key]['total_count'] += 1
+            weekly_data[week_key]['total_days'] += 1
             if done_state:
-                weekly_data[week_key]['completed_count'] += 1
+                weekly_data[week_key]['completed_days'] += 1
         
-        # Convert to list and sort by week
+        # Convert to list format
         data = []
-        for week_start, stats in sorted(weekly_data.items(), reverse=True):
-            monday = datetime.fromisoformat(week_start).date()
-            sunday = monday + timedelta(days=6)
+        for week_start_str in sorted(weekly_data.keys(), reverse=True):
+            week_start = datetime.fromisoformat(week_start_str).date()
+            week_data = weekly_data[week_start_str]
+            
+            completion_rate = (week_data['completed_days'] / week_data['total_days'] 
+                             if week_data['total_days'] > 0 else 0)
             
             data.append({
-                'week_start': week_start,
-                'completed_count': stats['completed_count'],
-                'total_count': stats['total_count'],
-                'completion_rate': stats['completed_count'] / stats['total_count'] if stats['total_count'] > 0 else 0,
-                'display_label': f"{monday.strftime('%m-%d')} - {sunday.strftime('%m-%d')}"
+                'date': week_start_str,
+                'completed': completion_rate,
+                'display_label': f"Week {week_start.strftime('%m-%d')}"
+            })
+            
+            if len(data) >= limit:
+                break
+        
+        return data[:limit]
+
+    def _get_monthly_statistics(self, cursor, task_uuid: str,
+                              ignore_weekends: bool, limit: int) -> List[Dict]:
+        """Get monthly statistics for a task."""
+        # Get last N months of data
+        end_date = date.today()
+        start_date = end_date.replace(day=1) - timedelta(days=limit * 32)  # Get extra months
+        
+        cursor.execute('''
+            SELECT date, done_state 
+            FROM task_entries 
+            WHERE task_uuid = ? 
+            AND date >= ? AND date <= ?
+            ORDER BY date DESC
+        ''', (task_uuid, start_date.isoformat(), end_date.isoformat()))
+        
+        # Group by month
+        monthly_data = {}
+        for row in cursor.fetchall():
+            date_str, done_state = row
+            task_date = datetime.fromisoformat(date_str).date()
+            
+            # Skip weekends if requested
+            if ignore_weekends and task_date.weekday() >= 5:  # Saturday=5, Sunday=6
+                continue
+            
+            # Get first day of the month
+            month_start = task_date.replace(day=1)
+            month_key = month_start.isoformat()
+            
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {'completed_days': 0, 'total_days': 0}
+            
+            monthly_data[month_key]['total_days'] += 1
+            if done_state:
+                monthly_data[month_key]['completed_days'] += 1
+        
+        # Convert to list format
+        data = []
+        for month_start_str in sorted(monthly_data.keys(), reverse=True):
+            month_start = datetime.fromisoformat(month_start_str).date()
+            month_data = monthly_data[month_start_str]
+            
+            completion_rate = (month_data['completed_days'] / month_data['total_days'] 
+                             if month_data['total_days'] > 0 else 0)
+            
+            data.append({
+                'date': month_start_str,
+                'completed': completion_rate,
+                'display_label': month_start.strftime('%Y-%m'),
+                'completed_days': month_data['completed_days'],
+                'total_days': month_data['total_days']
+            })
+            
+            if len(data) >= limit:
+                break
+        
+        return data[:limit]
+
+    def _get_yearly_statistics(self, cursor, task_uuid: str,
+                             ignore_weekends: bool, limit: int) -> List[Dict]:
+        """Get yearly statistics for a task."""
+        # Get last N years of data
+        end_date = date.today()
+        start_date = end_date.replace(month=1, day=1) - timedelta(days=limit * 366)  # Get extra years
+        
+        cursor.execute('''
+            SELECT date, done_state 
+            FROM task_entries 
+            WHERE task_uuid = ? 
+            AND date >= ? AND date <= ?
+            ORDER BY date DESC
+        ''', (task_uuid, start_date.isoformat(), end_date.isoformat()))
+        
+        # Group by year
+        yearly_data = {}
+        for row in cursor.fetchall():
+            date_str, done_state = row
+            task_date = datetime.fromisoformat(date_str).date()
+            
+            # Skip weekends if requested
+            if ignore_weekends and task_date.weekday() >= 5:  # Saturday=5, Sunday=6
+                continue
+            
+            # Get first day of the year
+            year_start = task_date.replace(month=1, day=1)
+            year_key = year_start.isoformat()
+            
+            if year_key not in yearly_data:
+                yearly_data[year_key] = {'completed_days': 0, 'total_days': 0}
+            
+            yearly_data[year_key]['total_days'] += 1
+            if done_state:
+                yearly_data[year_key]['completed_days'] += 1
+        
+        # Convert to list format
+        data = []
+        for year_start_str in sorted(yearly_data.keys(), reverse=True):
+            year_start = datetime.fromisoformat(year_start_str).date()
+            year_data = yearly_data[year_start_str]
+            
+            completion_rate = (year_data['completed_days'] / year_data['total_days'] 
+                             if year_data['total_days'] > 0 else 0)
+            
+            data.append({
+                'date': year_start_str,
+                'completed': completion_rate,
+                'display_label': year_start.strftime('%Y'),
+                'completed_days': year_data['completed_days'],
+                'total_days': year_data['total_days']
             })
             
             if len(data) >= limit:

@@ -65,6 +65,53 @@ class TaskStatisticsDialog:
 - Memory usage higher than simple custom charts
 - Platform-specific font rendering differences
 
+## Evolution and Enhancements
+
+### August 2025 Enhancements
+
+**Extended Time Period Support:**
+- Added Monthly and Yearly statistics alongside existing Daily and Weekly views
+- Monthly stats calculate completion rates as: completed days / total tracked days in month
+- Yearly stats calculate completion rates as: completed days / total tracked days in year
+- Enhanced service layer with `_get_monthly_statistics()` and `_get_yearly_statistics()` methods
+
+**Improved Task Identification:**
+- Changed task display format from UUIDs to "Activity name / task name" format
+- Enhanced user experience by providing clear context for each task
+- Updated all chart legends to use human-readable task identification
+- Integrated with app instance for activity name resolution
+
+**User Experience Improvements:**
+- Implemented task selection persistence across grouping changes
+- Users can now switch between Day/Week/Month/Year views while maintaining selected tasks
+- Eliminates need to reselect tasks when exploring different time periods
+- Improved workflow continuity for statistical analysis
+
+**Technical Implementation:**
+```python
+# Extended grouping support
+def get_task_statistics(self, task_list: List[str], 
+                      grouping: str = "Day", ignore_weekends: bool = False,
+                      limit: int = 10) -> Dict[str, List[Dict]]:
+    # Now supports: "Day", "Week", "Month", "Year"
+
+# Task selection persistence
+class TaskStatisticsDialog:
+    def __init__(self, parent, task_tracking_service, app=None):
+        self.selected_task_indices = []  # Store selection state
+    
+    def _on_options_change(self, event=None):
+        self._restore_task_selection()  # Preserve selection
+        self._update_chart()
+```
+
+**Chart Types Now Available:**
+- Daily completion charts (binary 0/1 completion status)
+- Weekly completion rate charts (percentage-based aggregation)
+- Monthly completion rate charts (monthly aggregation with completion rates)
+- Yearly completion rate charts (yearly aggregation with completion rates)
+- All charts support multi-task comparison with "Activity / Task" labeling
+
 ## Alternatives
 
 1. **Custom Tkinter Charts**: Lightweight but limited visualization capabilities
