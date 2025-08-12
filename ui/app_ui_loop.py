@@ -107,6 +107,23 @@ def _should_update_ui(app, now: datetime, activity: Dict) -> bool:
         log_debug("The last_update is not set")
         return True
     
+    # Don't update if mouse pointer is inside window area - avoid interfering with user interaction
+    try:
+        mouse_x = app.winfo_pointerx()
+        mouse_y = app.winfo_pointery()
+        window_x = app.winfo_rootx()
+        window_y = app.winfo_rooty()
+        window_width = app.winfo_width()
+        window_height = app.winfo_height()
+        
+        if (window_x <= mouse_x <= window_x + window_width and 
+            window_y <= mouse_y <= window_y + window_height):
+            log_debug("Mouse pointer inside window area - skipping UI update")
+            return False
+    except Exception as e:
+        # If we can't get mouse position, continue with normal checks
+        log_debug(f"Could not check mouse position: {e}")
+    
     # Update if cards changed
     if getattr(app, 'card_visual_changed', False):
         log_debug("Cards visuals changed!")
