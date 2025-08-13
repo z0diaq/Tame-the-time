@@ -19,7 +19,7 @@ def _set_card_manipulation_state(app, card_id: int, is_being_manipulated: bool):
 
 def on_card_drag(app, event):
     """Handle card drag event."""
-    if not app._drag_data["item_ids"] or abs(event.y - app._drag_data["start_y"]) <= 20:
+    if not app._drag_data["item_ids"]:
         return
     app.last_action = datetime.now()
     app._drag_data["dragging"] = True
@@ -48,6 +48,7 @@ def on_card_drag(app, event):
         y_relative = y - 100 - app.offset_y - app._drag_data["diff_y"]
         total_minutes = int(y_relative * 60 / app.pixels_per_hour)
         snapped_minutes = round_to_nearest_5_minutes(total_minutes)
+        log_debug(f"Snapped minutes: {snapped_minutes}")
         snapped_y = int(snapped_minutes * app.pixels_per_hour / 60) + 100 + app.offset_y
         delta_y = snapped_y - app.canvas.coords(dragged_id)[1]
         log_debug(f"Item_ids: {app._drag_data['item_ids']}")
@@ -93,7 +94,7 @@ def on_card_press(app, event):
                 app.canvas.itemconfig(card_obj.label, fill="black")
             card_obj.hide_progress_bar()
             card_obj.remove_card_progress_actions(app.canvas)
-    app.card_visual_changed = True
+    #app.card_visual_changed = True
     if app.timeline_granularity != 5:
         app.timeline_granularity = 5
         app.show_timeline(granularity=5)
