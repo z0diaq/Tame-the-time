@@ -6,10 +6,11 @@ Separates notification logic from UI and other concerns.
 from datetime import datetime
 from typing import Dict, Optional, Callable
 from models.schedule import ScheduledActivity
-from utils.logging import log_debug, log_info
+from utils.logging import log_debug, log_info, log_error
 import utils.notification
 import utils.config
 from constants import NotificationConstants
+import threading
 
 
 class NotificationService:
@@ -89,24 +90,40 @@ class NotificationService:
         
         self._last_activity = current_activity
     
+    def _send_notification_async(self, notification_data: Dict, notification_type: str, is_delayed: bool = False) -> None:
+        """
+        Send notification asynchronously in a separate thread to avoid blocking UI.
+        
+        Args:
+            notification_data: Notification data to send
+            notification_type: Type of notification for logging purposes
+            is_delayed: Whether this is a delayed notification
+        """
+        def _send_notification():
+            try:
+                utils.notification.send_gotify_notification(notification_data, is_delayed=is_delayed)
+                log_info(f"Sent {notification_type} notification")
+            except Exception as e:
+                log_error(f"Failed to send {notification_type} notification: {str(e)}")
+        
+        thread = threading.Thread(target=_send_notification, daemon=True)
+        thread.start()
+    
     def _send_advance_notification(self, activity: ScheduledActivity) -> None:
-        """Send advance notification for upcoming activity."""
+        """Send advance notification for upcoming activity (non-blocking)."""
         notification_data = {
             'name': f"{NotificationConstants.ADVANCE_WARNING_SECONDS} seconds to start {activity.name}",
             'description': [f"{activity.name} starts at {activity.start_time}"]
         }
-        utils.notification.send_gotify_notification(notification_data, is_delayed=True)
-        log_info(f"Sent advance notification for: {activity.name}")
+        self._send_notification_async(notification_data, f"advance for '{activity.name}'", is_delayed=True)
     
     def _send_activity_start_notification(self, activity: ScheduledActivity) -> None:
-        """Send notification for activity start."""
+        """Send notification for activity start (non-blocking)."""
         notification_data = activity.to_dict()
-        utils.notification.send_gotify_notification(notification_data)
-        log_info(f"Sent start notification for: {activity.name}")
+        self._send_notification_async(notification_data, f"start for '{activity.name}'")
     
     def send_custom_notification(self, title: str, message: str, is_delayed: bool = False) -> None:
-        """
-        Send a custom notification.
+        """Send a custom notification asynchronously (non-blocking).
         
         Args:
             title: Notification title
@@ -120,8 +137,7 @@ class NotificationService:
             'name': title,
             'description': [message]
         }
-        utils.notification.send_gotify_notification(notification_data, is_delayed=is_delayed)
-        log_info(f"Sent custom notification: {title}")
+        self._send_notification_async(notification_data, f"custom '{title}'", is_delayed=is_delayed)
     
     def reset_notification_state(self) -> None:
         """Reset all notification state."""
