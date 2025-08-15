@@ -2,7 +2,8 @@
 
 **Title:** Configuration Management Strategy  
 **Status:** Accepted  
-**Date:** 2025-08-03  
+**Date:** 2025-08-03
+**Updated:** 2025-08-15
 
 ## Context
 
@@ -56,6 +57,38 @@ class UIConstants:
 python TameTheTime.py --time "2025-06-04T16:55:00" --no-notification
 ```
 
+### Notification Configuration Management
+
+The application provides a user-friendly interface for managing notification settings through the Global Options dialog:
+
+**UI Components:**
+- **Notification Dropdown**: Allows selection between "Disabled" and "Gotify"
+- **Dynamic Fields**: Gotify URL and Token fields appear only when "Gotify" is selected
+- **Secure Input**: Token field uses password masking for security
+- **Auto-Detection**: Current notification type is determined by existing configuration
+
+**Configuration Flow:**
+1. User opens Global Options dialog (File → Global Options)
+2. Current notification settings are loaded from `utils.notification` module
+3. UI displays "Gotify" if both URL and token are configured, otherwise "Disabled"
+4. When "Gotify" is selected, URL and token fields become visible and editable
+5. Changes are saved immediately to `~/.tame_the_time_settings.json` on OK
+6. Settings are applied to the `utils.notification` module for runtime use
+
+**Storage Format:**
+```json
+{
+    "window_position": "400x700+100+100",
+    "gotify_token": "AaBbCc123...",
+    "gotify_url": "https://gotify.example.com/message"
+}
+```
+
+**Security Considerations:**
+- Token field uses password masking in the UI
+- Empty strings disable notifications (both URL and token must be present)
+- Settings are stored in user's home directory with standard file permissions
+
 ## Consequences
 
 **Positive:**
@@ -64,6 +97,9 @@ python TameTheTime.py --time "2025-06-04T16:55:00" --no-notification
 - Constants are easily discoverable and modifiable
 - Schedule templates support version control and sharing
 - Runtime overrides enable testing and debugging
+- Notification settings are configurable through Global Options UI
+- Gotify credentials are securely stored and managed
+- Dynamic UI shows/hides notification fields based on selection
 
 **Negative:**
 - Multiple configuration mechanisms to maintain
