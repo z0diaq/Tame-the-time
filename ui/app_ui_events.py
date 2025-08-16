@@ -1,6 +1,7 @@
 import tkinter.messagebox as messagebox
 from utils.logging import log_debug
 from ui.zoom_and_scroll import zoom, scroll, resize_timelines_and_cards
+from ui.schedule_management import save_schedule
 
 def show_menu_bar(app):
     """Show the menu bar."""
@@ -36,7 +37,7 @@ def on_close(app):
     app.save_settings(immediate=True)  # Save immediately on close
     if app.schedule_changed:
         if messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to save them?"):
-            app.save_schedule(ask_for_confirmation=False)
+            save_schedule(app, ask_for_confirmation=False)
     app.destroy()
 
 def on_resize(app, event):
