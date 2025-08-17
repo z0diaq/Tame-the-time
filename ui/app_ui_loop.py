@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Dict
 from constants import UIConstants
 from models.schedule import ScheduledActivity
+from ui.timeline import reposition_current_time_line
 
 def update_ui(app):
     """Update the UI based on time changes and state."""
@@ -15,6 +16,10 @@ def update_ui(app):
     
     # Always update time display (lightweight operation)
     app.time_label.config(text=now.strftime("%H:%M:%S %A, %Y-%m-%d"))
+    
+    # Always update current time line position and format (lightweight operation)
+    mouse_inside = _is_mouse_inside_window(app)
+    reposition_current_time_line(app.canvas, app.current_time_ids, app.start_hour, app.pixels_per_hour, app.offset_y, app.winfo_width(), now.time(), mouse_inside)
     
     next_task, next_task_start = app.get_next_task_and_time(now)
     
@@ -94,6 +99,21 @@ def _refresh_active_card_if_undone_tasks(app, activity):
                     now=app.now_provider().time(),
                     width=app.winfo_width()
                 )
+
+def _is_mouse_inside_window(app) -> bool:
+    """Check if mouse is inside the window area."""
+    try:
+        mouse_x = app.winfo_pointerx()
+        mouse_y = app.winfo_pointery()
+        window_x = app.winfo_rootx()
+        window_y = app.winfo_rooty()
+        window_width = app.winfo_width()
+        window_height = app.winfo_height()
+        
+        return (window_x <= mouse_x <= window_x + window_width and 
+                window_y <= mouse_y <= window_y + window_height)
+    except Exception:
+        return False
 
 def _should_update_ui(app, now: datetime, activity: Dict) -> bool:
     """Determine if UI needs updating based on time changes and state."""

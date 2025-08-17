@@ -1,5 +1,5 @@
 from utils.logging import log_debug
-from ui.timeline import reposition_timeline
+from ui.timeline import reposition_timeline, reposition_current_time_line
 from datetime import datetime
 
 def move_timelines_and_cards(app, delta_y):
@@ -7,6 +7,9 @@ def move_timelines_and_cards(app, delta_y):
     for tid in getattr(app, 'timeline_1h_ids', []):
         app.canvas.move(tid, 0, delta_y)
     for tid in getattr(app, 'timeline_5m_ids', []):
+        app.canvas.move(tid, 0, delta_y)
+    # Move current time line
+    for tid in getattr(app, 'current_time_ids', []):
         app.canvas.move(tid, 0, delta_y)
     now = app.now_provider().time()
     # Move all cards
@@ -59,6 +62,9 @@ def resize_timelines_and_cards(app):
         )
     reposition_timeline(app.canvas, app.timeline_1h_ids, app.pixels_per_hour, app.offset_y, app.winfo_width(), granularity=60)
     reposition_timeline(app.canvas, app.timeline_5m_ids, app.pixels_per_hour, app.offset_y, app.winfo_width(), granularity=5)
+    # Reposition current time line
+    mouse_inside = app._is_mouse_inside_window()
+    reposition_current_time_line(app.canvas, app.current_time_ids, app.start_hour, app.pixels_per_hour, app.offset_y, app.winfo_width(), now, mouse_inside)
     app.activity_label.place(x=10, y=40, width=app.winfo_width() - 20)
 
 def scroll(app, event, delta: int):

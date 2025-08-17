@@ -1,6 +1,28 @@
 from tkinter import Canvas
 from datetime import time
 
+def draw_current_time_line(canvas: Canvas, width: int, start_hour: int, pixels_per_hour: int, offset_y: int, current_time, mouse_inside_window: bool):
+    """Draw current time line and text on the timeline."""
+    if not current_time:
+        return []
+    
+    # Calculate position based on current time
+    current_minutes = current_time.hour * 60 + current_time.minute + current_time.second / 60.0
+    start_minutes = start_hour * 60
+    y = ((current_minutes - start_minutes) / 60) * pixels_per_hour + 100 + offset_y
+    
+    # Create green dotted line with same style as hour lines
+    line = canvas.create_line(0, y, width, y, fill="green", dash=(2, 2))
+    
+    # Create time text with format based on mouse position
+    time_format = "%H:%M:%S" if mouse_inside_window else "%H:%M"
+    time_text = current_time.strftime(time_format)
+    # Position text on the right side with some padding from the edge
+    text_x = width - 5
+    text = canvas.create_text(text_x, y, anchor="ne", text=time_text, fill="green", font=("Arial", 9, "bold"))
+    
+    return [line, text]
+
 def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pixels_per_hour: int, offset_y: int, current_time=None, granularity=60):
     """Draw the timeline on the canvas. granularity in minutes (default 60)."""
     total_minutes = (end_hour - start_hour) * 60
@@ -21,6 +43,29 @@ def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pi
             created_objects.append(text)
 
     return created_objects
+
+def reposition_current_time_line(canvas: Canvas, current_time_objects, start_hour: int, pixels_per_hour: int, offset_y: int, width: int, current_time, mouse_inside_window: bool):
+    """Reposition current time line and update text format based on mouse position."""
+    if not current_time_objects or len(current_time_objects) != 2:
+        return
+    
+    # Calculate new position
+    current_minutes = current_time.hour * 60 + current_time.minute + current_time.second / 60.0
+    start_minutes = start_hour * 60
+    y = ((current_minutes - start_minutes) / 60) * pixels_per_hour + 100 + offset_y
+    
+    # Reposition line
+    line = current_time_objects[0]
+    canvas.coords(line, 0, y, width, y)
+    
+    # Reposition and update text
+    text = current_time_objects[1]
+    time_format = "%H:%M:%S" if mouse_inside_window else "%H:%M"
+    time_text = current_time.strftime(time_format)
+    # Position text on the right side with some padding from the edge
+    text_x = width - 5
+    canvas.coords(text, text_x, y)
+    canvas.itemconfig(text, text=time_text)
 
 # Reposition of all timeline elements after pixels per hour change or width change
 def reposition_timeline(canvas: Canvas, created_objects, pixels_per_hour: int, offset_y: int, width: int, granularity: int):

@@ -9,7 +9,7 @@ import utils.notification
 from constants import UIConstants
 from services.notification_service import NotificationService
 
-from ui.timeline import draw_timeline
+from ui.timeline import draw_timeline, draw_current_time_line, reposition_current_time_line
 from ui.task_card import create_task_cards, TaskCard
 from utils.time_utils import parse_time_str
 from datetime import datetime, timedelta, time
@@ -105,6 +105,7 @@ class TimeboxApp(tk.Tk):
         self.cards = []  # List[TaskCard]
         self.timeline_1h_ids = []
         self.timeline_5m_ids = []
+        self.current_time_ids = []
         self._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         self._last_size = (self.winfo_width(), self.winfo_height())
         self.timeline_granularity = 60
@@ -161,6 +162,7 @@ class TimeboxApp(tk.Tk):
         # --- Create both timelines and all cards only once ---
         self.timeline_1h_ids = self.create_timeline(granularity=60)
         self.timeline_5m_ids = self.create_timeline(granularity=5)
+        self.current_time_ids = self.create_current_time_line()
         self.show_timeline(granularity=60)
         self.cards = self.create_task_cards()
         
@@ -182,6 +184,30 @@ class TimeboxApp(tk.Tk):
             self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y,
             current_time=now, granularity=granularity
         )
+
+    def create_current_time_line(self):
+        """Create current time line visualization."""
+        now = self.now_provider().time()
+        mouse_inside = self._is_mouse_inside_window()
+        return draw_current_time_line(
+            self.canvas, self.winfo_width(), self.start_hour, self.pixels_per_hour, self.offset_y,
+            current_time=now, mouse_inside_window=mouse_inside
+        )
+
+    def _is_mouse_inside_window(self):
+        """Check if mouse is inside the window area."""
+        try:
+            mouse_x = self.winfo_pointerx()
+            mouse_y = self.winfo_pointery()
+            window_x = self.winfo_rootx()
+            window_y = self.winfo_rooty()
+            window_width = self.winfo_width()
+            window_height = self.winfo_height()
+            
+            return (window_x <= mouse_x <= window_x + window_width and 
+                    window_y <= mouse_y <= window_y + window_height)
+        except Exception:
+            return False
 
     def show_timeline(self, granularity=60):
         """Show only the timeline with the given granularity."""

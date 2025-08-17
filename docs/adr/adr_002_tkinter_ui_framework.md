@@ -21,6 +21,7 @@ We chose Tkinter as the primary UI framework with Canvas for custom graphics ren
 **Key Implementation Details:**
 - `tk.Canvas` for timeline and task card rendering
 - Custom drawing for progress bars, timelines, and visual effects
+- Real-time current time indicator with dynamic formatting (HH:MM/HH:MM:SS based on mouse position)
 - Event binding for mouse interactions (drag, scroll, resize)
 - Modal dialogs for task editing and statistics
 - Menu system with auto-hide functionality
