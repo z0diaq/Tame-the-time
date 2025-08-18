@@ -153,35 +153,52 @@ class TaskCard:
         tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
         remaining_tasks = [t for t, done in zip(tasks, tasks_done) if not done]
         if remaining_tasks:
+            color = self._get_task_count_color(len(remaining_tasks), now)
             self.tasks_count_label = canvas.create_text(
                 self.card_right - 5, self.y + self.height - 5,
                 text=f"Tasks: {len(remaining_tasks)}",
-                font=("Arial", 8, "bold"), anchor="se", fill="#0a0a0a"
+                font=("Arial", 8, "bold"), anchor="se", fill=color
             )
             canvas.itemconfig(self.tasks_count_label, tags=(tag))
         else:
             self.tasks_count_label = None
         return self
 
-    def _get_task_count_color(self, remaining_tasks_count: int) -> str:
-        """Get the color for task count display with alternating behavior for active cards."""
-        # Only alternate colors for active cards with undone tasks
+    def _get_task_count_color(self, remaining_tasks_count: int, now: time = None) -> str:
+        """Get the color for task count display based on card's time status."""
+        # No tasks remaining - use default black
         if remaining_tasks_count == 0:
             return "#0a0a0a"  # Default black color
         
-        # Check if card is being dragged or resized (disable alternation)
+        # Check if card is being dragged or resized (disable special coloring)
         if getattr(self, '_being_dragged', False) or getattr(self, '_being_resized', False):
             return "#0a0a0a"  # Default black color
         
-        # Get current time in seconds to create alternating behavior
-        import time
-        current_second = int(time.time())
+        # Get current time
+        if now is None:
+            now = self.now_provider().time() if self.now_provider else time(0, 0)
         
-        # Alternate between black and red every second
-        if current_second % 2 == 0:
-            return "#0a0a0a"  # Black
-        else:
+        # Determine card status relative to current time
+        start_time = time(self.start_hour, self.start_minute)
+        end_time = time(self.end_hour, self.end_minute)
+        
+        # Finished card (past) - red
+        if end_time <= now:
             return "#ff0000"  # Red
+        
+        # Active card (current) - orange and blinking
+        elif start_time <= now < end_time:
+            import time as time_module
+            current_second = int(time_module.time())
+            # Alternate between orange and black every second for blinking effect
+            if current_second % 2 == 0:
+                return "#ff8c00"  # Orange
+            else:
+                return "#0a0a0a"  # Black (for blinking effect)
+        
+        # Future card - default black
+        else:
+            return "#0a0a0a"  # Default black color
 
     def delete(self):
         """Delete the card and its associated elements from the canvas."""
@@ -295,9 +312,9 @@ class TaskCard:
             self.canvas.tag_raise(self.tasks_count_label)
             self.canvas.tag_raise(self.label)
 
-            # Alternate between black and red every second for active cards with undone tasks
-            if should_show_progress:
-                self.canvas.itemconfig(self.tasks_count_label, fill=self._get_task_count_color(len(remaining_tasks)))
+            # Set color based on card's time status (red for finished, orange blinking for active, black for future)
+            color = self._get_task_count_color(len(remaining_tasks), now)
+            self.canvas.itemconfig(self.tasks_count_label, fill=color)
         else:
             if hasattr(self, 'tasks_count_label') and self.tasks_count_label is not None:
                 self.canvas.itemconfig(self.tasks_count_label, state="hidden")
