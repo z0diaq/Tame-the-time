@@ -26,7 +26,11 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
     tk.Label(edit_win, text="Tasks (one per line):").pack(anchor="w", padx=10, pady=(10, 0))
     tasks_text = tk.Text(edit_win, height=5)
     tasks = card_obj.activity.get("tasks", [])
-    tasks_text.insert("1.0", "\n".join(tasks))
+    task_names = [
+        task.get("name") if isinstance(task, dict) else task
+        for task in tasks
+    ]
+    tasks_text.insert("1.0", "\n".join(task_names))
     tasks_text.pack(fill="both", expand=True, padx=10)
 
     btn_frame = tk.Frame(edit_win)
