@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.messagebox as messagebox
 from tkinter import ttk
 import utils.notification
+import re
 
 def open_global_options(app):
     """Open a dialog to edit global options."""
@@ -67,6 +68,24 @@ def open_global_options(app):
     # Initialize visibility based on current selection
     on_notification_change()
 
+    def validate_gotify_url(url):
+        """Validate Gotify URL format."""
+        if not url:
+            return False
+        
+        # Check if URL starts with http or https
+        if not url.startswith(('http://', 'https://')):
+            return False
+        
+        # Check if URL ends with /message
+        if not url.endswith('/message'):
+            return False
+        
+        # Basic URI format validation using regex
+        # Pattern: http(s)://host(:port)/message
+        pattern = r'^https?://[a-zA-Z0-9.-]+(?::\d+)?/message$'
+        return bool(re.match(pattern, url))
+
     btn_frame = tk.Frame(options_win)
     btn_frame.pack(fill="x", pady=15)
     
@@ -82,8 +101,22 @@ def open_global_options(app):
                 
                 # Update notification settings
                 if notification_var.get() == "Gotify":
-                    utils.notification.gotify_url = gotify_url_var.get().strip()
-                    utils.notification.gotify_token = gotify_token_var.get().strip()
+                    gotify_url = gotify_url_var.get().strip()
+                    gotify_token = gotify_token_var.get().strip()
+                    
+                    # Validate Gotify URL format
+                    if gotify_url and not validate_gotify_url(gotify_url):
+                        response = messagebox.askyesno(
+                            "Invalid Gotify URL",
+                            "Gotify URL does not look correct - expected format is http(s)://<ip/name>:<port>/message. Do you want to correct it?",
+                            icon="warning"
+                        )
+                        if response:  # User clicked "Yes"
+                            return  # Stay in dialog to allow correction
+                        # User clicked "No", proceed with the invalid URL
+                    
+                    utils.notification.gotify_url = gotify_url
+                    utils.notification.gotify_token = gotify_token
                 else:
                     utils.notification.gotify_url = ""
                     utils.notification.gotify_token = ""
