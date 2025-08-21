@@ -46,7 +46,8 @@ class TimeboxApp(tk.Tk):
         settings = {
             "window_position": self.geometry(),
             "gotify_token": utils.notification.gotify_token,
-            "gotify_url": utils.notification.gotify_url
+            "gotify_url": utils.notification.gotify_url,
+            "always_on_top": self.always_on_top
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -112,6 +113,12 @@ class TimeboxApp(tk.Tk):
         self.menu_hide_job = None
         self.last_action = datetime.now()
         self.last_activity = None  # Track last activity for notifications
+        self.always_on_top = False  # Track always on top state
+        
+        # Load settings and apply always on top state
+        settings = self.load_settings()
+        self.always_on_top = settings.get("always_on_top", False)
+        self.wm_attributes("-topmost", self.always_on_top)
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
@@ -122,6 +129,8 @@ class TimeboxApp(tk.Tk):
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.options_menu.add_command(label="Global options", command=lambda: open_global_options(self))
+        self.options_menu.add_separator()
+        self.options_menu.add_checkbutton(label="Always on top", command=self.toggle_always_on_top)
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
         
         # Add Statistics menu
@@ -494,10 +503,14 @@ class TimeboxApp(tk.Tk):
         if migration_needed:
             self.schedule_changed = True
             log_info("Schedule migrated to include task UUIDs")
-            # Auto-save the migrated schedule to persist UUIDs
-            from ui.schedule_management import save_schedule
-            save_schedule(self, ask_for_confirmation=False)
-            log_info("Auto-saved schedule with persistent task UUIDs")
+    
+    def toggle_always_on_top(self):
+        """Toggle the always on top state of the window."""
+        self.always_on_top = not self.always_on_top
+        self.wm_attributes("-topmost", self.always_on_top)
+        log_debug(f"Always on top toggled to: {self.always_on_top}")
+        # Save settings immediately when toggled
+        self.save_settings(immediate=True)
     
     def generate_activity_id(self):
         """Generate a new unique activity ID."""
