@@ -149,14 +149,16 @@ class TaskCard:
             canvas.itemconfig(self.time_end_label, state="hidden")
         # Add tasks count label if tasks exist
         tasks = self.activity.get("tasks", [])
-        # Use _tasks_done if present, otherwise count all as not done
-        tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
-        remaining_tasks = [t for t, done in zip(tasks, tasks_done) if not done]
-        if remaining_tasks:
-            color = self._get_task_count_color(len(remaining_tasks), now)
+        if tasks:  # Show tasks label if any tasks exist
+            # Use _tasks_done if present, otherwise count all as not done
+            tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
+            done_count = sum(tasks_done)
+            total_count = len(tasks)
+            
+            color = self._get_task_count_color(done_count, total_count, now)
             self.tasks_count_label = canvas.create_text(
                 self.card_right - 5, self.y + self.height - 5,
-                text=f"Tasks: {len(remaining_tasks)}",
+                text=f"Tasks: {done_count}/{total_count}",
                 font=("Arial", 8, "bold"), anchor="se", fill=color
             )
             canvas.itemconfig(self.tasks_count_label, tags=(tag))
@@ -164,12 +166,8 @@ class TaskCard:
             self.tasks_count_label = None
         return self
 
-    def _get_task_count_color(self, remaining_tasks_count: int, now: time = None) -> str:
-        """Get the color for task count display based on card's time status."""
-        # No tasks remaining - use default black
-        if remaining_tasks_count == 0:
-            return "#0a0a0a"  # Default black color
-        
+    def _get_task_count_color(self, done_count: int, total_count: int, now: time = None) -> str:
+        """Get the color for task count display based on completion status and card's time status."""
         # Check if card is being dragged or resized (disable special coloring)
         if getattr(self, '_being_dragged', False) or getattr(self, '_being_resized', False):
             return "#0a0a0a"  # Default black color
@@ -182,21 +180,28 @@ class TaskCard:
         start_time = time(self.start_hour, self.start_minute)
         end_time = time(self.end_hour, self.end_minute)
         
-        # Finished card (past) - red
-        if end_time <= now:
-            return "#ff0000"  # Red
+        # All tasks done - green
+        if done_count == total_count:
+            return "#008000"  # Dark green
         
-        # Active card (current) - orange and blinking
+        # Some tasks undone
+        undone_count = total_count - done_count
+        
+        # Finished card (past) with undone tasks - red
+        if end_time <= now:
+            return "#ff4040"  # Light red (a bit lighter than dark red)
+        
+        # Active card (current) with undone tasks - blinking
         elif start_time <= now < end_time:
             import time as time_module
             current_second = int(time_module.time())
-            # Alternate between orange and black every second for blinking effect
+            # Alternate between red and black every second for blinking effect
             if current_second % 2 == 0:
-                return "#ff8c00"  # Orange
+                return "#ff0000"  # Red
             else:
                 return "#0a0a0a"  # Black (for blinking effect)
         
-        # Future card - default black
+        # Future card with undone tasks - default black
         else:
             return "#0a0a0a"  # Default black color
 
@@ -293,10 +298,12 @@ class TaskCard:
 
         # Update or create tasks count label
         tasks = self.activity.get("tasks", [])
-        tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
-        remaining_tasks = [t for t, done in zip(tasks, tasks_done) if not done]
-        if remaining_tasks:
-            tasks_text = f"Tasks: {len(remaining_tasks)}"
+        if tasks:  # Show tasks label if any tasks exist
+            tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
+            done_count = sum(tasks_done)
+            total_count = len(tasks)
+            tasks_text = f"Tasks: {done_count}/{total_count}"
+            
             if not hasattr(self, 'tasks_count_label') or self.tasks_count_label is None:
                 self.tasks_count_label = self.canvas.create_text(
                     self.card_right - 5, self.y + self.height - 5,
@@ -312,8 +319,8 @@ class TaskCard:
             self.canvas.tag_raise(self.tasks_count_label)
             self.canvas.tag_raise(self.label)
 
-            # Set color based on card's time status (red for finished, orange blinking for active, black for future)
-            color = self._get_task_count_color(len(remaining_tasks), now)
+            # Set color based on completion status and card's time status
+            color = self._get_task_count_color(done_count, total_count, now)
             self.canvas.itemconfig(self.tasks_count_label, fill=color)
         else:
             if hasattr(self, 'tasks_count_label') and self.tasks_count_label is not None:
