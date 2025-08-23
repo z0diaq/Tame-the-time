@@ -6,7 +6,8 @@ import json
 import os
 import uuid
 import utils.notification
-from constants import UIConstants
+from constants import UIConstants, Colors
+import utils.notification
 from services.notification_service import NotificationService
 
 from ui.timeline import draw_timeline, draw_current_time_line, reposition_current_time_line
@@ -140,10 +141,10 @@ class TimeboxApp(tk.Tk):
         self.menu_visible = False
         self.card_visual_changed = False  # Flag to track if card visuals have changed
 
-        self.status_bar = tk.Label(self, font=("Arial", 10), anchor="w", bg="#e0e0e0", fg="black", relief="sunken", bd=1)
+        self.status_bar = tk.Label(self, font=("Arial", 10), anchor="w", bg=Colors.STATUS_BAR_BG, fg=Colors.STATUS_BAR_TEXT, relief="sunken", bd=1)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.canvas = tk.Canvas(self, bg="white", width=400, height=700)
+        self.canvas = tk.Canvas(self, bg=Colors.CANVAS_BG, width=400, height=700)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<MouseWheel>', lambda event: on_mouse_wheel(self, event))
         self.canvas.bind('<Button-4>', lambda event: on_mouse_wheel(self, event))
@@ -151,9 +152,9 @@ class TimeboxApp(tk.Tk):
         self.canvas.bind("<Motion>", lambda event: on_motion(self, event))
         self.canvas.bind("<Button-3>", lambda event: show_canvas_context_menu(self, event))
 
-        self.time_label = tk.Label(self, font=("Arial", 14, "bold"), bg="#0f8000")
+        self.time_label = tk.Label(self, font=("Arial", 14, "bold"), bg=Colors.TIME_LABEL_BG)
         self.time_label.place(x=10, y=10)
-        self.activity_label = tk.Label(self, font=("Arial", 12), anchor="w", justify="left", bg="#ffff99", fg="black", relief="solid", bd=2)
+        self.activity_label = tk.Label(self, font=("Arial", 12), anchor="w", justify="left", bg=Colors.ACTIVITY_LABEL_BG, fg=Colors.ACTIVITY_LABEL_TEXT, relief="solid", bd=2)
         self.activity_label.place(x=10, y=40, width=380)
         
         self.bind("<Configure>", lambda event: on_resize(self, event))
@@ -270,7 +271,7 @@ class TimeboxApp(tk.Tk):
         for card_obj in self.cards:
             self.canvas.itemconfig(card_obj.card, stipple="")
             if card_obj.label:
-                self.canvas.itemconfig(card_obj.label, fill="black")
+                self.canvas.itemconfig(card_obj.label, fill=Colors.CARD_LABEL_TEXT)
             card_obj.set_being_modified(False)
             
             # Immediately restore progress bar if card is currently active
@@ -348,7 +349,7 @@ class TimeboxApp(tk.Tk):
             if hasattr(self, '_normal_timer_id') and self._normal_timer_id:
                 self.after_cancel(self._normal_timer_id)
                 self._normal_timer_id = None
-            self.status_bar.config(text=tasks_info, fg="black")
+            self.status_bar.config(text=tasks_info, fg=Colors.STATUS_BAR_TEXT)
     
     def _check_for_unsaved_tasks(self) -> bool:
         """Check if there are any unsaved tasks in the current schedule"""
@@ -379,13 +380,13 @@ class TimeboxApp(tk.Tk):
             self.after_cancel(self._normal_timer_id)
         
         # Show normal text for 5 seconds
-        self.status_bar.config(text=normal_text, fg="black")
+        self.status_bar.config(text=normal_text, fg=Colors.STATUS_BAR_TEXT)
         log_debug("Status bar set to normal text (black)")
         
         # After 5 seconds, show red warning for 2 seconds
         def show_warning():
             log_debug("Showing white text on red background warning message")
-            self.status_bar.config(text="Save schedule to handle all tasks", fg="white", bg="red")
+            self.status_bar.config(text="Save schedule to handle all tasks", fg=Colors.STATUS_BAR_WARNING_TEXT, bg=Colors.STATUS_BAR_WARNING_BG)
             # After 2 seconds, return to normal text
             self._normal_timer_id = self.after(2000, lambda: self._return_to_normal(normal_text))
         
@@ -394,7 +395,7 @@ class TimeboxApp(tk.Tk):
     def _return_to_normal(self, normal_text: str):
         """Return status bar to normal text and check if we need to continue cycling"""
         log_debug("Returning to normal text")
-        self.status_bar.config(text=normal_text, fg="black", bg="#e0e0e0")
+        self.status_bar.config(text=normal_text, fg=Colors.STATUS_BAR_TEXT, bg=Colors.STATUS_BAR_BG)
         
         # Check if we still have unsaved tasks and need to continue cycling
         if self._check_for_unsaved_tasks():
@@ -409,7 +410,7 @@ class TimeboxApp(tk.Tk):
     def _show_red_warning(self, normal_text: str):
         """Show the red warning part of the cycle"""
         log_debug("Showing red warning message (cycle)")
-        self.status_bar.config(text="Save schedule to handle all tasks", fg="white", bg="red")
+        self.status_bar.config(text="Save schedule to handle all tasks", fg=Colors.STATUS_BAR_WARNING_TEXT, bg=Colors.STATUS_BAR_WARNING_BG)
         # After 2 seconds, return to normal text
         self._normal_timer_id = self.after(2000, lambda: self._return_to_normal(normal_text))
 

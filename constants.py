@@ -42,13 +42,58 @@ class Colors:
     TIMELINE_MINUTE_LINE = "#dddddd"
     TIMELINE_TEXT = "black"
     TIMELINE_MINUTE_TEXT = "#888888"
+    TIMELINE_CURRENT_TIME_LINE = "green"
+    TIMELINE_CURRENT_TIME_TEXT = "green"
     
     # UI element colors
     CARD_OUTLINE = "black"
-    CARD_PROGRESS_FILL = "#4CAF50"
+    CARD_PROGRESS_FILL = "green"
+    CARD_PROGRESS_OUTLINE = "black"
+    CARD_PROGRESS_FILL_NO_OUTLINE = "green"
     CARD_BEING_MODIFIED_STIPPLE = "gray25"
     CARD_DISABLED_TEXT = "#cccccc"
+    CARD_LABEL_TEXT = "black"
+    
+    # Task count colors
     TASK_COUNT_TEXT = "#0a0a0a"
+    TASK_COUNT_ALL_DONE = "#008000"  # Dark green
+    TASK_COUNT_PAST_UNDONE = "#ff4040"  # Light red
+    TASK_COUNT_ACTIVE_UNDONE = "#ff0000"  # Red (for blinking)
+    TASK_COUNT_FUTURE_UNDONE = "#0a0a0a"  # Default black
+    
+    # Status bar colors
+    STATUS_BAR_BG = "#e0e0e0"
+    STATUS_BAR_TEXT = "black"
+    STATUS_BAR_WARNING_BG = "red"
+    STATUS_BAR_WARNING_TEXT = "white"
+    
+    # App UI colors
+    TIME_LABEL_BG = "#0f8000"
+    ACTIVITY_LABEL_BG = "#ffff99"
+    ACTIVITY_LABEL_TEXT = "black"
+    CANVAS_BG = "white"
+    CHART_FRAME_BG = "white"
+    
+    # Chart colors for statistics
+    CHART_COLOR_1 = "#1f77b4"
+    CHART_COLOR_2 = "#ff7f0e"
+    CHART_COLOR_3 = "#2ca02c"
+    CHART_COLOR_4 = "#d62728"
+    CHART_COLOR_5 = "#9467bd"
+    CHART_COLOR_6 = "#8c564b"
+    CHART_COLOR_7 = "#e377c2"
+    CHART_COLOR_8 = "#7f7f7f"
+    CHART_COLOR_9 = "#bcbd22"
+    CHART_COLOR_10 = "#17becf"
+    
+    @classmethod
+    def get_chart_colors(cls):
+        """Return list of chart colors for statistics."""
+        return [
+            cls.CHART_COLOR_1, cls.CHART_COLOR_2, cls.CHART_COLOR_3, cls.CHART_COLOR_4,
+            cls.CHART_COLOR_5, cls.CHART_COLOR_6, cls.CHART_COLOR_7, cls.CHART_COLOR_8,
+            cls.CHART_COLOR_9, cls.CHART_COLOR_10
+        ]
 
 
 class FileConstants:

@@ -2,6 +2,7 @@ from utils.time_utils import round_to_nearest_5_minutes
 from utils.logging import log_debug
 import tkinter as tk
 from datetime import datetime
+from constants import Colors
 
 
 def _set_card_manipulation_state(app, card_id: int, is_being_manipulated: bool):
@@ -86,12 +87,12 @@ def on_card_press(app, event):
         if card_obj.card != dragged_id:
             app.canvas.itemconfig(card_obj.card, stipple="gray25")
             if card_obj.label:
-                app.canvas.itemconfig(card_obj.label, fill="#cccccc")
+                app.canvas.itemconfig(card_obj.label, fill=Colors.CARD_DISABLED_TEXT)
         else:
             app.canvas.itemconfig(card_obj.card, stipple="")
             card_obj.set_being_modified(True)
             if card_obj.label:
-                app.canvas.itemconfig(card_obj.label, fill="black")
+                app.canvas.itemconfig(card_obj.label, fill=Colors.CARD_LABEL_TEXT)
             card_obj.hide_progress_bar()
             card_obj.remove_card_progress_actions(app.canvas)
     #app.card_visual_changed = True

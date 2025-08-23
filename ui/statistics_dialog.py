@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from typing import List, Dict, Tuple
+from constants import Colors
 from services.task_tracking_service import TaskTrackingService
 from utils.logging import log_debug, log_error
 
@@ -130,7 +131,7 @@ class TaskStatisticsDialog:
         ignore_weekends_cb.pack(side=tk.LEFT, padx=(20, 0))
         
         # Chart display area
-        self.chart_frame = tk.Frame(parent, bg="white", relief=tk.SUNKEN, bd=1)
+        self.chart_frame = tk.Frame(parent, bg=Colors.CHART_FRAME_BG, relief=tk.SUNKEN, bd=1)
         self.chart_frame.pack(fill=tk.BOTH, expand=True)
         
     def _populate_task_list(self):
@@ -287,8 +288,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_dates))
         
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
             # Get task display name from stored data
@@ -344,8 +344,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_weeks))
         
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
             # Get task display name from stored data
@@ -406,8 +405,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_months))
         
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
             # Get task display name from stored data
@@ -468,8 +466,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_years))
         
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
             # Get task display name from stored data

@@ -126,7 +126,7 @@ class TaskCard:
             progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
             log_info(f"Drawing progress for card {self.activity['name']}: {progress:.2f}")
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
-            self.progress = canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="black")
+            self.progress = canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill=Colors.CARD_PROGRESS_FILL, outline=Colors.CARD_PROGRESS_OUTLINE)
             self.setup_card_progress_actions(canvas)
             canvas.tag_raise(self.label)
         tag = f"card_{self.card}"
@@ -170,7 +170,7 @@ class TaskCard:
         """Get the color for task count display based on completion status and card's time status."""
         # Check if card is being dragged or resized (disable special coloring)
         if getattr(self, '_being_dragged', False) or getattr(self, '_being_resized', False):
-            return "#0a0a0a"  # Default black color
+            return Colors.TASK_COUNT_TEXT  # Default black color
         
         # Get current time
         if now is None:
@@ -182,14 +182,14 @@ class TaskCard:
         
         # All tasks done - green
         if done_count == total_count:
-            return "#008000"  # Dark green
+            return Colors.TASK_COUNT_ALL_DONE  # Dark green
         
         # Some tasks undone
         undone_count = total_count - done_count
         
         # Finished card (past) with undone tasks - red
         if end_time <= now:
-            return "#ff4040"  # Light red (a bit lighter than dark red)
+            return Colors.TASK_COUNT_PAST_UNDONE  # Light red
         
         # Active card (current) with undone tasks - blinking
         elif start_time <= now < end_time:
@@ -197,13 +197,13 @@ class TaskCard:
             current_second = int(time_module.time())
             # Alternate between red and black every second for blinking effect
             if current_second % 2 == 0:
-                return "#ff0000"  # Red
+                return Colors.TASK_COUNT_ACTIVE_UNDONE  # Red
             else:
-                return "#0a0a0a"  # Black (for blinking effect)
+                return Colors.TASK_COUNT_TEXT  # Black (for blinking effect)
         
         # Future card with undone tasks - default black
         else:
-            return "#0a0a0a"  # Default black color
+            return Colors.TASK_COUNT_FUTURE_UNDONE  # Default black color
 
     def delete(self):
         """Delete the card and its associated elements from the canvas."""
@@ -269,7 +269,7 @@ class TaskCard:
             progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
             if not hasattr(self, 'progress') or self.progress is None:
-                self.progress = self.canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill="green", outline="")
+                self.progress = self.canvas.create_rectangle(self.card_left, self.y, fill_right, self.y + self.height, fill=Colors.CARD_PROGRESS_FILL_NO_OUTLINE, outline="")
                 self.setup_card_progress_actions(self.canvas)
             else:
                 self.canvas.coords(self.progress, self.card_left, self.y, fill_right, self.y + self.height)
@@ -308,7 +308,7 @@ class TaskCard:
                 self.tasks_count_label = self.canvas.create_text(
                     self.card_right - 5, self.y + self.height - 5,
                     text=tasks_text,
-                    font=("Arial", 8, "bold"), anchor="se", fill="#0a0a0a"
+                    font=("Arial", 8, "bold"), anchor="se", fill=Colors.TASK_COUNT_TEXT
                 )
                 tag = f"card_{self.card}"
                 self.canvas.itemconfig(self.tasks_count_label, tags=(tag))
