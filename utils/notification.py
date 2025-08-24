@@ -27,7 +27,7 @@ def send_gotify_notification(activity: Dict, is_delayed: bool = False) -> None:
         "Content-Type": "application/json"
     }
 
-    log_debug(f"Sending notification: {payload}")
+    log_debug(f"Sending notification: {payload} to {gotify_url}")
     response = requests.post(gotify_url, json=payload, headers=headers)
 
     if response.status_code != 200:

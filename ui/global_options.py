@@ -8,7 +8,7 @@ def open_global_options(app):
     """Open a dialog to edit global options."""
     options_win = tk.Toplevel(app)
     options_win.title("Global Options")
-    options_win.geometry("400x350")
+    options_win.geometry("400x450")
     options_win.transient(app)
     options_win.grab_set()
 
@@ -68,6 +68,33 @@ def open_global_options(app):
     # Initialize visibility based on current selection
     on_notification_change()
 
+    # Advance notification settings
+    tk.Label(options_win, text="Advance Notification Settings:").pack(anchor="w", padx=10, pady=(15, 0))
+    
+    # Advance notification enabled checkbox
+    advance_notification_enabled_var = tk.BooleanVar()
+    advance_notification_enabled_var.set(getattr(app, 'advance_notification_enabled', True))
+    advance_notification_checkbox = tk.Checkbutton(
+        options_win, 
+        text="Enable advance notifications", 
+        variable=advance_notification_enabled_var
+    )
+    advance_notification_checkbox.pack(anchor="w", padx=10, pady=(5, 0))
+    
+    # Advance notification seconds setting
+    advance_seconds_frame = tk.Frame(options_win)
+    advance_seconds_frame.pack(fill="x", padx=10, pady=(5, 0))
+    
+    tk.Label(advance_seconds_frame, text="Seconds before activity:").pack(side="left")
+    advance_notification_seconds_var = tk.IntVar()
+    advance_notification_seconds_var.set(getattr(app, 'advance_notification_seconds', 30))
+    advance_notification_seconds_entry = tk.Entry(
+        advance_seconds_frame, 
+        textvariable=advance_notification_seconds_var,
+        width=10
+    )
+    advance_notification_seconds_entry.pack(side="right")
+
     def validate_gotify_url(url):
         """Validate Gotify URL format."""
         if not url:
@@ -120,6 +147,25 @@ def open_global_options(app):
                 else:
                     utils.notification.gotify_url = ""
                     utils.notification.gotify_token = ""
+                
+                # Update advance notification settings
+                new_advance_enabled = advance_notification_enabled_var.get()
+                new_advance_seconds = advance_notification_seconds_var.get()
+                
+                # Validate advance notification seconds
+                if new_advance_seconds < 0 or new_advance_seconds > 3600:  # Max 1 hour
+                    messagebox.showerror("Invalid Input", "Advance notification seconds must be between 0 and 3600 (1 hour).")
+                    return
+                
+                # Update app settings
+                app.advance_notification_enabled = new_advance_enabled
+                app.advance_notification_seconds = new_advance_seconds
+                
+                # Update notification service with new settings
+                app.notification_service.set_advance_notification_settings(
+                    new_advance_enabled, 
+                    new_advance_seconds
+                )
                 
                 # Save settings to file
                 app.save_settings(immediate=True)

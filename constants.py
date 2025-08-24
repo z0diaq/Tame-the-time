@@ -131,7 +131,7 @@ class NotificationConstants:
     TASK_END_NOTIFICATION_TITLE = "Task Ended"
     
     # Notification timing
-    ADVANCE_WARNING_SECONDS = 30
+    DEFAULT_ADVANCE_WARNING_SECONDS = 30
 
 
 class LoggingConstants:
@@ -166,6 +166,7 @@ class AppConstants:
     ARG_NO_NOTIFICATION = "--no-notification"
     ARG_TIME = "--time"
     ARG_TIMELAPSE_SPEED = "--timelapse-speed"
+    ARG_CONFIG = "--config"
     
     # Default values
     DEFAULT_TIMELAPSE_SPEED = 1.0

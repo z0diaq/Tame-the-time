@@ -28,6 +28,20 @@ class NotificationService:
         self._notified_tasks: Dict[str, bool] = {}
         self._last_activity: Optional[ScheduledActivity] = None
         self.on_activity_change = on_activity_change
+        
+        # Default advance notification settings (will be overridden by app)
+        self.advance_notification_enabled = True
+        self.advance_notification_seconds = NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS
+    
+    def set_advance_notification_settings(self, enabled: bool, seconds: int) -> None:
+        """Update advance notification settings.
+        
+        Args:
+            enabled: Whether advance notifications are enabled
+            seconds: Number of seconds before activity start to send notification
+        """
+        self.advance_notification_enabled = enabled
+        self.advance_notification_seconds = seconds
     
     def check_and_send_notifications(self, 
                                    current_activity: Optional[ScheduledActivity],
@@ -57,6 +71,13 @@ class NotificationService:
                                   next_activity_start: Optional[datetime],
                                   now: datetime) -> None:
         """Check and send advance notification for upcoming task."""
+        # Skip if advance notifications are disabled
+        if not self.advance_notification_enabled:
+            # Clear any existing notification state
+            if hasattr(self, '_notified_next_task'):
+                delattr(self, '_notified_next_task')
+            return
+            
         if not next_activity or not next_activity_start:
             # Clear any existing notification state
             if hasattr(self, '_notified_next_task'):
@@ -66,14 +87,14 @@ class NotificationService:
         time_until_start = (next_activity_start - now).total_seconds()
         
         # Send notification if within advance warning time
-        if 0 <= time_until_start <= NotificationConstants.ADVANCE_WARNING_SECONDS:
+        if 0 <= time_until_start <= self.advance_notification_seconds:
             if not hasattr(self, '_notified_next_task') or self._notified_next_task != next_activity.name:
                 self._send_advance_notification(next_activity)
                 self._notified_next_task = next_activity.name
         
         # Clear notification state if outside warning window
         elif (hasattr(self, '_notified_next_task') and 
-              (time_until_start > NotificationConstants.ADVANCE_WARNING_SECONDS or time_until_start < 0)):
+              (time_until_start > self.advance_notification_seconds or time_until_start < 0)):
             delattr(self, '_notified_next_task')
     
     def _check_activity_change_notification(self, current_activity: Optional[ScheduledActivity]) -> None:
@@ -112,7 +133,7 @@ class NotificationService:
     def _send_advance_notification(self, activity: ScheduledActivity) -> None:
         """Send advance notification for upcoming activity (non-blocking)."""
         notification_data = {
-            'name': f"{NotificationConstants.ADVANCE_WARNING_SECONDS} seconds to start {activity.name}",
+            'name': f"{self.advance_notification_seconds} seconds to start {activity.name}",
             'description': [f"{activity.name} starts at {activity.start_time}"]
         }
         self._send_notification_async(notification_data, f"advance for '{activity.name}'", is_delayed=True)

@@ -1,4 +1,5 @@
 import sys
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict, Any
 from utils.logging import log_startup, log_info, log_error
@@ -52,6 +53,27 @@ def check_timelapse_speed_parameter() -> None:
                 log_error(f"Invalid timelapse-speed value: {sys.argv[idx + 1]}")
                 sys.exit(1)
 
+def check_config_parameter() -> Optional[str]:
+    """Check and extract config path from command line arguments.
+    
+    Returns:
+        Optional[str]: Config path if specified, None otherwise.
+        Handles both relative and absolute paths.
+    """
+    if AppConstants.ARG_CONFIG in sys.argv:
+        idx = sys.argv.index(AppConstants.ARG_CONFIG)
+        if idx + 1 < len(sys.argv):
+            config_path = sys.argv[idx + 1]
+            # Handle both relative and absolute paths
+            if os.path.isabs(config_path):
+                return config_path
+            else:
+                return os.path.abspath(config_path)
+        else:
+            log_error(f"Missing value for {AppConstants.ARG_CONFIG} argument.")
+            sys.exit(1)
+    return None
+
 def get_now() -> datetime:
     """Get current simulated time based on timelapse speed."""
     global time_manager
@@ -63,12 +85,13 @@ def main() -> None:
     """Main application entry point."""
     global time_manager
     
-    config_path: Optional[str] = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else None
-    
     # Initialize time manager
     time_manager = TimeManager()
     check_time_parameter()
     check_timelapse_speed_parameter()
+    
+    # Extract config path from command line arguments
+    config_path: Optional[str] = check_config_parameter()
     
     schedule: List[Dict[str, Any]]
     schedule, config_path = load_schedule(config_path, now_provider=get_now)

@@ -24,6 +24,7 @@ from ui.context_menu import show_canvas_context_menu
 from ui.zoom_and_scroll import move_timelines_and_cards, poll_mouse
 from services.task_tracking_service import TaskTrackingService
 from ui.statistics_dialog import open_task_statistics_dialog
+from constants import NotificationConstants
 
 class TimeboxApp(tk.Tk):
     SETTINGS_PATH = os.path.expanduser("~/.tame_the_time_settings.json")
@@ -48,7 +49,9 @@ class TimeboxApp(tk.Tk):
             "window_position": self.geometry(),
             "gotify_token": utils.notification.gotify_token,
             "gotify_url": utils.notification.gotify_url,
-            "always_on_top": self.always_on_top
+            "always_on_top": self.always_on_top,
+            "advance_notification_enabled": getattr(self, 'advance_notification_enabled', True),
+            "advance_notification_seconds": getattr(self, 'advance_notification_seconds', NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS)
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -70,8 +73,18 @@ class TimeboxApp(tk.Tk):
         self.config_path = config_path
         self.schedule_changed = False
         
+        # Initialize advance notification settings from saved config
+        self.advance_notification_enabled = self.settings.get('advance_notification_enabled', True)
+        self.advance_notification_seconds = self.settings.get('advance_notification_seconds', NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS)
+        
         # Initialize notification service
         self.notification_service = NotificationService(now_provider, on_activity_change=self.update_status_bar)
+        
+        # Configure notification service with advance notification settings
+        self.notification_service.set_advance_notification_settings(
+            self.advance_notification_enabled, 
+            self.advance_notification_seconds
+        )
         
         # Initialize task tracking service
         self.task_tracking_service = TaskTrackingService()
