@@ -101,33 +101,6 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
                     "uuid": str(__import__('uuid').uuid4())
                 })
         
-        # Handle removed tasks - ask for confirmation and remove from database
-        if removed_tasks and hasattr(app, 'task_tracking_service'):
-            activity_id = card_obj.activity.get("id")
-            if not activity_id:
-                log_error(f"Activity '{card_obj.activity.get('name', 'Unknown')}' has no ID, cannot remove task entries")
-            else:
-                total_entries_to_remove = 0
-                task_uuids_to_remove = []
-                
-                for task_name in removed_tasks:
-                    # Get all UUIDs for this task across all dates
-                    task_uuids = app.task_tracking_service.get_task_uuids_by_activity_and_name(activity_id, task_name)
-                    for task_uuid in task_uuids:
-                        count = app.task_tracking_service.remove_task_entries(task_uuid)
-                        total_entries_to_remove += count
-                        task_uuids_to_remove.append(task_uuid)
-                
-                if total_entries_to_remove > 0:
-                    result = messagebox.askyesno(
-                        "Remove Task History",
-                        f"Removing tasks will delete {total_entries_to_remove} historical entries. Continue?",
-                        parent=edit_win
-                    )
-                    if not result:
-                        return  # User chose "No", stay in dialog
-                    log_info(f"Removed {total_entries_to_remove} task entries for removed tasks")
-        
         # Update schedule and card activity using ID-based lookup
         activity_id = card_obj.activity.get("id")
         if activity_id:
