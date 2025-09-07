@@ -24,10 +24,13 @@ class TaskStatisticsDialog:
         self.task_listbox = None
         self.grouping_var = None
         self.ignore_weekends_var = None
+        self.show_known_only_var = None
         self.chart_frame = None
         self.figure = None
         self.canvas = None
         self.selected_task_indices = []  # Store selected task indices for persistence
+        self.all_task_data = []  # Store all tasks before filtering
+        self.filtered_task_data = []  # Store filtered tasks for display
         
     def show(self):
         """Show the statistics dialog."""
@@ -78,6 +81,22 @@ class TaskStatisticsDialog:
         # Title
         title_label = tk.Label(parent, text="Select Tasks:", font=("Arial", 12, "bold"))
         title_label.pack(anchor=tk.W, pady=(0, 10))
+        
+        # Filter checkbox
+        filter_frame = tk.Frame(parent)
+        filter_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Load setting from parent app settings
+        show_known_only_default = self.parent.statistics_show_known_only
+        
+        self.show_known_only_var = tk.BooleanVar(value=show_known_only_default)
+        show_known_only_cb = tk.Checkbutton(
+            filter_frame,
+            text="Show only tasks with known activity",
+            variable=self.show_known_only_var,
+            command=self._on_filter_change
+        )
+        show_known_only_cb.pack(anchor=tk.W)
         
         # Task list with scrollbar
         list_frame = tk.Frame(parent)
@@ -139,10 +158,8 @@ class TaskStatisticsDialog:
         try:
             unique_tasks = self.task_service.get_all_unique_tasks()
             
-            self.task_listbox.delete(0, tk.END)
-            
-            # Store task info for later use (UUID mapping)
-            self.task_data = []
+            # Store all task info for filtering
+            self.all_task_data = []
             
             for task_info in unique_tasks:
                 task_uuid = task_info['task_uuid']
@@ -156,13 +173,13 @@ class TaskStatisticsDialog:
                     if activity:
                         activity_name = activity.get('name', 'Unknown Activity')
                 
-                display_text = f"{activity_name} / {task_name}"
-                self.task_listbox.insert(tk.END, display_text)
-                
                 # Store the full task info for chart generation
                 task_info_with_activity = task_info.copy()
                 task_info_with_activity['activity_name'] = activity_name
-                self.task_data.append(task_info_with_activity)
+                self.all_task_data.append(task_info_with_activity)
+            
+            # Apply filtering and populate the listbox
+            self._apply_task_filter()
                 
             log_debug(f"Populated task list with {len(unique_tasks)} tasks")
             
@@ -195,6 +212,41 @@ class TaskStatisticsDialog:
         ax.axis('off')
         self.canvas.draw()
         
+    def _apply_task_filter(self):
+        """Apply filtering based on the checkbox state and populate the listbox."""
+        self.task_listbox.delete(0, tk.END)
+        self.filtered_task_data = []
+        
+        show_known_only = self.show_known_only_var.get() if self.show_known_only_var else True
+        
+        for task_info in self.all_task_data:
+            activity_name = task_info['activity_name']
+            task_name = task_info['task_name']
+            
+            # Apply filter: if show_known_only is True, skip "Unknown Activity" tasks
+            if show_known_only and activity_name == "Unknown Activity":
+                continue
+            
+            display_text = f"{activity_name} / {task_name}"
+            self.task_listbox.insert(tk.END, display_text)
+            self.filtered_task_data.append(task_info)
+    
+    def _on_filter_change(self):
+        """Handle filter checkbox change."""
+        # Save the setting
+        self.parent.statistics_show_known_only = self.show_known_only_var.get()
+        if hasattr(self.parent, 'save_settings'):
+            self.parent.save_settings()
+        
+        # Clear current selection since indices will change
+        self.selected_task_indices = []
+        
+        # Re-apply filtering
+        self._apply_task_filter()
+        
+        # Update chart
+        self._update_chart()
+    
     def _on_task_selection_change(self, event=None):
         """Handle task selection change."""
         # Store current selection for persistence
@@ -227,12 +279,12 @@ class TaskStatisticsDialog:
                 self._show_empty_chart()
                 return
                 
-            # Parse selected tasks using stored task data
+            # Parse selected tasks using filtered task data
             selected_task_uuids = []
             
             for index in selected_indices:
-                if index < len(self.task_data):
-                    task_info = self.task_data[index]
+                if index < len(self.filtered_task_data):
+                    task_info = self.filtered_task_data[index]
                     selected_task_uuids.append(task_info['task_uuid'])
             
             if not selected_task_uuids:
@@ -291,9 +343,9 @@ class TaskStatisticsDialog:
         colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from stored data
+            # Get task display name from filtered data
             task_display_name = task_uuid  # fallback
-            for stored_task in self.task_data:
+            for stored_task in self.filtered_task_data:
                 if stored_task['task_uuid'] == task_uuid:
                     task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
                     break
@@ -347,9 +399,9 @@ class TaskStatisticsDialog:
         colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from stored data
+            # Get task display name from filtered data
             task_display_name = task_uuid  # fallback
-            for stored_task in self.task_data:
+            for stored_task in self.filtered_task_data:
                 if stored_task['task_uuid'] == task_uuid:
                     task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
                     break
@@ -408,9 +460,9 @@ class TaskStatisticsDialog:
         colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from stored data
+            # Get task display name from filtered data
             task_display_name = task_uuid  # fallback
-            for stored_task in self.task_data:
+            for stored_task in self.filtered_task_data:
                 if stored_task['task_uuid'] == task_uuid:
                     task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
                     break
@@ -469,9 +521,9 @@ class TaskStatisticsDialog:
         colors = Colors.get_chart_colors()
         
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from stored data
+            # Get task display name from filtered data
             task_display_name = task_uuid  # fallback
-            for stored_task in self.task_data:
+            for stored_task in self.filtered_task_data:
                 if stored_task['task_uuid'] == task_uuid:
                     task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
                     break
