@@ -42,15 +42,6 @@ def show_canvas_context_menu(app, event):
             app.update_cards_after_size_change()
             app.schedule_changed = True
         menu.add_command(label="Clone", command=clone_card)
-        def remove_card():
-            """Remove the card under cursor."""
-            if card_under_cursor in app.cards:
-                app.cards.remove(card_under_cursor)
-                card_under_cursor.delete()
-                app.schedule.remove(card_under_cursor.to_dict())
-                app.update_cards_after_size_change()
-                app.schedule_changed = True
-        menu.add_command(label="Remove", command=remove_card)
         def open_card_tasks():
             """Open a dialog to edit the tasks for the card under cursor."""
             open_card_tasks_window(app, card_under_cursor)
@@ -66,6 +57,18 @@ def show_canvas_context_menu(app, event):
         # Show Tasks menu option if there are tasks
         if 'tasks' in activity and activity['tasks']:
             menu.add_command(label="Tasks", command=open_card_tasks)
+        
+        def remove_card():
+            """Remove the card under cursor with confirmation."""
+            card_name = card_under_cursor.activity.get('name', 'this card')
+            if messagebox.askyesno("Confirm Removal", f"Are you sure you want to remove '{card_name}'?"):
+                if card_under_cursor in app.cards:
+                    app.cards.remove(card_under_cursor)
+                    card_under_cursor.delete()
+                    app.schedule.remove(card_under_cursor.to_dict())
+                    app.update_cards_after_size_change()
+                    app.schedule_changed = True
+        menu.add_command(label="Remove", command=remove_card)
     elif event.y > 30:
         def add_card():
             """Add a new card at the cursor position."""
