@@ -74,6 +74,27 @@ def check_config_parameter() -> Optional[str]:
             sys.exit(1)
     return None
 
+def check_db_parameter() -> Optional[str]:
+    """Check and extract database path from command line arguments.
+    
+    Returns:
+        Optional[str]: Database path if specified, None otherwise.
+        Handles both relative and absolute paths.
+    """
+    if AppConstants.ARG_DB in sys.argv:
+        idx = sys.argv.index(AppConstants.ARG_DB)
+        if idx + 1 < len(sys.argv):
+            db_path = sys.argv[idx + 1]
+            # Handle both relative and absolute paths
+            if os.path.isabs(db_path):
+                return db_path
+            else:
+                return os.path.abspath(db_path)
+        else:
+            log_error(f"Missing value for {AppConstants.ARG_DB} argument.")
+            sys.exit(1)
+    return None
+
 def get_now() -> datetime:
     """Get current simulated time based on timelapse speed."""
     global time_manager
@@ -93,6 +114,9 @@ def main() -> None:
     # Extract config path from command line arguments
     config_path: Optional[str] = check_config_parameter()
     
+    # Extract database path from command line arguments
+    db_path: Optional[str] = check_db_parameter()
+    
     schedule: List[Dict[str, Any]]
     schedule, config_path = load_schedule(config_path, now_provider=get_now)
     
@@ -100,7 +124,7 @@ def main() -> None:
     log_startup()
     check_no_notification_parameter()
     
-    app: ui.app.TimeboxApp = ui.app.TimeboxApp(schedule, config_path, now_provider=get_now)
+    app: ui.app.TimeboxApp = ui.app.TimeboxApp(schedule, config_path, db_path, now_provider=get_now)
     app.mainloop()
 
 if __name__ == "__main__":

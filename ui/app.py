@@ -66,12 +66,13 @@ class TimeboxApp(tk.Tk):
         # Schedule new save operation
         self._save_timer = self.after(UIConstants.SETTINGS_SAVE_DEBOUNCE_MS, self._save_settings_immediate)
 
-    def __init__(self, schedule: List[Dict], config_path: str, now_provider=datetime.now):
+    def __init__(self, schedule: List[Dict], config_path: str, db_path: str = None, now_provider=datetime.now):
         """Initialize the application with the given schedule and configuration."""
         super().__init__()
         self.now_provider = now_provider
         self.settings = self.load_settings()
         self.config_path = config_path
+        self.db_path = db_path
         self.schedule_changed = False
         
         # Initialize advance notification settings from saved config
@@ -88,7 +89,7 @@ class TimeboxApp(tk.Tk):
         )
         
         # Initialize task tracking service
-        self.task_tracking_service = TaskTrackingService()
+        self.task_tracking_service = TaskTrackingService(db_path)
         
         # Store schedule reference
         self.schedule = schedule
@@ -150,7 +151,7 @@ class TimeboxApp(tk.Tk):
         
         # Add Statistics menu
         self.statistics_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.statistics_menu.add_command(label="Tasks", command=lambda: open_task_statistics_dialog(self))
+        self.statistics_menu.add_command(label="Tasks", command=lambda: open_task_statistics_dialog(self, self.db_path))
         self.menu_bar.add_cascade(label="Statistics", menu=self.statistics_menu)
         self.menu_visible = False
         self.statistics_show_known_only = settings.get("statistics_show_known_only", True)

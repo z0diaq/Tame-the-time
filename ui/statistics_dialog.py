@@ -564,10 +564,10 @@ class TaskStatisticsDialog:
             self.dialog = None
 
 
-def open_task_statistics_dialog(parent):
+def open_task_statistics_dialog(parent, db_path: str = None):
     """Open the task statistics dialog."""
     try:
-        task_service = TaskTrackingService()
+        task_service = TaskTrackingService(db_path)
         dialog = TaskStatisticsDialog(parent, task_service)
         dialog.show()
     except Exception as e:

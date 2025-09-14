@@ -167,6 +167,7 @@ class AppConstants:
     ARG_TIME = "--time"
     ARG_TIMELAPSE_SPEED = "--timelapse-speed"
     ARG_CONFIG = "--config"
+    ARG_DB = "--db"
     
     # Default values
     DEFAULT_TIMELAPSE_SPEED = 1.0
