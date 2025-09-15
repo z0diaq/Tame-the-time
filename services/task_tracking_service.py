@@ -265,40 +265,7 @@ class TaskTrackingService:
         except sqlite3.Error as e:
             log_error(f"Failed to add new task entry: {e}")
             return None
-    
-    def remove_task_entries(self, task_uuid: str) -> int:
-        """
-        Remove all entries for a specific task UUID across all dates.
-        Returns the number of entries removed.
-        """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Count entries to be removed
-                cursor.execute('''
-                    SELECT COUNT(*) FROM task_entries 
-                    WHERE task_uuid = ?
-                ''', (task_uuid,))
-                
-                count = cursor.fetchone()[0]
-                
-                if count > 0:
-                    # Remove entries
-                    cursor.execute('''
-                        DELETE FROM task_entries 
-                        WHERE task_uuid = ?
-                    ''', (task_uuid,))
-                    
-                    conn.commit()
-                    log_info(f"Removed {count} entries for task UUID '{task_uuid}'")
-                
-                return count
-                
-        except sqlite3.Error as e:
-            log_error(f"Failed to remove task entries: {e}")
-            return 0
-    
+       
     def get_task_done_states(self, target_date: date = None) -> Dict[str, bool]:
         """
         Get done states for all tasks on a specific date.
@@ -460,7 +427,7 @@ class TaskTrackingService:
         weekly_data = {}
         for row in cursor.fetchall():
             date_str, done_state = row
-            task_date = datetime.fromisoformat(date_str).date()
+            t_get_monthly_statisticsask_date = datetime.fromisoformat(date_str).date()
             
             # Skip weekends if requested
             if ignore_weekends and task_date.weekday() >= 5:  # Saturday=5, Sunday=6
@@ -612,41 +579,7 @@ class TaskTrackingService:
                 break
         
         return data[:limit]
-    
-    def register_task_uuid(self, activity_id: str, task_name: str) -> str:
-        """
-        Register a task in the task_to_uuid mapping table and return its UUID.
-        If the task already exists, return the existing UUID.
-        """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Check if task already exists
-                cursor.execute('''
-                    SELECT task_uuid FROM task_to_uuid 
-                    WHERE activity_id = ? AND task_name = ?
-                ''', (activity_id, task_name))
-                
-                result = cursor.fetchone()
-                if result:
-                    return result[0]  # Return existing UUID
-                
-                # Create new UUID and register the task
-                task_uuid = str(uuid.uuid4())
-                cursor.execute('''
-                    INSERT INTO task_to_uuid (task_uuid, activity_id, task_name)
-                    VALUES (?, ?, ?)
-                ''', (task_uuid, activity_id, task_name))
-                
-                conn.commit()
-                log_debug(f"Registered task '{task_name}' with UUID '{task_uuid}' for activity '{activity_id}'")
-                return task_uuid
-                
-        except sqlite3.Error as e:
-            log_error(f"Failed to register task UUID: {e}")
-            return None
-    
+
     def get_task_uuid(self, activity_id: str, task_name: str) -> Optional[str]:
         """
         Get the UUID for a task by activity ID and task name.
@@ -790,37 +723,7 @@ class TaskTrackingService:
                 unsaved_tasks.append(task_name)
         
         return unsaved_tasks
-    
-    def get_task_info_by_uuid(self, task_uuid: str) -> Optional[Dict[str, str]]:
-        """
-        Get task information by UUID from the task_to_uuid table.
-        Returns dict with task_uuid, activity_id, and task_name, or None if not found.
-        """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                cursor.execute('''
-                    SELECT task_uuid, activity_id, task_name 
-                    FROM task_to_uuid 
-                    WHERE task_uuid = ?
-                    LIMIT 1
-                ''', (task_uuid,))
-                
-                row = cursor.fetchone()
-                if row:
-                    task_uuid, activity_id, task_name = row
-                    return {
-                        'task_uuid': task_uuid,
-                        'activity_id': activity_id,
-                        'task_name': task_name
-                    }
-                return None
-                
-        except sqlite3.Error as e:
-            log_error(f"Failed to get task info by UUID: {e}")
-            return None
-    
+     
     def get_task_uuids_by_activity_and_name(self, activity_id: str, task_name: str, target_date: date = None) -> List[str]:
         """
         Get task UUIDs for a specific activity and task name on a given date.
@@ -849,29 +752,3 @@ class TaskTrackingService:
             log_error(f"Failed to get task UUIDs: {e}")
             return []
     
-    def check_duplicate_task_names(self, activities: List[Dict]) -> List[Tuple[str, List[str]]]:
-        """
-        Check for duplicate task names within activities.
-        Returns list of (activity_name, duplicate_task_names) tuples.
-        """
-        duplicates = []
-        
-        for activity in activities:
-            activity_name = activity.get("name", "")
-            tasks = activity.get("tasks", [])
-            
-            # Find duplicates
-            seen = set()
-            duplicate_tasks = set()
-            
-            for task in tasks:
-                task = task.strip()
-                if task in seen:
-                    duplicate_tasks.add(task)
-                else:
-                    seen.add(task)
-            
-            if duplicate_tasks:
-                duplicates.append((activity_name, list(duplicate_tasks)))
-        
-        return duplicates

@@ -135,10 +135,6 @@ class TimeUtils:
 
 
 # Backward compatibility functions - these delegate to TimeUtils methods
-def format_time(t: time) -> str:
-    """Format a time object to HH:MM string."""
-    return TimeUtils.format_time_display(t)
-
 
 def get_current_activity(schedule: List[Dict[str, Any]], current_time: datetime) -> Optional[Dict[str, Any]]:
     """Determine the current activity based on the current time."""
@@ -155,7 +151,6 @@ def get_current_activity(schedule: List[Dict[str, Any]], current_time: datetime)
             return activity.copy()
     
     return None
-
 
 def round_to_nearest_5_minutes(minutes: int) -> int:
     """Round minutes to the nearest 5 minutes."""

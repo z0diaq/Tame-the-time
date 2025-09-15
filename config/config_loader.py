@@ -17,9 +17,6 @@ def get_day_config_path(current_day: int) -> str:
     
     return "default_settings.yaml"
 
-def normalize_time_format(timepoint: datetime) -> str:
-    """Ensure time string has valid values and 5min granulity."""
-    return TimeUtils.normalize_time_format(timepoint)
 
 def create_sample_schedule(now: datetime) -> List[Dict[str, Any]]:
     """Create a default configuration to be used if no specific config is found."""
@@ -31,22 +28,22 @@ def create_sample_schedule(now: datetime) -> List[Dict[str, Any]]:
     return [
         {
             "name": "Past Activity",
-            "start_time": normalize_time_format(now - timedelta(minutes=40)),
-            "end_time": normalize_time_format(now - timedelta(minutes=10)),
+            "start_time": TimeUtils.normalize_time_format(now - timedelta(minutes=40)),
+            "end_time": TimeUtils.normalize_time_format(now - timedelta(minutes=10)),
             "description": [ "This is a past activity." ],
             "tasks": [ "Activity 1 task" ]
         },
         {
             "name": "Current Activity",
-            "start_time": normalize_time_format(now - timedelta(minutes=10)),
-            "end_time": normalize_time_format(now + timedelta(minutes=20)),
+            "start_time": TimeUtils.normalize_time_format(now - timedelta(minutes=10)),
+            "end_time": TimeUtils.normalize_time_format(now + timedelta(minutes=20)),
             "description": [ "This is the current activity." ],
             "tasks": [ "Activity 2 task" ]
         },
         {
             "name": "Future Activity",
-            "start_time": normalize_time_format(now + timedelta(minutes=20)),
-            "end_time": normalize_time_format(now + timedelta(minutes=50)),
+            "start_time": TimeUtils.normalize_time_format(now + timedelta(minutes=20)),
+            "end_time": TimeUtils.normalize_time_format(now + timedelta(minutes=50)),
             "description": [ "This is a future activity." ],
             "tasks": [ "Activity 3 task" ]
         }
