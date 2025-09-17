@@ -11,6 +11,7 @@ from typing import List, Dict, Tuple
 from constants import Colors
 from services.task_tracking_service import TaskTrackingService
 from utils.logging import log_debug, log_error
+from utils.translator import t
 
 
 class TaskStatisticsDialog:
@@ -45,7 +46,7 @@ class TaskStatisticsDialog:
     def _create_dialog(self):
         """Create the main dialog window."""
         self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title("Task Statistics")
+        self.dialog.title(t("window.task_statistics"))
         self.dialog.geometry("1000x600")
         self.dialog.transient(self.parent)
         self.dialog.grab_set()
@@ -73,13 +74,13 @@ class TaskStatisticsDialog:
         button_frame = tk.Frame(self.dialog)
         button_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
         
-        ok_button = tk.Button(button_frame, text="Ok", command=self._on_close)
+        ok_button = tk.Button(button_frame, text=t("button.ok"), command=self._on_close)
         ok_button.pack(side=tk.RIGHT)
         
     def _create_left_panel(self, parent):
         """Create the left panel with task list."""
         # Title
-        title_label = tk.Label(parent, text="Select Tasks:", font=("Arial", 12, "bold"))
+        title_label = tk.Label(parent, text=t("label.select_tasks"), font=("Arial", 12, "bold"))
         title_label.pack(anchor=tk.W, pady=(0, 10))
         
         # Filter checkbox
@@ -92,7 +93,7 @@ class TaskStatisticsDialog:
         self.show_known_only_var = tk.BooleanVar(value=show_known_only_default)
         show_known_only_cb = tk.Checkbutton(
             filter_frame,
-            text="Show only tasks with known activity",
+            text=t("label.show_only_known_activity"),
             variable=self.show_known_only_var,
             command=self._on_filter_change
         )
@@ -127,12 +128,12 @@ class TaskStatisticsDialog:
         grouping_frame = tk.Frame(options_frame)
         grouping_frame.pack(side=tk.LEFT, padx=(0, 20))
         
-        tk.Label(grouping_frame, text="Grouping:").pack(side=tk.LEFT)
-        self.grouping_var = tk.StringVar(value="Day")
+        tk.Label(grouping_frame, text=t("label.grouping")).pack(side=tk.LEFT)
+        self.grouping_var = tk.StringVar(value=t("combo.day"))
         grouping_combo = ttk.Combobox(
             grouping_frame,
             textvariable=self.grouping_var,
-            values=["Day", "Week", "Month", "Year"],
+            values=[t("combo.day"), t("combo.week"), t("combo.month"), t("combo.year")],
             state="readonly",
             width=8
         )
@@ -143,7 +144,7 @@ class TaskStatisticsDialog:
         self.ignore_weekends_var = tk.BooleanVar(value=False)
         ignore_weekends_cb = tk.Checkbutton(
             options_frame,
-            text="Ignore weekends",
+            text=t("label.ignore_weekends"),
             variable=self.ignore_weekends_var,
             command=self._on_options_change
         )
@@ -167,11 +168,11 @@ class TaskStatisticsDialog:
                 task_name = task_info['task_name']
                 
                 # Get activity name for display format: "Activity name / task name"
-                activity_name = "Unknown Activity"
+                activity_name = t("activity.unknown_activity")
                 if self.parent and activity_id:
                     activity = self.parent.find_activity_by_id(activity_id)
                     if activity:
-                        activity_name = activity.get('name', 'Unknown Activity')
+                        activity_name = activity.get('name', t("activity.unknown_activity"))
                 
                 # Store the full task info for chart generation
                 task_info_with_activity = task_info.copy()
@@ -204,7 +205,7 @@ class TaskStatisticsDialog:
         """Show an empty chart with instructions."""
         self.figure.clear()
         ax = self.figure.add_subplot(111)
-        ax.text(0.5, 0.5, "Select tasks from the list to view statistics", 
+        ax.text(0.5, 0.5, t("chart.select_tasks_message"), 
                 ha='center', va='center', transform=ax.transAxes, 
                 fontsize=12, color='gray')
         ax.set_xlim(0, 1)
@@ -224,7 +225,7 @@ class TaskStatisticsDialog:
             task_name = task_info['task_name']
             
             # Apply filter: if show_known_only is True, skip "Unknown Activity" tasks
-            if show_known_only and activity_name == "Unknown Activity":
+            if show_known_only and activity_name == t("activity.unknown_activity"):
                 continue
             
             display_text = f"{activity_name} / {task_name}"
@@ -291,8 +292,15 @@ class TaskStatisticsDialog:
                 self._show_empty_chart()
                 return
                 
-            # Get chart options
-            grouping = self.grouping_var.get()
+            # Get chart options - convert display names back to internal values
+            grouping_display = self.grouping_var.get()
+            grouping_map = {
+                t("combo.day"): "Day",
+                t("combo.week"): "Week", 
+                t("combo.month"): "Month",
+                t("combo.year"): "Year"
+            }
+            grouping = grouping_map.get(grouping_display, "Day")
             ignore_weekends = self.ignore_weekends_var.get()
             
             # Get statistics data using task UUIDs
@@ -363,9 +371,9 @@ class TaskStatisticsDialog:
             ax.bar(x_offset, completion_data, bar_width, label=task_display_name, 
                   color=color, alpha=0.7)
         
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Completed (1) / Not Completed (0)')
-        ax.set_title('Daily Task Completion')
+        ax.set_xlabel(t('chart.date'))
+        ax.set_ylabel(t('chart.completed_not_completed'))
+        ax.set_title(t('chart.daily_completion'))
         ax.set_xticks(x_positions)
         ax.set_xticklabels(date_labels, rotation=45)
         ax.set_ylim(0, 1.2)
@@ -424,9 +432,9 @@ class TaskStatisticsDialog:
             ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
                   color=color, alpha=0.7)
         
-        ax.set_xlabel('Week')
-        ax.set_ylabel('Completion Rate')
-        ax.set_title('Weekly Task Completion Rate')
+        ax.set_xlabel(t('chart.week'))
+        ax.set_ylabel(t('chart.completion_rate'))
+        ax.set_title(t('chart.weekly_completion'))
         ax.set_xticks(x_positions)
         ax.set_xticklabels(week_labels, rotation=45)
         ax.set_ylim(0, 1.1)
@@ -485,9 +493,9 @@ class TaskStatisticsDialog:
             ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
                   color=color, alpha=0.7)
         
-        ax.set_xlabel('Month')
-        ax.set_ylabel('Completion Rate')
-        ax.set_title('Monthly Task Completion Rate')
+        ax.set_xlabel(t('chart.month'))
+        ax.set_ylabel(t('chart.completion_rate'))
+        ax.set_title(t('chart.monthly_completion'))
         ax.set_xticks(x_positions)
         ax.set_xticklabels(month_labels, rotation=45)
         ax.set_ylim(0, 1.1)
@@ -546,9 +554,9 @@ class TaskStatisticsDialog:
             ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
                   color=color, alpha=0.7)
         
-        ax.set_xlabel('Year')
-        ax.set_ylabel('Completion Rate')
-        ax.set_title('Yearly Task Completion Rate')
+        ax.set_xlabel(t('chart.year'))
+        ax.set_ylabel(t('chart.completion_rate'))
+        ax.set_title(t('chart.yearly_completion'))
         ax.set_xticks(x_positions)
         ax.set_xticklabels(year_labels, rotation=45)
         ax.set_ylim(0, 1.1)

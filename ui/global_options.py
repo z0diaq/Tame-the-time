@@ -3,63 +3,71 @@ import tkinter.messagebox as messagebox
 from tkinter import ttk
 import utils.notification
 import re
+from utils.translator import t, get_available_languages, set_language
 
 def open_global_options(app):
     """Open a dialog to edit global options."""
     options_win = tk.Toplevel(app)
-    options_win.title("Global Options")
-    options_win.geometry("400x450")
+    options_win.title(t("window.global_options"))
+    options_win.geometry("400x510")
     options_win.transient(app)
     options_win.grab_set()
 
+    # Store references to UI elements for dynamic updates
+    ui_elements = {}
+
     # Start hour setting
-    tk.Label(options_win, text="Start hour:").pack(anchor="w", padx=10, pady=(15, 0))
+    ui_elements['start_hour_label'] = tk.Label(options_win, text=t("label.start_hour"))
+    ui_elements['start_hour_label'].pack(anchor="w", padx=10, pady=(15, 0))
     start_hour_var = tk.IntVar(value=app.start_hour)
     start_hour_entry = tk.Entry(options_win, textvariable=start_hour_var)
     start_hour_entry.pack(fill="x", padx=10)
 
     # End hour setting
-    tk.Label(options_win, text="End hour:").pack(anchor="w", padx=10, pady=(10, 0))
+    ui_elements['end_hour_label'] = tk.Label(options_win, text=t("label.end_hour"))
+    ui_elements['end_hour_label'].pack(anchor="w", padx=10, pady=(10, 0))
     end_hour_var = tk.IntVar(value=app.end_hour)
     end_hour_entry = tk.Entry(options_win, textvariable=end_hour_var)
     end_hour_entry.pack(fill="x", padx=10)
 
     # Notification settings
-    tk.Label(options_win, text="Notification:").pack(anchor="w", padx=10, pady=(15, 0))
+    ui_elements['notification_label'] = tk.Label(options_win, text=t("label.notification"))
+    ui_elements['notification_label'].pack(anchor="w", padx=10, pady=(15, 0))
     notification_var = tk.StringVar()
     notification_combo = ttk.Combobox(options_win, textvariable=notification_var, 
-                                     values=["Disabled", "Gotify"], state="readonly")
+                                     values=[t("combo.disabled"), t("combo.gotify")], state="readonly")
     notification_combo.pack(fill="x", padx=10)
+    ui_elements['notification_combo'] = notification_combo
     
     # Set current notification type based on whether Gotify is configured
     current_gotify_url = utils.notification.gotify_url or ""
     current_gotify_token = utils.notification.gotify_token or ""
     if current_gotify_url and current_gotify_token:
-        notification_var.set("Gotify")
+        notification_var.set(t("combo.gotify"))
     else:
-        notification_var.set("Disabled")
+        notification_var.set(t("combo.disabled"))
 
     # Gotify URL field
-    gotify_url_label = tk.Label(options_win, text="Gotify URL:")
+    ui_elements['gotify_url_label'] = tk.Label(options_win, text=t("label.gotify_url"))
     gotify_url_var = tk.StringVar(value=current_gotify_url)
     gotify_url_entry = tk.Entry(options_win, textvariable=gotify_url_var)
 
     # Gotify Token field
-    gotify_token_label = tk.Label(options_win, text="Gotify Token:")
+    ui_elements['gotify_token_label'] = tk.Label(options_win, text=t("label.gotify_token"))
     gotify_token_var = tk.StringVar(value=current_gotify_token)
     gotify_token_entry = tk.Entry(options_win, textvariable=gotify_token_var, show="*")
 
     def on_notification_change(*args):
         """Show/hide Gotify fields based on notification selection."""
-        if notification_var.get() == "Gotify":
-            gotify_url_label.pack(anchor="w", padx=10, pady=(10, 0))
+        if notification_var.get() == t("combo.gotify"):
+            ui_elements['gotify_url_label'].pack(anchor="w", padx=10, pady=(10, 0))
             gotify_url_entry.pack(fill="x", padx=10)
-            gotify_token_label.pack(anchor="w", padx=10, pady=(10, 0))
+            ui_elements['gotify_token_label'].pack(anchor="w", padx=10, pady=(10, 0))
             gotify_token_entry.pack(fill="x", padx=10)
         else:
-            gotify_url_label.pack_forget()
+            ui_elements['gotify_url_label'].pack_forget()
             gotify_url_entry.pack_forget()
-            gotify_token_label.pack_forget()
+            ui_elements['gotify_token_label'].pack_forget()
             gotify_token_entry.pack_forget()
 
     # Bind notification change event
@@ -68,24 +76,105 @@ def open_global_options(app):
     # Initialize visibility based on current selection
     on_notification_change()
 
+    # Language selection
+    ui_elements['language_label'] = tk.Label(options_win, text=t("label.language"))
+    ui_elements['language_label'].pack(anchor="w", padx=10, pady=(15, 0))
+    language_var = tk.StringVar()
+    available_languages = get_available_languages()
+    language_values = list(available_languages.values())
+    language_combo = ttk.Combobox(options_win, textvariable=language_var, 
+                                 values=language_values, state="readonly")
+    language_combo.pack(fill="x", padx=10)
+    ui_elements['language_combo'] = language_combo
+    
+    # Set current language
+    current_lang = getattr(app, 'current_language', 'en')
+    if current_lang in available_languages:
+        language_var.set(available_languages[current_lang])
+    else:
+        language_var.set(available_languages.get('en', 'English'))
+    
+    def on_language_change(*args):
+        """Handle language change and update UI immediately."""
+        selected_language_display = language_var.get()
+        selected_language_code = None
+        for code, display in available_languages.items():
+            if display == selected_language_display:
+                selected_language_code = code
+                break
+        
+        if selected_language_code and selected_language_code != getattr(app, 'current_language', 'en'):
+            if set_language(selected_language_code):
+                app.current_language = selected_language_code
+                # Update dialog UI elements
+                refresh_dialog_ui()
+                # Update main window
+                app.refresh_ui_after_language_change()
+    
+    def refresh_dialog_ui():
+        """Refresh all translatable UI elements in the dialog."""
+        # Update window title
+        options_win.title(t("window.global_options"))
+        
+        # Update labels
+        ui_elements['start_hour_label'].config(text=t("label.start_hour"))
+        ui_elements['end_hour_label'].config(text=t("label.end_hour"))
+        ui_elements['notification_label'].config(text=t("label.notification"))
+        ui_elements['gotify_url_label'].config(text=t("label.gotify_url"))
+        ui_elements['gotify_token_label'].config(text=t("label.gotify_token"))
+        ui_elements['language_label'].config(text=t("label.language"))
+        ui_elements['advance_settings_label'].config(text=t("label.advance_notification_settings"))
+        ui_elements['advance_checkbox'].config(text=t("label.enable_advance_notifications"))
+        ui_elements['seconds_label'].config(text=t("label.seconds_before_activity"))
+        
+        # Update notification combo box values
+        current_notification = notification_var.get()
+        new_values = [t("combo.disabled"), t("combo.gotify")]
+        ui_elements['notification_combo']['values'] = new_values
+        
+        # Preserve selection by mapping old to new values
+        if current_notification in ["Disabled", "Désactivé", "Deshabilitado"]:
+            notification_var.set(t("combo.disabled"))
+        elif current_notification in ["Gotify"]:
+            notification_var.set(t("combo.gotify"))
+        
+        # Update language combo box values and selection
+        current_lang_code = getattr(app, 'current_language', 'en')
+        new_available_languages = get_available_languages()
+        new_language_values = list(new_available_languages.values())
+        ui_elements['language_combo']['values'] = new_language_values
+        
+        # Update the selected language display name to match new language
+        if current_lang_code in new_available_languages:
+            language_var.set(new_available_languages[current_lang_code])
+        
+        # Update buttons
+        ui_elements['ok_button'].config(text=t("button.ok"))
+        ui_elements['cancel_button'].config(text=t("button.cancel"))
+    
+    # Bind language change event
+    language_var.trace("w", on_language_change)
+    
     # Advance notification settings
-    tk.Label(options_win, text="Advance Notification Settings:").pack(anchor="w", padx=10, pady=(15, 0))
+    ui_elements['advance_settings_label'] = tk.Label(options_win, text=t("label.advance_notification_settings"))
+    ui_elements['advance_settings_label'].pack(anchor="w", padx=10, pady=(15, 0))
     
     # Advance notification enabled checkbox
     advance_notification_enabled_var = tk.BooleanVar()
     advance_notification_enabled_var.set(getattr(app, 'advance_notification_enabled', True))
-    advance_notification_checkbox = tk.Checkbutton(
+    ui_elements['advance_checkbox'] = tk.Checkbutton(
         options_win, 
-        text="Enable advance notifications", 
+        text=t("label.enable_advance_notifications"), 
         variable=advance_notification_enabled_var
     )
-    advance_notification_checkbox.pack(anchor="w", padx=10, pady=(5, 0))
+    ui_elements['advance_checkbox'].pack(anchor="w", padx=10, pady=(5, 0))
     
     # Advance notification seconds setting
     advance_seconds_frame = tk.Frame(options_win)
     advance_seconds_frame.pack(fill="x", padx=10, pady=(5, 0))
     
-    tk.Label(advance_seconds_frame, text="Seconds before activity:").pack(side="left")
+    ui_elements['seconds_label'] = tk.Label(advance_seconds_frame, text=t("label.seconds_before_activity"))
+    ui_elements['seconds_label'].pack(side="left")
     advance_notification_seconds_var = tk.IntVar()
     advance_notification_seconds_var.set(getattr(app, 'advance_notification_seconds', 30))
     advance_notification_seconds_entry = tk.Entry(
@@ -127,15 +216,15 @@ def open_global_options(app):
                 app.update_cards_after_size_change()
                 
                 # Update notification settings
-                if notification_var.get() == "Gotify":
+                if notification_var.get() == t("combo.gotify"):
                     gotify_url = gotify_url_var.get().strip()
                     gotify_token = gotify_token_var.get().strip()
                     
                     # Validate Gotify URL format
                     if gotify_url and not validate_gotify_url(gotify_url):
                         response = messagebox.askyesno(
-                            "Invalid Gotify URL",
-                            "Gotify URL does not look correct - expected format is http(s)://<ip/name>:<port>/message. Do you want to correct it?",
+                            t("dialog.invalid_gotify_url"),
+                            t("message.gotify_url_format"),
                             icon="warning"
                         )
                         if response:  # User clicked "Yes"
@@ -154,8 +243,10 @@ def open_global_options(app):
                 
                 # Validate advance notification seconds
                 if new_advance_seconds < 0 or new_advance_seconds > 3600:  # Max 1 hour
-                    messagebox.showerror("Invalid Input", "Advance notification seconds must be between 0 and 3600 (1 hour).")
+                    messagebox.showerror(t("dialog.invalid_input"), t("message.invalid_advance_seconds"))
                     return
+                
+                # Language is already updated by the on_language_change callback
                 
                 # Update app settings
                 app.advance_notification_enabled = new_advance_enabled
@@ -172,12 +263,14 @@ def open_global_options(app):
                 
                 options_win.destroy()
             else:
-                messagebox.showerror("Invalid Input", "Start hour must be >=0 and < End hour, End hour must be <=24.")
+                messagebox.showerror(t("dialog.invalid_input"), t("message.invalid_hours"))
         except Exception as e:
-            messagebox.showerror("Invalid Input", str(e))
+            messagebox.showerror(t("dialog.invalid_input"), str(e))
     
     def on_cancel():
         options_win.destroy()
     
-    tk.Button(btn_frame, text="Ok", command=on_ok).pack(side="left", padx=20)
-    tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
+    ui_elements['ok_button'] = tk.Button(btn_frame, text=t("button.ok"), command=on_ok)
+    ui_elements['ok_button'].pack(side="left", padx=20)
+    ui_elements['cancel_button'] = tk.Button(btn_frame, text=t("button.cancel"), command=on_cancel)
+    ui_elements['cancel_button'].pack(side="right", padx=20)

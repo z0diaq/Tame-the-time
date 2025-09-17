@@ -2,28 +2,29 @@ import tkinter as tk
 import tkinter.messagebox as messagebox
 from utils.time_utils import get_current_activity
 from utils.logging import log_error, log_info
+from utils.translator import t
 
 def open_edit_card_window(app, card_obj, on_cancel_callback=None):
     """Open a dialog to edit a card's details."""
     edit_win = tk.Toplevel(app)
-    edit_win.title("Edit Card")
+    edit_win.title(t("window.edit_card"))
     edit_win.geometry("350x350")
     edit_win.transient(app)
     edit_win.grab_set()
 
-    tk.Label(edit_win, text="Title:").pack(anchor="w", padx=10, pady=(10, 0))
+    tk.Label(edit_win, text=t("label.title")).pack(anchor="w", padx=10, pady=(10, 0))
     title_var = tk.StringVar(value=card_obj.activity.get("name", ""))
     title_entry = tk.Entry(edit_win, textvariable=title_var)
     title_entry.pack(fill="x", padx=10)
 
-    tk.Label(edit_win, text="Description:").pack(anchor="w", padx=10, pady=(10, 0))
+    tk.Label(edit_win, text=t("label.description")).pack(anchor="w", padx=10, pady=(10, 0))
     desc_text = tk.Text(edit_win, height=6)
     desc = "\n".join(card_obj.activity.get("description", []))
     desc_text.insert("1.0", desc)
     desc_text.pack(fill="both", expand=True, padx=10)
 
     # --- Tasks edit box ---
-    tk.Label(edit_win, text="Tasks (one per line):").pack(anchor="w", padx=10, pady=(10, 0))
+    tk.Label(edit_win, text=t("label.tasks_one_per_line")).pack(anchor="w", padx=10, pady=(10, 0))
     tasks_text = tk.Text(edit_win, height=5)
     tasks = card_obj.activity.get("tasks", [])
     task_names = [
@@ -49,9 +50,8 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
         if duplicates:
             duplicate_list = ", ".join(duplicates)
             result = messagebox.askyesno(
-                "Duplicate Task Names",
-                f"Two tasks have same name: {duplicate_list}. "
-                "Will not be able to compute statistics correctly. Do you want to continue?",
+                t("dialog.duplicate_task_names"),
+                t("message.duplicate_tasks", duplicate_list=duplicate_list),
                 parent=edit_win
             )
             if not result:
@@ -169,15 +169,14 @@ def open_card_tasks_window(app, card_obj):
             unsaved_list = "\n".join([f"• {task}" for task in unsaved_tasks])
             
             messagebox.showwarning(
-                "Unsaved Tasks",
-                f"This activity contains unsaved tasks, please save schedule first.\n\n"
-                f"Unsaved tasks:\n{unsaved_list}",
+                t("dialog.unsaved_tasks"),
+                t("message.unsaved_tasks_warning", unsaved_list=unsaved_list),
                 parent=app
             )
             return  # Don't open the dialog
     
     tasks_win = tk.Toplevel(app)
-    tasks_win.title(f"Tasks for {card_obj.activity['name']}")
+    tasks_win.title(t("window.tasks_for", activity_name=card_obj.activity['name']))
     tasks_win.geometry("400x350")
     tasks_win.transient(app)
     tasks_win.grab_set()
@@ -233,11 +232,11 @@ def open_card_tasks_window(app, card_obj):
         else:
             task_name = str(task)  # Fallback
         
-        display = f"[Done] {task_name}" if tasks_done_copy[i] else task_name
+        display = f"{t('task.done_prefix')} {task_name}" if tasks_done_copy[i] else task_name
         task_listbox.insert("end", display)
 
     # Create "Toggle Done" button (initially disabled)
-    toggle_done_btn = tk.Button(tasks_win, text="Mark as Done", state="disabled")
+    toggle_done_btn = tk.Button(tasks_win, text=t("button.mark_as_done"), state="disabled")
     toggle_done_btn.pack(pady=(0, 10))
 
     def find_first_not_done():
@@ -253,11 +252,11 @@ def open_card_tasks_window(app, card_obj):
         if selected_indices:
             idx = selected_indices[0]
             if not tasks_done_copy[idx]:
-                toggle_done_btn.config(state="normal", text="Mark as Done")
+                toggle_done_btn.config(state="normal", text=t("button.mark_as_done"))
             else:
-                toggle_done_btn.config(state="normal", text="Mark as Undone")
+                toggle_done_btn.config(state="normal", text=t("button.mark_as_undone"))
         else:
-            toggle_done_btn.config(state="disabled", text="Mark as Done")
+            toggle_done_btn.config(state="disabled", text=t("button.mark_as_done"))
 
     def on_listbox_select(event):
         """Handle listbox selection changes."""
@@ -285,7 +284,7 @@ def open_card_tasks_window(app, card_obj):
                 # Mark task as done
                 tasks_done_copy[idx] = True
                 task_listbox.delete(idx)
-                task_listbox.insert(idx, f"[Done] {task_name}")
+                task_listbox.insert(idx, f"{t('task.done_prefix')} {task_name}")
                 
                 # Update database if task tracking service is available
                 if hasattr(app, 'task_tracking_service'):
@@ -384,8 +383,8 @@ def open_card_tasks_window(app, card_obj):
     def on_cancel():
         # Discard changes - don't modify card_obj._tasks_done
         tasks_win.destroy()
-    tk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=20)
-    tk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side="right", padx=20)
+    tk.Button(btn_frame, text=t("button.save"), command=on_save).pack(side="left", padx=20)
+    tk.Button(btn_frame, text=t("button.cancel"), command=on_cancel).pack(side="right", padx=20)
 
     # Focus the listbox when the window opens
     task_listbox.focus_set()

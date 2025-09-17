@@ -4,6 +4,7 @@ from ui.card_dialogs import open_edit_card_window, open_card_tasks_window
 from ui.task_card import TaskCard
 from utils.time_utils import round_to_nearest_5_minutes
 from utils.logging import log_debug
+from utils.translator import t
 
 def show_canvas_context_menu(app, event):
     # Determine if click is on a card
@@ -21,7 +22,7 @@ def show_canvas_context_menu(app, event):
         def edit_card():
             """Open a dialog to edit the card under cursor."""
             open_edit_card_window(app, card_under_cursor)
-        menu.add_command(label="Edit", command=edit_card)
+        menu.add_command(label=t("context_menu.edit"), command=edit_card)
         def clone_card():
             """Clone the card under cursor."""
             new_card = card_under_cursor.clone()
@@ -41,7 +42,7 @@ def show_canvas_context_menu(app, event):
             app.schedule.append(new_card.to_dict())
             app.update_cards_after_size_change()
             app.schedule_changed = True
-        menu.add_command(label="Clone", command=clone_card)
+        menu.add_command(label=t("context_menu.clone"), command=clone_card)
         def open_card_tasks():
             """Open a dialog to edit the tasks for the card under cursor."""
             open_card_tasks_window(app, card_under_cursor)
@@ -56,19 +57,19 @@ def show_canvas_context_menu(app, event):
         
         # Show Tasks menu option if there are tasks
         if 'tasks' in activity and activity['tasks']:
-            menu.add_command(label="Tasks", command=open_card_tasks)
+            menu.add_command(label=t("context_menu.tasks"), command=open_card_tasks)
         
         def remove_card():
             """Remove the card under cursor with confirmation."""
             card_name = card_under_cursor.activity.get('name', 'this card')
-            if messagebox.askyesno("Confirm Removal", f"Are you sure you want to remove '{card_name}'?"):
+            if messagebox.askyesno(t("dialog.confirm_removal"), t("message.confirm_remove_card", card_name=card_name)):
                 if card_under_cursor in app.cards:
                     app.cards.remove(card_under_cursor)
                     card_under_cursor.delete()
                     app.schedule.remove(card_under_cursor.to_dict())
                     app.update_cards_after_size_change()
                     app.schedule_changed = True
-        menu.add_command(label="Remove", command=remove_card)
+        menu.add_command(label=t("context_menu.remove"), command=remove_card)
     elif event.y > 30:
         def add_card():
             """Add a new card at the cursor position."""
@@ -81,7 +82,7 @@ def show_canvas_context_menu(app, event):
             end_minute = total_minutes % 60
             activity = {
                 "id": app.generate_activity_id(),
-                "name": "New Task",
+                "name": t("context_menu.new_task"),
                 "description": [],
                 "start_time": f"{start_hour:02d}:{start_minute:02d}",
                 "end_time": f"{end_hour:02d}:{end_minute:02d}"
@@ -101,16 +102,16 @@ def show_canvas_context_menu(app, event):
             app.update_cards_after_size_change()
             open_edit_card_window(app, new_card)
             app.schedule_changed = True
-        menu.add_command(label="New", command=add_card)
+        menu.add_command(label=t("context_menu.new"), command=add_card)
         def remove_all_cards():
             """Remove all cards from the schedule."""
-            if messagebox.askyesno("Confirm", "Are you sure you want to remove all cards?"):
+            if messagebox.askyesno(t("dialog.confirm_remove_all"), t("message.confirm_remove_all_cards")):
                 for card_obj in app.cards:
                     card_obj.delete()
                 app.cards.clear()
                 app.schedule.clear()
                 app.schedule_changed = True
-        menu.add_command(label="Remove all", command=remove_all_cards)
+        menu.add_command(label=t("context_menu.remove_all"), command=remove_all_cards)
     else:
         return
     menu.tk_popup(event.x_root, event.y_root)

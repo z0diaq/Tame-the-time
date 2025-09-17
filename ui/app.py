@@ -9,6 +9,7 @@ import utils.notification
 from constants import UIConstants, Colors
 import utils.notification
 from services.notification_service import NotificationService
+from utils.translator import init_translator, t
 
 from ui.timeline import draw_timeline, draw_current_time_line, reposition_current_time_line
 from ui.task_card import create_task_cards, TaskCard
@@ -52,7 +53,8 @@ class TimeboxApp(tk.Tk):
             "always_on_top": self.always_on_top,
             "advance_notification_enabled": getattr(self, 'advance_notification_enabled', True),
             "advance_notification_seconds": getattr(self, 'advance_notification_seconds', NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS),
-            "statistics_show_known_only": self.statistics_show_known_only
+            "statistics_show_known_only": self.statistics_show_known_only,
+            "current_language": getattr(self, 'current_language', 'en')
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -74,6 +76,10 @@ class TimeboxApp(tk.Tk):
         self.config_path = config_path
         self.db_path = db_path
         self.schedule_changed = False
+        
+        # Initialize language from settings
+        self.current_language = self.settings.get('current_language', 'en')
+        init_translator(self.current_language)
         
         # Initialize advance notification settings from saved config
         self.advance_notification_enabled = self.settings.get('advance_notification_enabled', True)
@@ -112,7 +118,7 @@ class TimeboxApp(tk.Tk):
             self.geometry(self.settings["window_position"])
         utils.notification.gotify_token = self.settings.get("gotify_token", "")
         utils.notification.gotify_url = self.settings.get("gotify_url", "")
-        self.title("Timeboxing Timeline")
+        self.title(t("window.main_title"))
         self.geometry("400x700")
         self.start_hour = 0
         self.end_hour = 24
@@ -138,21 +144,21 @@ class TimeboxApp(tk.Tk):
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.file_menu.add_command(label="Open", command=lambda: open_schedule(self))
-        self.file_menu.add_command(label="Clear", command=lambda: clear_schedule(self))
-        self.file_menu.add_command(label="Save", command=lambda: save_schedule(self))
-        self.file_menu.add_command(label="Save As", command=lambda: save_schedule_as(self))
-        self.menu_bar.add_cascade(label="File", menu=self.file_menu)
+        self.file_menu.add_command(label=t("menu.open"), command=lambda: open_schedule(self))
+        self.file_menu.add_command(label=t("menu.clear"), command=lambda: clear_schedule(self))
+        self.file_menu.add_command(label=t("menu.save"), command=lambda: save_schedule(self))
+        self.file_menu.add_command(label=t("menu.save_as"), command=lambda: save_schedule_as(self))
+        self.menu_bar.add_cascade(label=t("menu.file"), menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.options_menu.add_command(label="Global options", command=lambda: open_global_options(self))
+        self.options_menu.add_command(label=t("menu.global_options"), command=lambda: open_global_options(self))
         self.options_menu.add_separator()
-        self.options_menu.add_checkbutton(label="Always on top", command=self.toggle_always_on_top)
-        self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
+        self.options_menu.add_checkbutton(label=t("menu.always_on_top"), command=self.toggle_always_on_top)
+        self.menu_bar.add_cascade(label=t("menu.options"), menu=self.options_menu)
         
         # Add Statistics menu
         self.statistics_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.statistics_menu.add_command(label="Tasks", command=lambda: open_task_statistics_dialog(self, self.db_path))
-        self.menu_bar.add_cascade(label="Statistics", menu=self.statistics_menu)
+        self.statistics_menu.add_command(label=t("menu.tasks"), command=lambda: open_task_statistics_dialog(self, self.db_path))
+        self.menu_bar.add_cascade(label=t("menu.statistics"), menu=self.statistics_menu)
         self.menu_visible = False
         self.statistics_show_known_only = settings.get("statistics_show_known_only", True)
         self.card_visual_changed = False  # Flag to track if card visuals have changed
@@ -336,19 +342,19 @@ class TimeboxApp(tk.Tk):
                     active += missed_count
         
         # Build task statistics message
-        tasks_info = "No tasks found for today"
+        tasks_info = t("status.no_tasks_today")
         if missed > 0 or todo > 0 or incoming > 0 or done > 0:
-            tasks_info = "Today tasks statistics: "
+            tasks_info = t("status.today_statistics")
             if missed > 0:
-                tasks_info += f"{missed} missed, "
+                tasks_info += f"{missed} {t('status.missed')}, "
             if todo > 0:
-                tasks_info += f"{todo} todo, "
+                tasks_info += f"{todo} {t('status.todo')}, "
             if incoming > 0:
-                tasks_info += f"{incoming} incoming, "
+                tasks_info += f"{incoming} {t('status.incoming')}, "
             if active > 0:
-                tasks_info += f"{active} active, "
+                tasks_info += f"{active} {t('status.active')}, "
             if done > 0:
-                tasks_info += f"{done} done"
+                tasks_info += f"{done} {t('status.done')}"
             tasks_info = tasks_info.rstrip(", ")
         
         # Display logic: show warning if unsaved tasks, otherwise show statistics
@@ -402,7 +408,7 @@ class TimeboxApp(tk.Tk):
         # After 5 seconds, show red warning for 2 seconds
         def show_warning():
             log_debug("Showing white text on red background warning message")
-            self.status_bar.config(text="Save schedule to handle all tasks", fg=Colors.STATUS_BAR_WARNING_TEXT, bg=Colors.STATUS_BAR_WARNING_BG)
+            self.status_bar.config(text=t("status.save_schedule_warning"), fg=Colors.STATUS_BAR_WARNING_TEXT, bg=Colors.STATUS_BAR_WARNING_BG)
             # After 2 seconds, return to normal text
             self._normal_timer_id = self.after(2000, lambda: self._return_to_normal(normal_text))
         
@@ -426,7 +432,7 @@ class TimeboxApp(tk.Tk):
     def _show_red_warning(self, normal_text: str):
         """Show the red warning part of the cycle"""
         log_debug("Showing red warning message (cycle)")
-        self.status_bar.config(text="Save schedule to handle all tasks", fg=Colors.STATUS_BAR_WARNING_TEXT, bg=Colors.STATUS_BAR_WARNING_BG)
+        self.status_bar.config(text=t("status.save_schedule_warning"), fg=Colors.STATUS_BAR_WARNING_TEXT, bg=Colors.STATUS_BAR_WARNING_BG)
         # After 2 seconds, return to normal text
         self._normal_timer_id = self.after(2000, lambda: self._return_to_normal(normal_text))
 
@@ -630,6 +636,37 @@ class TimeboxApp(tk.Tk):
                 card_obj._task_uuids.extend([None] * (tasks_length - task_uuids_length))
             elif task_uuids_length > tasks_length:
                 card_obj._task_uuids = card_obj._task_uuids[:tasks_length]
+
+    def refresh_ui_after_language_change(self):
+        """Refresh all UI elements after language change."""
+        # Update window title
+        self.title(t("window.main_title"))
+        
+        # Update file menu items
+        self.file_menu.entryconfig(0, label=t("menu.open"))
+        self.file_menu.entryconfig(1, label=t("menu.clear"))
+        self.file_menu.entryconfig(2, label=t("menu.save"))
+        self.file_menu.entryconfig(3, label=t("menu.save_as"))
+        
+        # Update options menu items
+        self.options_menu.entryconfig(0, label=t("menu.global_options"))
+        self.options_menu.entryconfig(2, label=t("menu.always_on_top"))
+        
+        # Update statistics menu items
+        self.statistics_menu.entryconfig(0, label=t("menu.tasks"))
+        
+        # Update menu bar cascade labels by recreating them
+        # Remove existing cascades and recreate with new labels
+        self.menu_bar.delete(0, "end")
+        self.menu_bar.add_cascade(label=t("menu.file"), menu=self.file_menu)
+        self.menu_bar.add_cascade(label=t("menu.options"), menu=self.options_menu)
+        self.menu_bar.add_cascade(label=t("menu.statistics"), menu=self.statistics_menu)
+        
+        # Update status bar
+        self.update_status_bar()
+        
+        # Save language preference
+        self.save_settings(immediate=True)
 
     def bind_mouse_actions(self, card):
         """Bind mouse actions to the card."""
