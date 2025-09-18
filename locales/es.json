@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "display_name": "Español",
+    "language_code": "es",
+    "version": "1.0.0"
+  },
+  "window": {
+    "main_title": "Cronograma de Timeboxing",
+    "global_options": "Opciones Globales",
+    "task_statistics": "Estadísticas de Tareas",
+    "edit_card": "Editar Tarjeta",
+    "tasks_for": "Tareas para {activity_name}"
+  },
+  "menu": {
+    "file": "Archivo",
+    "open": "Abrir",
+    "clear": "Limpiar",
+    "save": "Guardar",
+    "save_as": "Guardar Como",
+    "options": "Opciones",
+    "global_options": "Opciones globales",
+    "always_on_top": "Siempre encima",
+    "statistics": "Estadísticas",
+    "tasks": "Tareas"
+  },
+  "button": {
+    "ok": "Ok",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "mark_as_done": "Marcar como completado",
+    "mark_as_undone": "Marcar como no completado"
+  },
+  "task": {
+    "done_prefix": "[Completado]"
+  },
+  "label": {
+    "start_hour": "Hora de inicio:",
+    "end_hour": "Hora de fin:",
+    "notification": "Notificación:",
+    "language": "Idioma:",
+    "gotify_url": "URL de Gotify:",
+    "gotify_token": "Token de Gotify:",
+    "advance_notification_settings": "Configuración de Notificaciones Anticipadas:",
+    "enable_advance_notifications": "Habilitar notificaciones anticipadas",
+    "seconds_before_activity": "Segundos antes de la actividad:",
+    "select_tasks": "Seleccionar Tareas:",
+    "show_only_known_activity": "Mostrar solo tareas con actividad conocida",
+    "grouping": "Agrupación:",
+    "ignore_weekends": "Ignorar fines de semana",
+    "title": "Título:",
+    "description": "Descripción:",
+    "tasks_one_per_line": "Tareas (una por línea):"
+  },
+  "combo": {
+    "disabled": "Deshabilitado",
+    "gotify": "Gotify",
+    "day": "Día",
+    "week": "Semana",
+    "month": "Mes",
+    "year": "Año"
+  },
+  "status": {
+    "no_tasks_today": "No se encontraron tareas para hoy",
+    "today_statistics": "Estadísticas de tareas de hoy: ",
+    "missed": "perdidas",
+    "todo": "pendientes",
+    "incoming": "próximas",
+    "active": "activas",
+    "done": "completadas",
+    "save_schedule_warning": "Guarda el cronograma para manejar todas las tareas"
+  },
+  "chart": {
+    "daily_completion": "Finalización Diaria de Tareas",
+    "weekly_completion": "Tasa de Finalización Semanal de Tareas",
+    "monthly_completion": "Tasa de Finalización Mensual de Tareas",
+    "yearly_completion": "Tasa de Finalización Anual de Tareas",
+    "date": "Fecha",
+    "week": "Semana",
+    "month": "Mes",
+    "year": "Año",
+    "completed_not_completed": "Completado (1) / No Completado (0)",
+    "completion_rate": "Tasa de Finalización",
+    "select_tasks_message": "Selecciona tareas de la lista para ver estadísticas"
+  },
+  "context_menu": {
+    "edit": "Editar",
+    "clone": "Clonar",
+    "tasks": "Tareas",
+    "remove": "Eliminar",
+    "new": "Nuevo",
+    "remove_all": "Eliminar todo",
+    "new_task": "Nueva Tarea"
+  },
+  "dialog": {
+    "error": "Error",
+    "warning": "Advertencia",
+    "confirm": "Confirmar",
+    "invalid_input": "Entrada Inválida",
+    "invalid_gotify_url": "URL de Gotify Inválida",
+    "duplicate_task_names": "Nombres de Tareas Duplicados",
+    "unsaved_tasks": "Tareas No Guardadas",
+    "confirm_removal": "Confirmar Eliminación",
+    "confirm_remove_all": "Confirmar"
+  },
+  "message": {
+    "invalid_hours": "La hora de inicio debe ser >=0 y < hora de fin, la hora de fin debe ser <=24.",
+    "invalid_advance_seconds": "Los segundos de notificación anticipada deben estar entre 0 y 3600 (1 hora).",
+    "gotify_url_format": "La URL de Gotify no parece correcta - el formato esperado es http(s)://<ip/nombre>:<puerto>/message. ¿Quieres corregirla?",
+    "duplicate_tasks": "Dos tareas tienen el mismo nombre: {duplicate_list}. No se podrán calcular las estadísticas correctamente. ¿Quieres continuar?",
+    "unsaved_tasks_warning": "Esta actividad contiene tareas no guardadas, por favor guarda el cronograma primero.\n\nTareas no guardadas:\n{unsaved_list}",
+    "confirm_remove_card": "¿Estás seguro de que quieres eliminar '{card_name}'?",
+    "confirm_remove_all_cards": "¿Estás seguro de que quieres eliminar todas las tarjetas?"
+  },
+  "activity": {
+    "unknown_activity": "Actividad Desconocida"
+  }
+}

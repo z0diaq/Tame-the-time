@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "display_name": "Français",
+    "language_code": "fr",
+    "version": "1.0.0"
+  },
+  "window": {
+    "main_title": "Chronologie de Timeboxing",
+    "global_options": "Options Globales",
+    "task_statistics": "Statistiques des Tâches",
+    "edit_card": "Modifier la Carte",
+    "tasks_for": "Tâches pour {activity_name}"
+  },
+  "menu": {
+    "file": "Fichier",
+    "open": "Ouvrir",
+    "clear": "Effacer",
+    "save": "Enregistrer",
+    "save_as": "Enregistrer Sous",
+    "options": "Options",
+    "global_options": "Options globales",
+    "always_on_top": "Toujours au premier plan",
+    "statistics": "Statistiques",
+    "tasks": "Tâches"
+  },
+  "button": {
+    "ok": "Ok",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "mark_as_done": "Marquer comme terminé",
+    "mark_as_undone": "Marquer comme non terminé"
+  },
+  "task": {
+    "done_prefix": "[Terminé]"
+  },
+  "label": {
+    "start_hour": "Heure de début:",
+    "end_hour": "Heure de fin:",
+    "notification": "Notification:",
+    "language": "Langue:",
+    "gotify_url": "URL Gotify:",
+    "gotify_token": "Token Gotify:",
+    "advance_notification_settings": "Paramètres de Notification Anticipée:",
+    "enable_advance_notifications": "Activer les notifications anticipées",
+    "seconds_before_activity": "Secondes avant l'activité:",
+    "select_tasks": "Sélectionner les Tâches:",
+    "show_only_known_activity": "Afficher uniquement les tâches avec activité connue",
+    "grouping": "Regroupement:",
+    "ignore_weekends": "Ignorer les week-ends",
+    "title": "Titre:",
+    "description": "Description:",
+    "tasks_one_per_line": "Tâches (une par ligne):"
+  },
+  "combo": {
+    "disabled": "Désactivé",
+    "gotify": "Gotify",
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "year": "Année"
+  },
+  "status": {
+    "no_tasks_today": "Aucune tâche trouvée pour aujourd'hui",
+    "today_statistics": "Statistiques des tâches d'aujourd'hui: ",
+    "missed": "manquées",
+    "todo": "à faire",
+    "incoming": "à venir",
+    "active": "actives",
+    "done": "terminées",
+    "save_schedule_warning": "Enregistrez le planning pour gérer toutes les tâches"
+  },
+  "chart": {
+    "daily_completion": "Achèvement Quotidien des Tâches",
+    "weekly_completion": "Taux d'Achèvement Hebdomadaire des Tâches",
+    "monthly_completion": "Taux d'Achèvement Mensuel des Tâches",
+    "yearly_completion": "Taux d'Achèvement Annuel des Tâches",
+    "date": "Date",
+    "week": "Semaine",
+    "month": "Mois",
+    "year": "Année",
+    "completed_not_completed": "Terminé (1) / Non Terminé (0)",
+    "completion_rate": "Taux d'Achèvement",
+    "select_tasks_message": "Sélectionnez des tâches dans la liste pour voir les statistiques"
+  },
+  "context_menu": {
+    "edit": "Modifier",
+    "clone": "Cloner",
+    "tasks": "Tâches",
+    "remove": "Supprimer",
+    "new": "Nouveau",
+    "remove_all": "Tout supprimer",
+    "new_task": "Nouvelle Tâche"
+  },
+  "dialog": {
+    "error": "Erreur",
+    "warning": "Avertissement",
+    "confirm": "Confirmer",
+    "invalid_input": "Entrée Invalide",
+    "invalid_gotify_url": "URL Gotify Invalide",
+    "duplicate_task_names": "Noms de Tâches Dupliqués",
+    "unsaved_tasks": "Tâches Non Enregistrées",
+    "confirm_removal": "Confirmer la Suppression",
+    "confirm_remove_all": "Confirmer"
+  },
+  "message": {
+    "invalid_hours": "L'heure de début doit être >=0 et < heure de fin, l'heure de fin doit être <=24.",
+    "invalid_advance_seconds": "Les secondes de notification anticipée doivent être entre 0 et 3600 (1 heure).",
+    "gotify_url_format": "L'URL Gotify ne semble pas correcte - le format attendu est http(s)://<ip/nom>:<port>/message. Voulez-vous la corriger?",
+    "duplicate_tasks": "Deux tâches ont le même nom: {duplicate_list}. Les statistiques ne pourront pas être calculées correctement. Voulez-vous continuer?",
+    "unsaved_tasks_warning": "Cette activité contient des tâches non enregistrées, veuillez d'abord enregistrer le planning.\n\nTâches non enregistrées:\n{unsaved_list}",
+    "confirm_remove_card": "Êtes-vous sûr de vouloir supprimer '{card_name}'?",
+    "confirm_remove_all_cards": "Êtes-vous sûr de vouloir supprimer toutes les cartes?"
+  },
+  "activity": {
+    "unknown_activity": "Activité Inconnue"
+  }
+}
