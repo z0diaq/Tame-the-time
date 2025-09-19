@@ -427,7 +427,7 @@ class TaskTrackingService:
         weekly_data = {}
         for row in cursor.fetchall():
             date_str, done_state = row
-            t_get_monthly_statisticsask_date = datetime.fromisoformat(date_str).date()
+            task_date = datetime.fromisoformat(date_str).date()
             
             # Skip weekends if requested
             if ignore_weekends and task_date.weekday() >= 5:  # Saturday=5, Sunday=6
