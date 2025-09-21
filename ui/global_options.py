@@ -16,19 +16,17 @@ def open_global_options(app):
     # Store references to UI elements for dynamic updates
     ui_elements = {}
 
-    # Start hour setting
-    ui_elements['start_hour_label'] = tk.Label(options_win, text=t("label.start_hour"))
-    ui_elements['start_hour_label'].pack(anchor="w", padx=10, pady=(15, 0))
-    start_hour_var = tk.IntVar(value=app.start_hour)
-    start_hour_entry = tk.Entry(options_win, textvariable=start_hour_var)
-    start_hour_entry.pack(fill="x", padx=10)
-
-    # End hour setting
-    ui_elements['end_hour_label'] = tk.Label(options_win, text=t("label.end_hour"))
-    ui_elements['end_hour_label'].pack(anchor="w", padx=10, pady=(10, 0))
-    end_hour_var = tk.IntVar(value=app.end_hour)
-    end_hour_entry = tk.Entry(options_win, textvariable=end_hour_var)
-    end_hour_entry.pack(fill="x", padx=10)
+    # Day start setting
+    ui_elements['day_start_label'] = tk.Label(options_win, text=t("label.day_start"))
+    ui_elements['day_start_label'].pack(anchor="w", padx=10, pady=(15, 0))
+    day_start_var = tk.IntVar(value=getattr(app, 'day_start', 0))
+    day_start_entry = tk.Entry(options_win, textvariable=day_start_var)
+    day_start_entry.pack(fill="x", padx=10)
+    
+    # Help text for day start
+    ui_elements['day_start_help'] = tk.Label(options_win, text=t("label.day_start_help"), 
+                                           font=("Arial", 8), fg="gray")
+    ui_elements['day_start_help'].pack(anchor="w", padx=10, pady=(2, 0))
 
     # Notification settings
     ui_elements['notification_label'] = tk.Label(options_win, text=t("label.notification"))
@@ -117,8 +115,8 @@ def open_global_options(app):
         options_win.title(t("window.global_options"))
         
         # Update labels
-        ui_elements['start_hour_label'].config(text=t("label.start_hour"))
-        ui_elements['end_hour_label'].config(text=t("label.end_hour"))
+        ui_elements['day_start_label'].config(text=t("label.day_start"))
+        ui_elements['day_start_help'].config(text=t("label.day_start_help"))
         ui_elements['notification_label'].config(text=t("label.notification"))
         ui_elements['gotify_url_label'].config(text=t("label.gotify_url"))
         ui_elements['gotify_token_label'].config(text=t("label.gotify_token"))
@@ -207,12 +205,13 @@ def open_global_options(app):
     
     def on_ok():
         try:
-            new_start = int(start_hour_var.get())
-            new_end = int(end_hour_var.get())
-            if 0 <= new_start < 24 and 0 < new_end <= 24 and new_start < new_end:
-                # Update hour settings
-                app.start_hour = new_start
-                app.end_hour = new_end
+            new_day_start = int(day_start_var.get())
+            if 0 <= new_day_start < 24:
+                # Update day start setting
+                app.day_start = new_day_start
+                # Update derived values for backward compatibility
+                app.start_hour = new_day_start
+                app.end_hour = (new_day_start + 24) % 24 if new_day_start != 0 else 24
                 app.update_cards_after_size_change()
                 
                 # Update notification settings
@@ -263,7 +262,7 @@ def open_global_options(app):
                 
                 options_win.destroy()
             else:
-                messagebox.showerror(t("dialog.invalid_input"), t("message.invalid_hours"))
+                messagebox.showerror(t("dialog.invalid_input"), t("message.invalid_day_start"))
         except Exception as e:
             messagebox.showerror(t("dialog.invalid_input"), str(e))
     

@@ -34,8 +34,8 @@
     "done_prefix": "[Done]"
   },
   "label": {
-    "start_hour": "Start hour:",
-    "end_hour": "End hour:",
+    "day_start": "Day starts at (hour):",
+    "day_start_help": "Hour when a new day begins for card management (0-23)",
     "notification": "Notification:",
     "language": "Language:",
     "gotify_url": "Gotify URL:",
@@ -103,7 +103,7 @@
     "confirm_remove_all": "Confirm"
   },
   "message": {
-    "invalid_hours": "Start hour must be >=0 and < End hour, End hour must be <=24.",
+    "invalid_day_start": "Day start hour must be between 0 and 23.",
     "invalid_advance_seconds": "Advance notification seconds must be between 0 and 3600 (1 hour).",
     "gotify_url_format": "Gotify URL does not look correct - expected format is http(s)://<ip/name>:<port>/message. Do you want to correct it?",
     "duplicate_tasks": "Two tasks have same name: {duplicate_list}. Will not be able to compute statistics correctly. Do you want to continue?",

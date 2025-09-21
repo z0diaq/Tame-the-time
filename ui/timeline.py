@@ -3,14 +3,18 @@ from datetime import time
 from constants import Colors
 
 def draw_current_time_line(canvas: Canvas, width: int, start_hour: int, pixels_per_hour: int, offset_y: int, current_time, mouse_inside_window: bool):
-    """Draw current time line and text on the timeline."""
+    """Draw current time line and text on the timeline.
+    
+    Args:
+        start_hour: Hour when the day starts for card management (day_start setting)
+    """
     if not current_time:
         return []
     
-    # Calculate position based on current time
+    # Calculate position based on current time relative to day start
     current_minutes = current_time.hour * 60 + current_time.minute + current_time.second / 60.0
-    start_minutes = start_hour * 60
-    y = ((current_minutes - start_minutes) / 60) * pixels_per_hour + 100 + offset_y
+    day_start_minutes = start_hour * 60
+    y = ((current_minutes - day_start_minutes) / 60) * pixels_per_hour + 100 + offset_y
     
     # Create green dotted line with same style as hour lines
     line = canvas.create_line(0, y, width, y, fill=Colors.TIMELINE_CURRENT_TIME_LINE, dash=(2, 2))
@@ -25,7 +29,12 @@ def draw_current_time_line(canvas: Canvas, width: int, start_hour: int, pixels_p
     return [line, text]
 
 def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pixels_per_hour: int, offset_y: int, current_time=None, granularity=60):
-    """Draw the timeline on the canvas. granularity in minutes (default 60)."""
+    """Draw the timeline on the canvas. granularity in minutes (default 60).
+    
+    Args:
+        start_hour: Hour when the day starts for card management (day_start setting)
+        end_hour: Hour when the day ends (typically start_hour + 24)
+    """
     total_minutes = (end_hour - start_hour) * 60
     created_objects = []
     for minute in range(0, total_minutes + 1, granularity):
@@ -46,7 +55,11 @@ def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pi
     return created_objects
 
 def reposition_current_time_line(canvas: Canvas, current_time_objects, start_hour: int, pixels_per_hour: int, offset_y: int, width: int, current_time, mouse_inside_window: bool):
-    """Reposition current time line and update text format based on mouse position."""
+    """Reposition current time line and update text format based on mouse position.
+    
+    Args:
+        start_hour: Hour when the day starts for card management (day_start setting)
+    """
     if not current_time_objects or len(current_time_objects) != 2:
         return
     

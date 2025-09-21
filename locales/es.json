@@ -34,8 +34,8 @@
     "done_prefix": "[Completado]"
   },
   "label": {
-    "start_hour": "Hora de inicio:",
-    "end_hour": "Hora de fin:",
+    "day_start": "El día comienza a las (hora):",
+    "day_start_help": "Hora en la que comienza un nuevo día para la gestión de tarjetas (0-23)",
     "notification": "Notificación:",
     "language": "Idioma:",
     "gotify_url": "URL de Gotify:",
@@ -103,7 +103,7 @@
     "confirm_remove_all": "Confirmar"
   },
   "message": {
-    "invalid_hours": "La hora de inicio debe ser >=0 y < hora de fin, la hora de fin debe ser <=24.",
+    "invalid_day_start": "La hora de inicio del día debe estar entre 0 y 23.",
     "invalid_advance_seconds": "Los segundos de notificación anticipada deben estar entre 0 y 3600 (1 hora).",
     "gotify_url_format": "La URL de Gotify no parece correcta - el formato esperado es http(s)://<ip/nombre>:<puerto>/message. ¿Quieres corregirla?",
     "duplicate_tasks": "Dos tareas tienen el mismo nombre: {duplicate_list}. No se podrán calcular las estadísticas correctamente. ¿Quieres continuar?",

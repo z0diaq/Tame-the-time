@@ -1,4 +1,5 @@
 from datetime import time
+import datetime
 from tkinter import Canvas
 import tkinter as tk
 from typing import Dict, List
@@ -14,10 +15,16 @@ class TaskCard:
             pixels_per_hour: int,
             offset_y: int,
             width: int,
-            now_provider=None
+            now_provider=datetime.datetime.now
         ):
-        """Initialize TaskCard with activity and layout parameters."""
+        """Initialize a TaskCard with the given activity and display parameters.
+        
+        Args:
+            start_of_workday: Hour when the day starts for card management (day_start setting)
+        """
         self.activity = activity
+        self.now_provider = now_provider
+        self.canvas = None
         
         # Use TimeUtils for consistent time parsing
         start_time_obj = TimeUtils.parse_time_with_validation(activity["start_time"])
@@ -25,6 +32,7 @@ class TaskCard:
         
         self.start_hour, self.start_minute = start_time_obj.hour, start_time_obj.minute
         self.end_hour, self.end_minute = end_time_obj.hour, end_time_obj.minute
+        # Position card relative to day start (start_of_workday is the day_start setting)
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         self.height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
         self.card_left = int(width * UIConstants.CARD_LEFT_RATIO)
@@ -241,7 +249,11 @@ class TaskCard:
         return start_time <= current_time < end_time
 
     def update_card_visuals(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y, now=None, show_start_time=True, show_end_time=True, width=None, is_moving=False):
-        """Move/resize the card, update progress bar, and update label positions/visibility. Also update width if provided."""
+        """Move/resize the card, update progress bar, and update label positions/visibility. Also update width if provided.
+        
+        Args:
+            start_of_workday: Hour when the day starts for card management (day_start setting)
+        """
         if now is None:
             now = self.now_provider().time() if self.now_provider else time(0, 0)
         if width is not None:
@@ -256,6 +268,7 @@ class TaskCard:
         self.end_minute = total_minutes % 60
         self.start_hour = new_start_hour
         self.start_minute = new_start_minute % 60
+        # Position card relative to day start (start_of_workday is the day_start setting)
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
         self.height = height

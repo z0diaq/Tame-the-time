@@ -34,8 +34,8 @@
     "done_prefix": "[Terminé]"
   },
   "label": {
-    "start_hour": "Heure de début:",
-    "end_hour": "Heure de fin:",
+    "day_start": "Le jour commence à (heure) :",
+    "day_start_help": "Heure à laquelle un nouveau jour commence pour la gestion des cartes (0-23)",
     "notification": "Notification:",
     "language": "Langue:",
     "gotify_url": "URL Gotify:",
@@ -103,6 +103,7 @@
     "confirm_remove_all": "Confirmer"
   },
   "message": {
+    "invalid_day_start": "L'heure de début du jour doit être entre 0 et 23.",
     "invalid_hours": "L'heure de début doit être >=0 et < heure de fin, l'heure de fin doit être <=24.",
     "invalid_advance_seconds": "Les secondes de notification anticipée doivent être entre 0 et 3600 (1 heure).",
     "gotify_url_format": "L'URL Gotify ne semble pas correcte - le format attendu est http(s)://<ip/nom>:<port>/message. Voulez-vous la corriger?",

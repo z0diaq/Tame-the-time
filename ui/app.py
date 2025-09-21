@@ -54,7 +54,8 @@ class TimeboxApp(tk.Tk):
             "advance_notification_enabled": getattr(self, 'advance_notification_enabled', True),
             "advance_notification_seconds": getattr(self, 'advance_notification_seconds', NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS),
             "statistics_show_known_only": self.statistics_show_known_only,
-            "current_language": getattr(self, 'current_language', 'en')
+            "current_language": getattr(self, 'current_language', 'en'),
+            "day_start": getattr(self, 'day_start', 0)
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -120,8 +121,11 @@ class TimeboxApp(tk.Tk):
         utils.notification.gotify_url = self.settings.get("gotify_url", "")
         self.title(t("window.main_title"))
         self.geometry("400x700")
-        self.start_hour = 0
-        self.end_hour = 24
+        # Initialize day_start from settings, default to 0 (midnight)
+        self.day_start = self.settings.get("day_start", 0)
+        # Maintain backward compatibility with start_hour/end_hour
+        self.start_hour = self.day_start
+        self.end_hour = (self.day_start + 24) % 24 if self.day_start != 0 else 24
         self.zoom_factor = 6.0
         self.pixels_per_hour = max(50, int(50 * self.zoom_factor))
         self.offset_y = 0
