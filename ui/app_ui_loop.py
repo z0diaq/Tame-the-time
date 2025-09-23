@@ -1,5 +1,5 @@
 from utils.time_utils import get_current_activity
-from utils.logging import log_debug
+from utils.logging import log_debug, log_error, log_info
 from datetime import datetime
 from typing import Dict
 from constants import UIConstants
@@ -9,6 +9,9 @@ from ui.timeline import reposition_current_time_line
 def update_ui(app):
     """Update the UI based on time changes and state."""
     now = app.now_provider()
+    
+    # Check for day rollover and handle it
+    _check_and_handle_day_rollover(app, now)
     
     # Check if we need to update UI based on time changes
     activity = get_current_activity(app.schedule, now)
@@ -168,3 +171,133 @@ def _should_update_ui(app, now: datetime, activity: Dict) -> bool:
         return True
     
     return False
+
+
+def _check_and_handle_day_rollover(app, now: datetime) -> None:
+    """
+    Check if current time has passed the day_start point and handle day rollover.
+    
+    Args:
+        app: The main application instance
+        now: Current datetime
+    """
+    # Initialize last_day_rollover_check if not present
+    if not hasattr(app, '_last_day_rollover_check'):
+        app._last_day_rollover_check = now
+        return
+    
+    last_check = app._last_day_rollover_check
+    day_start_hour = getattr(app, 'day_start', 0)
+    
+    # Check if we've crossed the day_start boundary
+    if _has_crossed_day_start_boundary(last_check, now, day_start_hour):
+        log_debug(f"Day rollover detected at {now.strftime('%H:%M:%S')} (day_start: {day_start_hour})")
+        _handle_day_rollover(app, now)
+    
+    app._last_day_rollover_check = now
+
+
+def _has_crossed_day_start_boundary(last_time: datetime, current_time: datetime, day_start_hour: int) -> bool:
+    """
+    Check if we've crossed the day_start boundary between two time points.
+    
+    Args:
+        last_time: Previous check time
+        current_time: Current time
+        day_start_hour: Hour when new day starts (0-23)
+        
+    Returns:
+        True if day_start boundary was crossed
+    """
+    # If times are on different calendar days, check if we crossed day_start
+    if last_time.date() != current_time.date():
+        # Check if current time is past day_start on the new calendar day
+        if current_time.hour >= day_start_hour:
+            return True
+    
+    # Check if we crossed day_start within the same calendar day
+    # This handles cases where day_start is not midnight (e.g., 6 AM)
+    if (last_time.hour < day_start_hour <= current_time.hour and 
+        last_time.date() == current_time.date()):
+        return True
+    
+    return False
+
+
+def _handle_day_rollover(app, now: datetime) -> None:
+    """
+    Handle day rollover by resetting timeline, tasks, and statistics.
+    
+    Args:
+        app: The main application instance
+        now: Current datetime
+    """
+    log_debug("Handling day rollover...")
+    
+    # 1. Reset timeline to start from top (center on current time)
+    _reset_timeline_to_top(app, now)
+    
+    # 2. Reset all task completion status to undone
+    _reset_all_task_completion_status(app)
+    
+    # 3. Create new daily task entries for the new day
+    _create_new_day_task_entries(app)
+    
+    # 4. Update status bar to reflect new day statistics
+    app.update_status_bar()
+    
+    log_info(f"Day rollover completed at {now.strftime('%H:%M:%S %Y-%m-%d')}")
+
+
+def _reset_timeline_to_top(app, now: datetime) -> None:
+    """Reset timeline view to start from the top (current time centered)."""
+    try:
+        # Center view on current time
+        minutes_since_start = (now.hour - app.start_hour) * 60 + now.minute
+        center_y = int(minutes_since_start * app.pixels_per_hour / 60) + 100
+        new_offset = (app.winfo_height() // 2) - center_y
+        delta_y = new_offset - app.offset_y
+        app.offset_y = new_offset
+        
+        # Move timeline and cards to new position
+        from ui.zoom_and_scroll import move_timelines_and_cards
+        move_timelines_and_cards(app, delta_y)
+        
+        log_debug("Timeline reset to top for new day")
+    except Exception as e:
+        log_error(f"Failed to reset timeline to top: {e}")
+
+
+def _reset_all_task_completion_status(app) -> None:
+    """Reset all task completion status to undone for the new day."""
+    try:
+        reset_count = 0
+        for card_obj in getattr(app, 'cards', []):
+            if hasattr(card_obj, '_tasks_done') and card_obj._tasks_done:
+                # Reset all tasks to undone
+                card_obj._tasks_done = [False] * len(card_obj._tasks_done)
+                reset_count += len(card_obj._tasks_done)
+                
+                # Update card visuals to reflect reset status
+                card_obj.update_card_visuals(
+                    card_obj.start_hour, card_obj.start_minute,
+                    app.start_hour, app.pixels_per_hour, app.offset_y,
+                    now=app.now_provider().time(), width=app.winfo_width()
+                )
+        
+        log_debug(f"Reset {reset_count} task completion statuses for new day")
+    except Exception as e:
+        log_error(f"Failed to reset task completion status: {e}")
+
+
+def _create_new_day_task_entries(app) -> None:
+    """Create new daily task entries for the new day."""
+    try:
+        if hasattr(app, 'task_tracking_service') and app.task_tracking_service:
+            entries_created = app.task_tracking_service.create_daily_task_entries(app.schedule)
+            if entries_created > 0:
+                log_info(f"Created {entries_created} new task entries for new day")
+        else:
+            log_debug("No task tracking service available for creating new day entries")
+    except Exception as e:
+        log_error(f"Failed to create new day task entries: {e}")
