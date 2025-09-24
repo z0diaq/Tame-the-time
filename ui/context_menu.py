@@ -66,7 +66,34 @@ def show_canvas_context_menu(app, event):
                 if card_under_cursor in app.cards:
                     app.cards.remove(card_under_cursor)
                     card_under_cursor.delete()
-                    app.schedule.remove(card_under_cursor.to_dict())
+                    
+                    # Find and remove the corresponding activity from schedule
+                    # Try to find by ID first, then by matching properties
+                    activity_id = card_under_cursor.activity.get("id")
+                    activity_to_remove = None
+                    
+                    if activity_id:
+                        # Find by ID
+                        for activity in app.schedule:
+                            if activity.get("id") == activity_id:
+                                activity_to_remove = activity
+                                break
+                    
+                    if not activity_to_remove:
+                        # Fallback: find by matching name and times
+                        card_dict = card_under_cursor.to_dict()
+                        for activity in app.schedule:
+                            if (activity.get("name") == card_dict["name"] and
+                                activity.get("start_time") == card_dict["start_time"] and
+                                activity.get("end_time") == card_dict["end_time"]):
+                                activity_to_remove = activity
+                                break
+                    
+                    if activity_to_remove:
+                        app.schedule.remove(activity_to_remove)
+                    else:
+                        log_debug(f"Warning: Could not find activity to remove for card '{card_name}'")
+                    
                     app.update_cards_after_size_change()
                     app.schedule_changed = True
         menu.add_command(label=t("context_menu.remove"), command=remove_card)

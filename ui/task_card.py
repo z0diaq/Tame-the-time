@@ -352,6 +352,9 @@ class TaskCard:
         # Include ID if present in activity
         if "id" in self.activity:
             result["id"] = self.activity["id"]
+        # Include tasks if present in activity
+        if "tasks" in self.activity:
+            result["tasks"] = self.activity["tasks"]
         return result
 
 def create_task_cards(
