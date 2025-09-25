@@ -19,7 +19,7 @@ def send_gotify_notification(activity: Dict, is_delayed: bool = False) -> None:
     message = format_gotify_message(activity)
     payload = {
         "title": f"{'Starting: ' if not is_delayed else ''}{activity['name']}",
-        "message": message
+        "message": message or "No description provided"
     }
     
     headers = {
@@ -33,4 +33,4 @@ def send_gotify_notification(activity: Dict, is_delayed: bool = False) -> None:
     if response.status_code != 200:
         log_error(f"Failed to send notification: {response.status_code} - {response.text}")
     else:
-        log_debug("Notification sent successfully.")
+        log_info("Notification sent successfully.")

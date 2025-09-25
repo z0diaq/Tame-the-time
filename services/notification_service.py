@@ -123,7 +123,6 @@ class NotificationService:
         def _send_notification():
             try:
                 utils.notification.send_gotify_notification(notification_data, is_delayed=is_delayed)
-                log_info(f"Sent {notification_type} notification")
             except Exception as e:
                 log_error(f"Failed to send {notification_type} notification: {str(e)}")
         
