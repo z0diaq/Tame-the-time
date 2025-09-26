@@ -25,7 +25,23 @@
             "request": "launch",
             "program": "TameTheTime.py",
             "console": "integratedTerminal",
-            "args": "--time \"2025-06-04T16:55:00\" --no-notification"
+            "args": "--time \"2025-08-21T16:55:00\" --no-notification"
+        },
+        {
+            "name": "private config",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "TameTheTime.py",
+            "console": "integratedTerminal",
+            "args": "--config settings_private.yaml"
+        },
+        {
+            "name": "test config",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "TameTheTime.py",
+            "console": "integratedTerminal",
+            "args": "--config settings_test.yaml --db test.db"
         }
     ]
 }
