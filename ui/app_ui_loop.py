@@ -5,6 +5,8 @@ from typing import Dict
 from constants import UIConstants
 from models.schedule import ScheduledActivity
 from ui.timeline import reposition_current_time_line
+import os
+import yaml
 
 def update_ui(app):
     """Update the UI based on time changes and state."""
@@ -226,7 +228,8 @@ def _has_crossed_day_start_boundary(last_time: datetime, current_time: datetime,
 
 def _handle_day_rollover(app, now: datetime) -> None:
     """
-    Handle day rollover by resetting timeline, tasks, and statistics.
+    Handle day rollover by checking for new schedule file, loading it if exists,
+    resetting timeline, tasks, and statistics.
     
     Args:
         app: The main application instance
@@ -234,19 +237,26 @@ def _handle_day_rollover(app, now: datetime) -> None:
     """
     log_debug("Handling day rollover...")
     
-    # 1. Reset timeline to start from top (center on current time)
+    # 1. Check if a new schedule file exists for the new day and load it
+    schedule_loaded = _check_and_load_new_day_schedule(app, now)
+    
+    # 2. Reset timeline to start from top (center on current time)
     _reset_timeline_to_top(app, now)
     
-    # 2. Reset all task completion status to undone
-    _reset_all_task_completion_status(app)
+    # 3. Reset all task completion status to undone (only if no new schedule was loaded)
+    if not schedule_loaded:
+        _reset_all_task_completion_status(app)
     
-    # 3. Create new daily task entries for the new day
+    # 4. Create new daily task entries for the new day
     _create_new_day_task_entries(app)
     
-    # 4. Update status bar to reflect new day statistics
+    # 5. Update status bar to reflect new day statistics
     app.update_status_bar()
     
     log_info(f"Day rollover completed at {now.strftime('%H:%M:%S %Y-%m-%d')}")
+    
+    # Mark last action time to prevent immediate UI updates
+    app.last_action = now
 
 
 def _reset_timeline_to_top(app, now: datetime) -> None:
@@ -288,6 +298,108 @@ def _reset_all_task_completion_status(app) -> None:
         log_debug(f"Reset {reset_count} task completion statuses for new day")
     except Exception as e:
         log_error(f"Failed to reset task completion status: {e}")
+
+
+def _check_and_load_new_day_schedule(app, now: datetime) -> bool:
+    """
+    Check if a schedule file exists for the new day and load it if found.
+    
+    Args:
+        app: The main application instance
+        now: Current datetime
+        
+    Returns:
+        bool: True if a new schedule was loaded, False otherwise
+    """
+    try:
+        new_schedule_path = _get_new_day_schedule_path(now)
+        
+        if new_schedule_path and os.path.exists(new_schedule_path):
+            log_info(f"Found schedule file for new day: {new_schedule_path}")
+            return _load_new_schedule_and_replace_cards(app, new_schedule_path)
+        else:
+            log_debug(f"No specific schedule file found for new day, keeping current schedule")
+            return False
+            
+    except Exception as e:
+        log_error(f"Failed to check/load new day schedule: {e}")
+        return False
+
+
+def _get_new_day_schedule_path(now: datetime) -> str:
+    """
+    Get the schedule file path for the new day based on weekday.
+    
+    Args:
+        now: Current datetime
+        
+    Returns:
+        str: Path to the schedule file for the new day
+    """
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    current_weekday = now.weekday()  # 0=Monday, 6=Sunday
+    
+    if 0 <= current_weekday <= 6:
+        day_schedule_path = f"{day_names[current_weekday]}_settings.yaml"
+        log_debug(f"Checking for schedule file: {day_schedule_path}")
+        return day_schedule_path
+    
+    return "default_settings.yaml"
+
+
+def _load_new_schedule_and_replace_cards(app, schedule_path: str) -> bool:
+    """
+    Load a new schedule from file and replace all existing cards.
+    
+    Args:
+        app: The main application instance
+        schedule_path: Path to the new schedule file
+        
+    Returns:
+        bool: True if schedule was successfully loaded, False otherwise
+    """
+    try:
+        # Load new schedule from file
+        with open(schedule_path, 'r') as f:
+            new_schedule = yaml.safe_load(f)
+        
+        if not new_schedule:
+            log_error(f"Empty or invalid schedule in {schedule_path}")
+            return False
+        
+        # Remove all current cards from canvas
+        for card_obj in app.cards:
+            card_obj.delete()
+        app.cards.clear()
+        
+        # Clear current schedule and load new one
+        app.schedule.clear()
+        app.schedule.extend(new_schedule)
+        
+        # Update config path to the new file
+        app.config_path = schedule_path
+        
+        # Ensure all loaded activities have unique IDs
+        app.ensure_activity_ids()
+        
+        # Ensure all tasks have UUIDs
+        app.ensure_task_uuids()
+        
+        # Create new task cards from the loaded schedule
+        app.cards = app.create_task_cards()
+        
+        # Update card positions after size change
+        app.update_cards_after_size_change()
+        
+        # Load task done states from database for the new schedule
+        app._load_daily_task_entries()
+        
+        log_info(f"Successfully loaded new schedule from {schedule_path} with {len(new_schedule)} activities")
+        return True
+        
+    except Exception as e:
+        log_error(f"Failed to load new schedule from {schedule_path}: {e}")
+        return False
 
 
 def _create_new_day_task_entries(app) -> None:
