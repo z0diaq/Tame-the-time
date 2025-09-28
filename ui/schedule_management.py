@@ -1,10 +1,10 @@
 import os
-import calendar
 import yaml
 from datetime import datetime
 import tkinter.messagebox as messagebox
 from tkinter import filedialog
 from utils.logging import log_info, log_error
+from utils.locale_utils import get_weekday_name
 
 def open_schedule(app):
     """Open a dialog to load a schedule file."""
@@ -37,9 +37,9 @@ def open_schedule(app):
 
 def save_schedule_as(app):
     """Open a dialog to save the schedule to a file."""
-    # Suggest filename based on current week day
+    # Suggest filename based on current week day (localized)
     today = app.now_provider().date()
-    weekday_name = calendar.day_name[today.weekday()]
+    weekday_name = get_weekday_name(today.weekday())
     filename = f"{weekday_name}_settings.yaml"
     file_path = filedialog.asksaveasfilename(
         title="Save Schedule As",

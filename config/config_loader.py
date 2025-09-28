@@ -5,13 +5,12 @@ from typing import Dict, List, Optional, Tuple, Any, Callable
 import yaml
 from utils.logging import log_error
 from utils.time_utils import TimeUtils
+from utils.locale_utils import get_weekday_name
 
 def get_day_config_path(current_day: int) -> str:
     """Determine the configuration file path based on the current day."""
-    day_names: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
     if 0 <= current_day <= 6:
-        day_config = f"{day_names[current_day]}_settings.yaml"
+        day_config = f"{get_weekday_name(current_day)}_settings.yaml"
         if os.path.exists(day_config):
             return day_config
     

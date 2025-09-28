@@ -7,6 +7,7 @@ from models.schedule import ScheduledActivity
 from ui.timeline import reposition_current_time_line
 import os
 import yaml
+from utils.locale_utils import get_weekday_name
 
 def update_ui(app):
     """Update the UI based on time changes and state."""
@@ -336,11 +337,10 @@ def _get_new_day_schedule_path(now: datetime) -> str:
     Returns:
         str: Path to the schedule file for the new day
     """
-    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     current_weekday = now.weekday()  # 0=Monday, 6=Sunday
     
     if 0 <= current_weekday <= 6:
-        day_schedule_path = f"{day_names[current_weekday]}_settings.yaml"
+        day_schedule_path = f"{get_weekday_name(current_weekday)}_settings.yaml"
         log_debug(f"Checking for schedule file: {day_schedule_path}")
         return day_schedule_path
     

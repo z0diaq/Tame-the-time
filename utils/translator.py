@@ -111,7 +111,7 @@ class Translator:
         
         return translation
     
-    def _get_nested_value(self, data: Dict[str, Any], key: str) -> Optional[str]:
+    def _get_nested_value(self, data: Dict[str, Any], key: str) -> Optional[Any]:
         """
         Get a value from nested dictionary using dot notation.
         
@@ -120,7 +120,7 @@ class Translator:
             key: Dot-separated key (e.g., 'window.main_title')
             
         Returns:
-            Value if found, None otherwise
+            Value if found (can be any JSON type), None otherwise
         """
         keys = key.split('.')
         current = data
@@ -131,7 +131,14 @@ class Translator:
             else:
                 return None
         
-        return current if isinstance(current, str) else None
+        return current
+
+    def get(self, key: str) -> Optional[Any]:
+        """Retrieve raw translation value (can be list, dict, string, number, etc.)."""
+        value = self._get_nested_value(self.translations, key)
+        if value is None and self.fallback_translations:
+            value = self._get_nested_value(self.fallback_translations, key)
+        return value
     
     def set_language(self, language: str) -> bool:
         """
@@ -240,6 +247,11 @@ def t(key: str, **kwargs) -> str:
         Translated string
     """
     return get_translator().t(key, **kwargs)
+
+
+def get_value(key: str) -> Optional[Any]:
+    """Get a raw translation value (non-string supported)."""
+    return get_translator().get(key)
 
 
 def set_language(language: str) -> bool:

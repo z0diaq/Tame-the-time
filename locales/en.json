@@ -82,6 +82,26 @@
     "completion_rate": "Completion Rate",
     "select_tasks_message": "Select tasks from the list to view statistics"
   },
+  "datetime": {
+    "weekdays": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "weekdays_short": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ]
+  },
   "context_menu": {
     "edit": "Edit",
     "clone": "Clone",

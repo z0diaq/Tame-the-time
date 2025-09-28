@@ -82,6 +82,26 @@
     "completion_rate": "Tasa de Finalización",
     "select_tasks_message": "Selecciona tareas de la lista para ver estadísticas"
   },
+  "datetime": {
+    "weekdays": [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo"
+    ],
+    "weekdays_short": [
+      "Lun",
+      "Mar",
+      "Mié",
+      "Jue",
+      "Vie",
+      "Sáb",
+      "Dom"
+    ]
+  },
   "context_menu": {
     "edit": "Editar",
     "clone": "Clonar",

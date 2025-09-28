@@ -104,7 +104,6 @@ class FileConstants:
     
     # Day configuration files
     DAY_CONFIG_TEMPLATE = "{day}_settings.yaml"
-    DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
 class ValidationConstants:

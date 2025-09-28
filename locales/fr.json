@@ -82,6 +82,26 @@
     "completion_rate": "Taux d'Achèvement",
     "select_tasks_message": "Sélectionnez des tâches dans la liste pour voir les statistiques"
   },
+  "datetime": {
+    "weekdays": [
+      "Lundi",
+      "Mardi",
+      "Mercredi",
+      "Jeudi",
+      "Vendredi",
+      "Samedi",
+      "Dimanche"
+    ],
+    "weekdays_short": [
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam",
+      "Dim"
+    ]
+  },
   "context_menu": {
     "edit": "Modifier",
     "clone": "Cloner",
