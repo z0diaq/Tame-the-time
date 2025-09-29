@@ -54,6 +54,7 @@ class TimeboxApp(tk.Tk):
             "advance_notification_enabled": getattr(self, 'advance_notification_enabled', True),
             "advance_notification_seconds": getattr(self, 'advance_notification_seconds', NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS),
             "statistics_show_known_only": self.statistics_show_known_only,
+            "statistics_show_current_schedule_only": getattr(self, 'statistics_show_current_schedule_only', True),
             "current_language": getattr(self, 'current_language', 'en'),
             "day_start": getattr(self, 'day_start', 0)
         }
@@ -165,6 +166,7 @@ class TimeboxApp(tk.Tk):
         self.menu_bar.add_cascade(label=t("menu.statistics"), menu=self.statistics_menu)
         self.menu_visible = False
         self.statistics_show_known_only = settings.get("statistics_show_known_only", True)
+        self.statistics_show_current_schedule_only = settings.get("statistics_show_current_schedule_only", True)
         self.card_visual_changed = False  # Flag to track if card visuals have changed
 
         self.status_bar = tk.Label(self, font=("Arial", 10), anchor="w", bg=Colors.STATUS_BAR_BG, fg=Colors.STATUS_BAR_TEXT, relief="sunken", bd=1)

@@ -45,6 +45,7 @@
     "seconds_before_activity": "Segundos antes de la actividad:",
     "select_tasks": "Seleccionar Tareas:",
     "show_only_known_activity": "Mostrar solo tareas con actividad conocida",
+    "show_only_current_schedule": "Solo mostrar tareas del cronograma actual",
     "grouping": "Agrupación:",
     "ignore_weekends": "Ignorar fines de semana",
     "title": "Título:",

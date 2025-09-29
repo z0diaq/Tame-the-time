@@ -45,6 +45,7 @@
     "seconds_before_activity": "Seconds before activity:",
     "select_tasks": "Select Tasks:",
     "show_only_known_activity": "Show only tasks with known activity",
+    "show_only_current_schedule": "Only show tasks for current schedule",
     "grouping": "Grouping:",
     "ignore_weekends": "Ignore weekends",
     "title": "Title:",

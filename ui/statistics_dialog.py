@@ -26,6 +26,7 @@ class TaskStatisticsDialog:
         self.grouping_var = None
         self.ignore_weekends_var = None
         self.show_known_only_var = None
+        self.show_current_schedule_only_var = None
         self.chart_frame = None
         self.figure = None
         self.canvas = None
@@ -87,8 +88,9 @@ class TaskStatisticsDialog:
         filter_frame = tk.Frame(parent)
         filter_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Load setting from parent app settings
+        # Load settings from parent app settings
         show_known_only_default = self.parent.statistics_show_known_only
+        show_current_schedule_only_default = getattr(self.parent, 'statistics_show_current_schedule_only', True)
         
         self.show_known_only_var = tk.BooleanVar(value=show_known_only_default)
         show_known_only_cb = tk.Checkbutton(
@@ -98,6 +100,16 @@ class TaskStatisticsDialog:
             command=self._on_filter_change
         )
         show_known_only_cb.pack(anchor=tk.W)
+        
+        # Current schedule filter checkbox
+        self.show_current_schedule_only_var = tk.BooleanVar(value=show_current_schedule_only_default)
+        show_current_schedule_only_cb = tk.Checkbutton(
+            filter_frame,
+            text=t("label.show_only_current_schedule"),
+            variable=self.show_current_schedule_only_var,
+            command=self._on_filter_change
+        )
+        show_current_schedule_only_cb.pack(anchor=tk.W)
         
         # Task list with scrollbar
         list_frame = tk.Frame(parent)
@@ -214,18 +226,31 @@ class TaskStatisticsDialog:
         self.canvas.draw()
         
     def _apply_task_filter(self):
-        """Apply filtering based on the checkbox state and populate the listbox."""
+        """Apply filtering based on the checkbox states and populate the listbox."""
         self.task_listbox.delete(0, tk.END)
         self.filtered_task_data = []
         
         show_known_only = self.show_known_only_var.get() if self.show_known_only_var else True
+        show_current_schedule_only = self.show_current_schedule_only_var.get() if self.show_current_schedule_only_var else True
+        
+        # Get current schedule activity IDs for filtering
+        current_schedule_activity_ids = set()
+        if show_current_schedule_only and hasattr(self.parent, 'schedule') and self.parent.schedule:
+            for activity in self.parent.schedule:
+                if activity.get('id'):
+                    current_schedule_activity_ids.add(activity['id'])
         
         for task_info in self.all_task_data:
             activity_name = task_info['activity_name']
             task_name = task_info['task_name']
+            activity_id = task_info['activity_id']
             
-            # Apply filter: if show_known_only is True, skip "Unknown Activity" tasks
+            # Apply known activity filter: if show_known_only is True, skip "Unknown Activity" tasks
             if show_known_only and activity_name == t("activity.unknown_activity"):
+                continue
+            
+            # Apply current schedule filter: if show_current_schedule_only is True, skip tasks not in current schedule
+            if show_current_schedule_only and activity_id and activity_id not in current_schedule_activity_ids:
                 continue
             
             display_text = f"{activity_name} / {task_name}"
@@ -234,8 +259,9 @@ class TaskStatisticsDialog:
     
     def _on_filter_change(self):
         """Handle filter checkbox change."""
-        # Save the setting
+        # Save the settings
         self.parent.statistics_show_known_only = self.show_known_only_var.get()
+        self.parent.statistics_show_current_schedule_only = self.show_current_schedule_only_var.get()
         if hasattr(self.parent, 'save_settings'):
             self.parent.save_settings()
         

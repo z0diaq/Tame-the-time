@@ -87,6 +87,13 @@ class TaskStatisticsDialog:
 - Eliminates need to reselect tasks when exploring different time periods
 - Improved workflow continuity for statistical analysis
 
+**Task Filtering Enhancements:**
+- Added "Show only tasks with known activity" checkbox to filter out "Unknown Activity" tasks
+- Added "Only show tasks for current schedule" checkbox to filter tasks by current loaded schedule
+- Both filters are persistent across app sessions via settings storage
+- Filters work independently and can be combined for precise task selection
+- Default behavior shows only tasks from current schedule with known activities
+
 **Technical Implementation:**
 ```python
 # Extended grouping support
@@ -99,10 +106,28 @@ def get_task_statistics(self, task_list: List[str],
 class TaskStatisticsDialog:
     def __init__(self, parent, task_tracking_service, app=None):
         self.selected_task_indices = []  # Store selection state
+        self.show_known_only_var = None  # Filter for known activities
+        self.show_current_schedule_only_var = None  # Filter for current schedule
     
     def _on_options_change(self, event=None):
         self._restore_task_selection()  # Preserve selection
         self._update_chart()
+    
+    def _apply_task_filter(self):
+        # Apply both known activity and current schedule filters
+        current_schedule_activity_ids = set()
+        if self.parent.schedule:
+            for activity in self.parent.schedule:
+                if activity.get('id'):
+                    current_schedule_activity_ids.add(activity['id'])
+        
+        for task_info in self.all_task_data:
+            # Filter by known activity
+            if show_known_only and activity_name == "Unknown Activity":
+                continue
+            # Filter by current schedule
+            if show_current_schedule_only and activity_id not in current_schedule_activity_ids:
+                continue
 ```
 
 **Chart Types Now Available:**
