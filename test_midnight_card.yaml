@@ -1,0 +1,18 @@
+schedule:
+  - name: "Late Evening Task"
+    start_time: "22:00"
+    end_time: "23:30"
+    description: "Task before midnight"
+    tasks: []
+  - name: "Midnight Spanning Task"
+    start_time: "23:30"
+    end_time: "01:30"
+    description: "Task that spans past midnight"
+    tasks:
+      - "Subtask 1"
+      - "Subtask 2"
+  - name: "Early Morning Task"
+    start_time: "01:30"
+    end_time: "03:00"
+    description: "Task after midnight"
+    tasks: []

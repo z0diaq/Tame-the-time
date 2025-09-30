@@ -59,11 +59,21 @@ class ScheduledActivity:
     
     def is_active_at(self, current_time: time) -> bool:
         """Check if this activity is active at the given time."""
-        return self.start_time_obj <= current_time < self.end_time_obj
+        # Handle activities that span past midnight (e.g., 23:30 to 01:30)
+        if self.end_time_obj < self.start_time_obj:  # Activity crosses midnight
+            return current_time >= self.start_time_obj or current_time < self.end_time_obj
+        else:
+            return self.start_time_obj <= current_time < self.end_time_obj
     
     def is_finished_at(self, current_time: time) -> bool:
         """Check if this activity is finished at the given time."""
-        return self.end_time_obj <= current_time
+        # Handle activities that span past midnight
+        if self.end_time_obj < self.start_time_obj:  # Activity crosses midnight
+            # Finished if current_time is >= end_time AND < start_time
+            # (i.e., in the gap between end and start of next occurrence)
+            return current_time >= self.end_time_obj and current_time < self.start_time_obj
+        else:
+            return self.end_time_obj <= current_time
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for serialization."""

@@ -128,7 +128,7 @@ def handle_card_snap(app, card_id: int, y: int):
     log_debug(f"Moved card: {moved_card.card}")
     y_relative = y - 100 - app.offset_y - app._drag_data["diff_y"]
     total_minutes = round_to_nearest_5_minutes(int(y_relative * 60 / app.pixels_per_hour))
-    new_hour = app.start_hour + total_minutes // 60
+    new_hour = (app.start_hour + total_minutes // 60) % 24
     new_minute = total_minutes % 60
     log_debug(f"Moving card {moved_card.activity['name']} to {new_hour:02d}:{new_minute:02d}")
     idx = app.cards.index(moved_card)
@@ -167,9 +167,9 @@ def handle_card_resize(app, card_id: int, y: int, mode: str):
         snapped_minutes = round_to_nearest_5_minutes(int((new_bottom - 100 - app.offset_y) * 60 / app.pixels_per_hour))
         new_start_minutes = int((y_card_top - 100 - app.offset_y) * 60 / app.pixels_per_hour)
         new_end_minutes = snapped_minutes
-    new_start_hour = app.start_hour + new_start_minutes // 60
+    new_start_hour = (app.start_hour + new_start_minutes // 60) % 24
     new_start_minute = new_start_minutes % 60
-    new_end_hour = app.start_hour + new_end_minutes // 60
+    new_end_hour = (app.start_hour + new_end_minutes // 60) % 24
     new_end_minute = new_end_minutes % 60
     for activity in app.schedule:
         if activity["name"] == moved_card.activity["name"]:

@@ -34,7 +34,12 @@ class TaskCard:
         self.end_hour, self.end_minute = end_time_obj.hour, end_time_obj.minute
         # Position card relative to day start (start_of_workday is the day_start setting)
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
-        self.height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
+        
+        # Calculate height - handle cards that end past midnight
+        hour_diff = self.end_hour - self.start_hour
+        if hour_diff < 0:  # Card ends past midnight (e.g., 23:00 to 01:00)
+            hour_diff += 24
+        self.height = (hour_diff * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
         self.card_left = int(width * UIConstants.CARD_LEFT_RATIO)
         self.card_right = int(width * UIConstants.CARD_RIGHT_RATIO)
         self.card = None
@@ -129,8 +134,16 @@ class TaskCard:
         # Progress bar for active card
         self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
         if is_active:
-            total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
-            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
+            # Calculate total_seconds - handle cards that end past midnight
+            hour_diff_for_progress = self.end_hour - self.start_hour
+            if hour_diff_for_progress < 0:
+                hour_diff_for_progress += 24
+            total_seconds = hour_diff_for_progress * 3600 + (self.end_minute - self.start_minute) * 60
+            # Calculate elapsed_seconds - handle cards that span midnight
+            current_hour = now.hour
+            if current_hour < self.start_hour:  # We've crossed midnight
+                current_hour += 24
+            elapsed_seconds = (current_hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
             progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
             log_info(f"Drawing progress for card {self.activity['name']}: {progress:.2f}")
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
@@ -246,7 +259,13 @@ class TaskCard:
         """Check if this card is active at the given time."""
         start_time = time(self.start_hour, self.start_minute)
         end_time = time(self.end_hour, self.end_minute)
-        return start_time <= current_time < end_time
+        
+        # Handle cards that span past midnight (e.g., 23:30 to 01:30)
+        if end_time < start_time:  # Card crosses midnight
+            # Current time is active if it's either >= start_time OR < end_time
+            return current_time >= start_time or current_time < end_time
+        else:
+            return start_time <= current_time < end_time
 
     def update_card_visuals(self, new_start_hour, new_start_minute, start_of_workday, pixels_per_hour, offset_y, now=None, show_start_time=True, show_end_time=True, width=None, is_moving=False):
         """Move/resize the card, update progress bar, and update label positions/visibility. Also update width if provided.
@@ -259,8 +278,11 @@ class TaskCard:
         if width is not None:
             self.card_left = int(width * 0.15)
             self.card_right = int(width * 0.85)
-        # Calculate new end time
-        card_duration_minutes = (self.end_hour - self.start_hour) * 60 + (self.end_minute - self.start_minute)
+        # Calculate new end time - handle cards that end past midnight
+        hour_diff = self.end_hour - self.start_hour
+        if hour_diff < 0:  # Card ends past midnight
+            hour_diff += 24
+        card_duration_minutes = hour_diff * 60 + (self.end_minute - self.start_minute)
         #log_debug(f"Cards duration in minutes: {card_duration_minutes}")
         total_minutes = new_start_hour * 60 + new_start_minute + card_duration_minutes
         total_minutes = total_minutes % (24 * 60)
@@ -270,15 +292,28 @@ class TaskCard:
         self.start_minute = new_start_minute % 60
         # Position card relative to day start (start_of_workday is the day_start setting)
         self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
-        height = ((self.end_hour - self.start_hour) * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
+        
+        # Calculate height - handle cards that end past midnight
+        hour_diff = self.end_hour - self.start_hour
+        if hour_diff < 0:  # Card ends past midnight (e.g., 23:00 to 01:00)
+            hour_diff += 24
+        height = (hour_diff * pixels_per_hour) + int((self.end_minute - self.start_minute) * pixels_per_hour / 60)
         self.height = height
         # Move/resize card
         self.canvas.coords(self.card, self.card_left, self.y, self.card_right, self.y + height)
         # Update progress bar - always move it with the card even when hidden
-        should_show_progress = not is_moving and ( time(self.start_hour, self.start_minute) <= now < time(self.end_hour, self.end_minute) )
+        should_show_progress = not is_moving and self.is_active_at(now)
         if should_show_progress:
-            total_seconds = (self.end_hour - self.start_hour) * 3600 + (self.end_minute - self.start_minute) * 60
-            elapsed_seconds = (now.hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
+            # Calculate total_seconds - handle cards that end past midnight
+            hour_diff_for_progress = self.end_hour - self.start_hour
+            if hour_diff_for_progress < 0:
+                hour_diff_for_progress += 24
+            total_seconds = hour_diff_for_progress * 3600 + (self.end_minute - self.start_minute) * 60
+            # Calculate elapsed_seconds - handle cards that span midnight
+            current_hour = now.hour
+            if current_hour < self.start_hour:  # We've crossed midnight
+                current_hour += 24
+            elapsed_seconds = (current_hour - self.start_hour) * 3600 + (now.minute - self.start_minute) * 60 + now.second
             progress = min(elapsed_seconds / total_seconds, 1) if total_seconds > 0 else 1
             fill_right = self.card_left + int((self.card_right - self.card_left) * progress)
             if not hasattr(self, 'progress') or self.progress is None:
