@@ -17,6 +17,7 @@
     "clear": "Limpiar",
     "save": "Guardar",
     "save_as": "Guardar Como",
+    "disable_auto_centering": "Desactivar centrado automático",
     "options": "Opciones",
     "global_options": "Opciones globales",
     "always_on_top": "Siempre encima",

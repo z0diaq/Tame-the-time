@@ -56,7 +56,8 @@ class TimeboxApp(tk.Tk):
             "statistics_show_known_only": self.statistics_show_known_only,
             "statistics_show_current_schedule_only": getattr(self, 'statistics_show_current_schedule_only', True),
             "current_language": getattr(self, 'current_language', 'en'),
-            "day_start": getattr(self, 'day_start', 0)
+            "day_start": getattr(self, 'day_start', 0),
+            "disable_auto_centering": getattr(self, 'disable_auto_centering', False)
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -147,12 +148,17 @@ class TimeboxApp(tk.Tk):
         self.always_on_top = settings.get("always_on_top", False)
         self.wm_attributes("-topmost", self.always_on_top)
         
+        # Load disable_auto_centering setting (default: False = auto-centering enabled)
+        self.disable_auto_centering = settings.get("disable_auto_centering", False)
+        
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.file_menu.add_command(label=t("menu.open"), command=lambda: open_schedule(self))
         self.file_menu.add_command(label=t("menu.clear"), command=lambda: clear_schedule(self))
         self.file_menu.add_command(label=t("menu.save"), command=lambda: save_schedule(self))
         self.file_menu.add_command(label=t("menu.save_as"), command=lambda: save_schedule_as(self))
+        self.file_menu.add_separator()
+        self.file_menu.add_checkbutton(label=t("menu.disable_auto_centering"), command=self.toggle_disable_auto_centering)
         self.menu_bar.add_cascade(label=t("menu.file"), menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.options_menu.add_command(label=t("menu.global_options"), command=lambda: open_global_options(self))
@@ -281,7 +287,8 @@ class TimeboxApp(tk.Tk):
 
     def redraw_timeline_and_cards(self, width: int, height: int, center: bool = True):
         """No deletion, just move/hide/show"""
-        if center:
+        # Only center if auto-centering is enabled (disable_auto_centering is False)
+        if center and not getattr(self, 'disable_auto_centering', False):
             now = self.now_provider().time()
             minutes_since_start = (now.hour - self.start_hour) * 60 + now.minute
             center_y = int(minutes_since_start * self.pixels_per_hour / 60) + 100
@@ -541,6 +548,13 @@ class TimeboxApp(tk.Tk):
         # Save settings immediately when toggled
         self.save_settings(immediate=True)
     
+    def toggle_disable_auto_centering(self):
+        """Toggle the automatic centering of timeline on current time."""
+        self.disable_auto_centering = not self.disable_auto_centering
+        log_debug(f"Disable auto-centering toggled to: {self.disable_auto_centering}")
+        # Save settings immediately when toggled
+        self.save_settings(immediate=True)
+    
     def generate_activity_id(self):
         """Generate a new unique activity ID."""
         return str(uuid.uuid4())
@@ -653,6 +667,8 @@ class TimeboxApp(tk.Tk):
         self.file_menu.entryconfig(1, label=t("menu.clear"))
         self.file_menu.entryconfig(2, label=t("menu.save"))
         self.file_menu.entryconfig(3, label=t("menu.save_as"))
+        # Index 4 is separator
+        self.file_menu.entryconfig(5, label=t("menu.disable_auto_centering"))
         
         # Update options menu items
         self.options_menu.entryconfig(0, label=t("menu.global_options"))

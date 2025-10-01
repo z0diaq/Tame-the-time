@@ -17,6 +17,7 @@
     "clear": "Effacer",
     "save": "Enregistrer",
     "save_as": "Enregistrer Sous",
+    "disable_auto_centering": "Désactiver le centrage automatique",
     "options": "Options",
     "global_options": "Options globales",
     "always_on_top": "Toujours au premier plan",

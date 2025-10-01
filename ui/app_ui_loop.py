@@ -263,18 +263,22 @@ def _handle_day_rollover(app, now: datetime) -> None:
 def _reset_timeline_to_top(app, now: datetime) -> None:
     """Reset timeline view to start from the top (current time centered)."""
     try:
-        # Center view on current time
-        minutes_since_start = (now.hour - app.start_hour) * 60 + now.minute
-        center_y = int(minutes_since_start * app.pixels_per_hour / 60) + 100
-        new_offset = (app.winfo_height() // 2) - center_y
-        delta_y = new_offset - app.offset_y
-        app.offset_y = new_offset
-        
-        # Move timeline and cards to new position
-        from ui.zoom_and_scroll import move_timelines_and_cards
-        move_timelines_and_cards(app, delta_y)
-        
-        log_debug("Timeline reset to top for new day")
+        # Only center if auto-centering is enabled (disable_auto_centering is False)
+        if not getattr(app, 'disable_auto_centering', False):
+            # Center view on current time
+            minutes_since_start = (now.hour - app.start_hour) * 60 + now.minute
+            center_y = int(minutes_since_start * app.pixels_per_hour / 60) + 100
+            new_offset = (app.winfo_height() // 2) - center_y
+            delta_y = new_offset - app.offset_y
+            app.offset_y = new_offset
+            
+            # Move timeline and cards to new position
+            from ui.zoom_and_scroll import move_timelines_and_cards
+            move_timelines_and_cards(app, delta_y)
+            
+            log_debug("Timeline reset to top for new day")
+        else:
+            log_debug("Auto-centering disabled, skipping timeline reset on day rollover")
     except Exception as e:
         log_error(f"Failed to reset timeline to top: {e}")
 

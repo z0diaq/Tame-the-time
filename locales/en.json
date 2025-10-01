@@ -17,6 +17,7 @@
     "clear": "Clear",
     "save": "Save",
     "save_as": "Save As",
+    "disable_auto_centering": "Disable automatic centering",
     "options": "Options",
     "global_options": "Global options",
     "always_on_top": "Always on top",
