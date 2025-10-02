@@ -170,6 +170,16 @@ class TimeboxApp(tk.Tk):
         self.statistics_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.statistics_menu.add_command(label=t("menu.tasks"), command=lambda: open_task_statistics_dialog(self, self.db_path))
         self.menu_bar.add_cascade(label=t("menu.statistics"), menu=self.statistics_menu)
+        
+        # Configure the menu bar on the window
+        self.config(menu=self.menu_bar)
+        
+        # Set initial checkbutton states based on loaded settings
+        if self.always_on_top:
+            self.options_menu.invoke(2)  # Index 2 is the always_on_top checkbutton
+        if self.disable_auto_centering:
+            self.file_menu.invoke(5)  # Index 5 is the disable_auto_centering checkbutton
+        
         self.menu_visible = False
         self.statistics_show_known_only = settings.get("statistics_show_known_only", True)
         self.statistics_show_current_schedule_only = settings.get("statistics_show_current_schedule_only", True)
