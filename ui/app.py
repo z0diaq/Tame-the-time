@@ -53,7 +53,7 @@ class TimeboxApp(tk.Tk):
             "always_on_top": self.always_on_top,
             "advance_notification_enabled": getattr(self, 'advance_notification_enabled', True),
             "advance_notification_seconds": getattr(self, 'advance_notification_seconds', NotificationConstants.DEFAULT_ADVANCE_WARNING_SECONDS),
-            "statistics_show_known_only": self.statistics_show_known_only,
+            "statistics_show_known_only": getattr(self, 'statistics_show_known_only', True ),
             "statistics_show_current_schedule_only": getattr(self, 'statistics_show_current_schedule_only', True),
             "current_language": getattr(self, 'current_language', 'en'),
             "day_start": getattr(self, 'day_start', 0),
