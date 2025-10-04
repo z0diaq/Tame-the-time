@@ -106,6 +106,7 @@ def on_card_release(app, event):
     if not app._drag_data["item_ids"] or not app._drag_data["dragging"]:
         app._drag_data = {"item_ids": [], "offset_y": 0, "start_y": 0, "dragging": False, "resize_mode": None}
         app.timeline_granularity = 60
+        app.restore_card_visuals()  # Restore visuals even when no drag occurred
         app.show_timeline(granularity=60)
         return
     card_id = app._drag_data["item_ids"][0]
