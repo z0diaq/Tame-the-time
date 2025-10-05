@@ -139,6 +139,14 @@ def show_canvas_context_menu(app, event):
                 app.schedule.clear()
                 app.schedule_changed = True
         menu.add_command(label=t("context_menu.remove_all"), command=remove_all_cards)
+        menu.add_separator()
+        # Add disable auto-centering checkbutton
+        disable_centering_var = tk.BooleanVar(value=getattr(app, 'disable_auto_centering', False))
+        menu.add_checkbutton(
+            label=t("menu.disable_auto_centering"), 
+            variable=disable_centering_var,
+            command=app.toggle_disable_auto_centering
+        )
     else:
         return
     menu.tk_popup(event.x_root, event.y_root)

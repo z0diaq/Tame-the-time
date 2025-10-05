@@ -157,8 +157,6 @@ class TimeboxApp(tk.Tk):
         self.file_menu.add_command(label=t("menu.clear"), command=lambda: clear_schedule(self))
         self.file_menu.add_command(label=t("menu.save"), command=lambda: save_schedule(self))
         self.file_menu.add_command(label=t("menu.save_as"), command=lambda: save_schedule_as(self))
-        self.file_menu.add_separator()
-        self.file_menu.add_checkbutton(label=t("menu.disable_auto_centering"), command=self.toggle_disable_auto_centering)
         self.menu_bar.add_cascade(label=t("menu.file"), menu=self.file_menu)
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.options_menu.add_command(label=t("menu.global_options"), command=lambda: open_global_options(self))
@@ -177,8 +175,6 @@ class TimeboxApp(tk.Tk):
         # Set initial checkbutton states based on loaded settings
         if self.always_on_top:
             self.options_menu.invoke(2)  # Index 2 is the always_on_top checkbutton
-        if self.disable_auto_centering:
-            self.file_menu.invoke(5)  # Index 5 is the disable_auto_centering checkbutton
         
         self.menu_visible = False
         self.statistics_show_known_only = settings.get("statistics_show_known_only", True)
@@ -677,8 +673,6 @@ class TimeboxApp(tk.Tk):
         self.file_menu.entryconfig(1, label=t("menu.clear"))
         self.file_menu.entryconfig(2, label=t("menu.save"))
         self.file_menu.entryconfig(3, label=t("menu.save_as"))
-        # Index 4 is separator
-        self.file_menu.entryconfig(5, label=t("menu.disable_auto_centering"))
         
         # Update options menu items
         self.options_menu.entryconfig(0, label=t("menu.global_options"))
