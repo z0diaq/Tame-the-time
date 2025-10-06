@@ -376,6 +376,14 @@ class TimeboxApp(tk.Tk):
                 tasks_info += f"{done} {t('status.done')}"
             tasks_info = tasks_info.rstrip(", ")
         
+        # Prefix with schedule name
+        if hasattr(self, 'config_path') and self.config_path:
+            schedule_name = os.path.basename(self.config_path)
+            # Remove .yaml extension if present
+            if schedule_name.endswith('.yaml'):
+                schedule_name = schedule_name[:-5]
+            tasks_info = f"{schedule_name} | {tasks_info}"
+        
         # Display logic: show warning if unsaved tasks, otherwise show statistics
         log_debug(f"Status bar update: has_unsaved_tasks={has_unsaved_tasks}, tasks_info='{tasks_info}'")
         if has_unsaved_tasks:
