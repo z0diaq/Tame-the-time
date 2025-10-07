@@ -1,5 +1,8 @@
 import sys
 import os
+import json
+import tkinter as tk
+from tkinter import messagebox
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict, Any
 from utils.logging import log_startup, log_info, log_error
@@ -8,6 +11,7 @@ from config.config_loader import load_schedule
 import utils.config
 from constants import AppConstants, ValidationConstants
 from models.time_manager import TimeManager
+from utils.translator import init_translator, t
 
 # Global time manager instance
 time_manager: Optional[TimeManager] = None
@@ -102,6 +106,85 @@ def get_now() -> datetime:
         return time_manager.get_current_time()
     return datetime.now()
 
+def load_user_settings() -> dict:
+    """Load user settings from file."""
+    settings_path = os.path.expanduser("~/.tame_the_time_settings.json")
+    if os.path.exists(settings_path):
+        with open(settings_path, "r") as f:
+            return json.load(f)
+    return {}
+
+def ask_schedule_selection(last_schedule_path: str) -> Optional[str]:
+    """Show dialog asking user which schedule to load.
+    
+    Args:
+        last_schedule_path: Path to the last loaded schedule
+        
+    Returns:
+        Path to load (either last_schedule_path or None for default), 
+        or False if user cancelled
+    """
+    # Create a temporary root window for the dialog
+    root = tk.Tk()
+    root.withdraw()
+    
+    # Get short filename for display
+    filename = os.path.basename(last_schedule_path)
+    
+    # Format the message with the last schedule path
+    message = t("message.schedule_selection_prompt").format(last_schedule=filename)
+    
+    # Create custom dialog with three buttons
+    dialog = tk.Toplevel(root)
+    dialog.title(t("window.schedule_selection"))
+    dialog.geometry("400x150")
+    dialog.resizable(False, False)
+    
+    # Center the dialog on screen
+    dialog.update_idletasks()
+    x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+    y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+    dialog.geometry(f"+{x}+{y}")
+    
+    result = {"choice": None}
+    
+    def on_last_schedule():
+        result["choice"] = last_schedule_path
+        dialog.destroy()
+        root.destroy()
+    
+    def on_default_schedule():
+        result["choice"] = None  # None means use default
+        dialog.destroy()
+        root.destroy()
+    
+    # Message label
+    label = tk.Label(dialog, text=message, wraplength=350, justify="left", padx=20, pady=20)
+    label.pack()
+    
+    # Button frame
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=10)
+    
+    # Buttons
+    last_btn = tk.Button(button_frame, text=t("button.last_schedule"), command=on_last_schedule, width=15)
+    last_btn.pack(side=tk.LEFT, padx=5)
+    
+    default_btn = tk.Button(button_frame, text=t("button.default_schedule"), command=on_default_schedule, width=15)
+    default_btn.pack(side=tk.LEFT, padx=5)
+    
+    # Handle window close (X button)
+    dialog.protocol("WM_DELETE_WINDOW", on_default_schedule)
+    
+    # Make dialog modal
+    dialog.transient(root)
+    dialog.grab_set()
+    
+    # Wait for user interaction
+    root.wait_window(dialog)
+    
+    return result["choice"]
+
 def main() -> None:
     """Main application entry point."""
     global time_manager
@@ -116,6 +199,30 @@ def main() -> None:
     
     # Extract database path from command line arguments
     db_path: Optional[str] = check_db_parameter()
+    
+    # If no custom config path provided, check for last schedule and ask user
+    if config_path is None:
+        settings = load_user_settings()
+        last_schedule_path = settings.get('last_schedule_path')
+        
+        # Initialize language from settings for dialog translations
+        current_language = settings.get('current_language', 'en')
+        init_translator(current_language)
+        
+        # If there's a last schedule and it exists, ask user which to load
+        if last_schedule_path and os.path.exists(last_schedule_path):
+            log_info(f"Found last schedule: {last_schedule_path}")
+            selected_path = ask_schedule_selection(last_schedule_path)
+            
+            # selected_path will be either:
+            # - last_schedule_path (user chose last schedule)
+            # - None (user chose default schedule)
+            config_path = selected_path
+            
+            if config_path:
+                log_info(f"User selected last schedule: {config_path}")
+            else:
+                log_info("User selected default schedule")
     
     schedule: List[Dict[str, Any]]
     schedule, config_path = load_schedule(config_path, now_provider=get_now)

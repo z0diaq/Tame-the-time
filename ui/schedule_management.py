@@ -30,6 +30,11 @@ def open_schedule(app):
         app.cards = app.create_task_cards()
         app.update_cards_after_size_change()
         app.last_action = datetime.now()
+        
+        # Save the loaded schedule path to settings (use absolute path)
+        app.last_schedule_path = os.path.abspath(file_path)
+        app.save_settings(immediate=True)
+        
         log_info(f"Loaded schedule from {file_path}")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to load file: {e}")
@@ -63,6 +68,10 @@ def save_schedule_as(app):
         app.config_path = file_path
         app.schedule_changed = False  # Reset schedule changed flag
         
+        # Save the schedule path to settings (use absolute path)
+        app.last_schedule_path = os.path.abspath(file_path)
+        app.save_settings(immediate=True)
+        
         # Create daily task entries for today if needed
         if hasattr(app, 'task_tracking_service'):
             app._ensure_daily_task_entries()
@@ -74,7 +83,7 @@ def save_schedule_as(app):
 def save_schedule(app, ask_for_confirmation: bool = True):
     """Save current schedule to the default YAML file."""
     # Ask for confirmation if file exists
-    if ask_for_confirmation and os.path.exists(app.SETTINGS_PATH):
+    if ask_for_confirmation and os.path.exists(app.config_path):
         if not messagebox.askyesno("Confirm", "Schedule file already exists. Do you want to overwrite it?"):
             return
     try:
@@ -90,6 +99,10 @@ def save_schedule(app, ask_for_confirmation: bool = True):
             messagebox.showinfo("Saved", f"Schedule saved to {app.config_path}")
         log_info(f"Schedule saved to {app.config_path}")
         app.schedule_changed = False  # Reset schedule changed flag
+        
+        # Save the schedule path to settings (use absolute path)
+        app.last_schedule_path = os.path.abspath(app.config_path)
+        app.save_settings(immediate=True)
         
         # Create daily task entries for today if needed
         if hasattr(app, 'task_tracking_service'):

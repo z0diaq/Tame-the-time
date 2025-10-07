@@ -57,7 +57,8 @@ class TimeboxApp(tk.Tk):
             "statistics_show_current_schedule_only": getattr(self, 'statistics_show_current_schedule_only', True),
             "current_language": getattr(self, 'current_language', 'en'),
             "day_start": getattr(self, 'day_start', 0),
-            "disable_auto_centering": getattr(self, 'disable_auto_centering', False)
+            "disable_auto_centering": getattr(self, 'disable_auto_centering', False),
+            "last_schedule_path": getattr(self, 'last_schedule_path', None)
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -79,6 +80,9 @@ class TimeboxApp(tk.Tk):
         self.config_path = config_path
         self.db_path = db_path
         self.schedule_changed = False
+        
+        # Store the loaded schedule path for future reference
+        self.last_schedule_path = config_path
         
         # Initialize language from settings
         self.current_language = self.settings.get('current_language', 'en')

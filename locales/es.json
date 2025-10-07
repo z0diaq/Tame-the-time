@@ -9,7 +9,8 @@
     "global_options": "Opciones Globales",
     "task_statistics": "Estadísticas de Tareas",
     "edit_card": "Editar Tarjeta",
-    "tasks_for": "Tareas para {activity_name}"
+    "tasks_for": "Tareas para {activity_name}",
+    "schedule_selection": "Selección de Cronograma"
   },
   "menu": {
     "file": "Archivo",
@@ -29,7 +30,9 @@
     "cancel": "Cancelar",
     "save": "Guardar",
     "mark_as_done": "Marcar como completado",
-    "mark_as_undone": "Marcar como no completado"
+    "mark_as_undone": "Marcar como no completado",
+    "last_schedule": "Último Cronograma",
+    "default_schedule": "Cronograma Predeterminado"
   },
   "task": {
     "done_prefix": "[Completado]"
@@ -131,7 +134,8 @@
     "duplicate_tasks": "Dos tareas tienen el mismo nombre: {duplicate_list}. No se podrán calcular las estadísticas correctamente. ¿Quieres continuar?",
     "unsaved_tasks_warning": "Esta actividad contiene tareas no guardadas, por favor guarda el cronograma primero.\n\nTareas no guardadas:\n{unsaved_list}",
     "confirm_remove_card": "¿Estás seguro de que quieres eliminar '{card_name}'?",
-    "confirm_remove_all_cards": "¿Estás seguro de que quieres eliminar todas las tarjetas?"
+    "confirm_remove_all_cards": "¿Estás seguro de que quieres eliminar todas las tarjetas?",
+    "schedule_selection_prompt": "¿Qué cronograma te gustaría cargar?\n\nÚltimo cronograma: {last_schedule}"
   },
   "activity": {
     "unknown_activity": "Actividad Desconocida"

@@ -398,6 +398,10 @@ def _load_new_schedule_and_replace_cards(app, schedule_path: str) -> bool:
         # Load task done states from database for the new schedule
         app._load_daily_task_entries()
         
+        # Save the loaded schedule path to settings
+        app.last_schedule_path = os.path.abspath(schedule_path)
+        app.save_settings(immediate=True)
+        
         log_info(f"Successfully loaded new schedule from {schedule_path} with {len(new_schedule)} activities")
         return True
         
