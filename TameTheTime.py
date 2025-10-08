@@ -126,7 +126,15 @@ def ask_schedule_selection(last_schedule_path: str) -> Optional[str]:
     """
     # Create a temporary root window for the dialog
     root = tk.Tk()
-    root.withdraw()
+    root.title(t("window.schedule_selection"))
+    root.geometry("400x150")
+    root.resizable(False, False)
+    
+    # Center the window on screen
+    root.update_idletasks()
+    x = (root.winfo_screenwidth() // 2) - (root.winfo_width() // 2)
+    y = (root.winfo_screenheight() // 2) - (root.winfo_height() // 2)
+    root.geometry(f"+{x}+{y}")
     
     # Get short filename for display
     filename = os.path.basename(last_schedule_path)
@@ -134,36 +142,24 @@ def ask_schedule_selection(last_schedule_path: str) -> Optional[str]:
     # Format the message with the last schedule path
     message = t("message.schedule_selection_prompt").format(last_schedule=filename)
     
-    # Create custom dialog with three buttons
-    dialog = tk.Toplevel(root)
-    dialog.title(t("window.schedule_selection"))
-    dialog.geometry("400x150")
-    dialog.resizable(False, False)
-    
-    # Center the dialog on screen
-    dialog.update_idletasks()
-    x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
-    y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
-    dialog.geometry(f"+{x}+{y}")
-    
     result = {"choice": None}
     
     def on_last_schedule():
         result["choice"] = last_schedule_path
-        dialog.destroy()
+        root.quit()
         root.destroy()
     
     def on_default_schedule():
         result["choice"] = None  # None means use default
-        dialog.destroy()
+        root.quit()
         root.destroy()
     
     # Message label
-    label = tk.Label(dialog, text=message, wraplength=350, justify="left", padx=20, pady=20)
+    label = tk.Label(root, text=message, wraplength=350, justify="left", padx=20, pady=20)
     label.pack()
     
     # Button frame
-    button_frame = tk.Frame(dialog)
+    button_frame = tk.Frame(root)
     button_frame.pack(pady=10)
     
     # Buttons
@@ -174,14 +170,14 @@ def ask_schedule_selection(last_schedule_path: str) -> Optional[str]:
     default_btn.pack(side=tk.LEFT, padx=5)
     
     # Handle window close (X button)
-    dialog.protocol("WM_DELETE_WINDOW", on_default_schedule)
+    root.protocol("WM_DELETE_WINDOW", on_default_schedule)
     
-    # Make dialog modal
-    dialog.transient(root)
-    dialog.grab_set()
+    # Bring window to front and focus
+    root.lift()
+    root.focus_force()
     
-    # Wait for user interaction
-    root.wait_window(dialog)
+    # Run the dialog event loop
+    root.mainloop()
     
     return result["choice"]
 
@@ -210,7 +206,10 @@ def main() -> None:
         init_translator(current_language)
         
         # If there's a last schedule and it exists, ask user which to load
-        if last_schedule_path and os.path.exists(last_schedule_path):
+        # Skip the dialog if last schedule was default_settings.yaml
+        if (last_schedule_path and 
+            os.path.exists(last_schedule_path) and 
+            not last_schedule_path.endswith('default_settings.yaml')):
             log_info(f"Found last schedule: {last_schedule_path}")
             selected_path = ask_schedule_selection(last_schedule_path)
             
@@ -223,6 +222,8 @@ def main() -> None:
                 log_info(f"User selected last schedule: {config_path}")
             else:
                 log_info("User selected default schedule")
+        elif last_schedule_path and last_schedule_path.endswith('default_settings.yaml'):
+            log_info("Last schedule was default_settings.yaml, using default schedule")
     
     schedule: List[Dict[str, Any]]
     schedule, config_path = load_schedule(config_path, now_provider=get_now)
