@@ -297,15 +297,25 @@ class TimeboxApp(tk.Tk):
 
     def redraw_timeline_and_cards(self, width: int, height: int, center: bool = True):
         """No deletion, just move/hide/show"""
+        now = self.now_provider().time()
+        
         # Only center if auto-centering is enabled (disable_auto_centering is False)
         if center and not getattr(self, 'disable_auto_centering', False):
-            now = self.now_provider().time()
             minutes_since_start = (now.hour - self.start_hour) * 60 + now.minute
             center_y = int(minutes_since_start * self.pixels_per_hour / 60) + 100
             new_offset = (height // 2) - center_y
             delta_y = new_offset - self.offset_y
             self.offset_y = new_offset
             move_timelines_and_cards(self, delta_y)
+        else:
+            # Even when not centering, always update card visuals (progress bars, etc.)
+            for card_obj in self.cards:
+                card_obj.update_card_visuals(
+                    card_obj.start_hour, card_obj.start_minute, 
+                    self.start_hour, self.pixels_per_hour, self.offset_y, 
+                    now=now, width=width
+                )
+        
         # Show correct timeline granularity
         self.show_timeline(granularity=self.timeline_granularity)
         self.last_action = datetime.now()
