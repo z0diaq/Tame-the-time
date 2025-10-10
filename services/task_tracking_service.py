@@ -218,10 +218,18 @@ class TaskTrackingService:
             log_error(f"Failed to mark task as undone: {e}")
             return False
     
-    def add_new_task_entry(self, activity_id: str, task_name: str, target_date: date = None) -> str:
+    def add_new_task_entry(self, activity_id: str, task_name: str, task_uuid: str = None, target_date: date = None) -> str:
         """
         Add a new task entry for a specific date.
-        First gets the task UUID from task_to_uuid table, then creates entry in task_entries.
+        First registers the task in task_to_uuid table (uses provided UUID or creates new one if needed),
+        then creates entry in task_entries.
+        
+        Args:
+            activity_id: The activity's UUID
+            task_name: The task's name
+            task_uuid: Optional existing UUID for the task (if already assigned)
+            target_date: The date for the entry (defaults to today)
+        
         Returns the task UUID if successful, None otherwise.
         """
         if target_date is None:
@@ -234,11 +242,28 @@ class TaskTrackingService:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # First, get the task UUID from task_to_uuid table
-                task_uuid = self.get_task_uuid(activity_id, task_name)
-                if not task_uuid:
-                    log_error(f"Could not get or create UUID for task '{task_name}'")
-                    return None
+                # Check if task already exists in task_to_uuid table
+                cursor.execute('''
+                    SELECT task_uuid FROM task_to_uuid 
+                    WHERE activity_id = ? AND task_name = ?
+                ''', (activity_id, task_name))
+                
+                result = cursor.fetchone()
+                if result:
+                    existing_uuid = result[0]
+                    if task_uuid and task_uuid != existing_uuid:
+                        log_debug(f"Task '{task_name}' UUID mismatch: provided={task_uuid}, DB={existing_uuid}. Using DB UUID.")
+                    task_uuid = existing_uuid
+                    log_debug(f"Found existing task UUID '{task_uuid}' for '{task_name}'")
+                else:
+                    # Task doesn't exist, register it with provided or new UUID
+                    if not task_uuid:
+                        task_uuid = str(uuid.uuid4())
+                    cursor.execute('''
+                        INSERT INTO task_to_uuid (task_uuid, activity_id, task_name)
+                        VALUES (?, ?, ?)
+                    ''', (task_uuid, activity_id, task_name))
+                    log_info(f"Registered new task '{task_name}' with UUID '{task_uuid}'")
                 
                 # Check if entry already exists for this task UUID on this date
                 cursor.execute('''
