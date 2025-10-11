@@ -33,7 +33,9 @@ class TaskCard:
         self.start_hour, self.start_minute = start_time_obj.hour, start_time_obj.minute
         self.end_hour, self.end_minute = end_time_obj.hour, end_time_obj.minute
         # Position card relative to day start (start_of_workday is the day_start setting)
-        self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
+        # If card hour is before day start, treat it as next day (add 24)
+        effective_start_hour = self.start_hour if self.start_hour >= start_of_workday else self.start_hour + 24
+        self.y = (effective_start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         
         # Calculate height - handle cards that end past midnight
         hour_diff = self.end_hour - self.start_hour
@@ -291,7 +293,9 @@ class TaskCard:
         self.start_hour = new_start_hour
         self.start_minute = new_start_minute % 60
         # Position card relative to day start (start_of_workday is the day_start setting)
-        self.y = (self.start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
+        # If card hour is before day start, treat it as next day (add 24)
+        effective_start_hour = self.start_hour if self.start_hour >= start_of_workday else self.start_hour + 24
+        self.y = (effective_start_hour - start_of_workday) * pixels_per_hour + 100 + int(self.start_minute * pixels_per_hour / 60) + offset_y
         
         # Calculate height - handle cards that end past midnight
         hour_diff = self.end_hour - self.start_hour

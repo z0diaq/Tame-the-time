@@ -105,7 +105,7 @@ def show_canvas_context_menu(app, event):
             start_hour = app.start_hour + total_minutes // 60
             start_minute = total_minutes % 60
             total_minutes += 25
-            end_hour = app.start_hour + total_minutes // 60
+            end_hour = (app.start_hour + total_minutes // 60) % 24
             end_minute = total_minutes % 60
             activity = {
                 "id": app.generate_activity_id(),
