@@ -191,6 +191,8 @@ def handle_card_resize(app, card_id: int, y: int, mode: str):
     moved_card.update_card_visuals(
         new_start_hour, new_start_minute, app.start_hour, app.pixels_per_hour, app.offset_y, now=now, show_end_time=allow_end_time_label, width=app.winfo_width()
     )
+    # Raise timeline above cards after card drag/resize
+    app.raise_timeline_above_cards()
 
 def on_card_motion(app, event):
     """Handle card motion event."""

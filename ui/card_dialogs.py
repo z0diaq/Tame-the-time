@@ -150,6 +150,8 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
             now=app.now_provider().time(),
             width=app.winfo_width()
         )
+        # Raise timeline above cards after card update
+        app.raise_timeline_above_cards()
         # If this is the current activity, update activity_label
         now = app.now_provider()
         current = get_current_activity(app.schedule, now)
@@ -389,6 +391,8 @@ def open_card_tasks_window(app, card_obj):
             now=app.now_provider().time(),
             width=app.winfo_width()
         )
+        # Raise timeline above cards after card update
+        app.raise_timeline_above_cards()
         tasks_win.destroy()
         if hasattr(card_obj, '_tasks_done_callback'):
             card_obj._tasks_done_callback()

@@ -66,6 +66,9 @@ def resize_timelines_and_cards(app):
     mouse_inside = app._is_mouse_inside_window()
     reposition_current_time_line(app.canvas, app.current_time_ids, app.start_hour, app.pixels_per_hour, app.offset_y, app.winfo_width(), now, mouse_inside)
     app.activity_label.place(x=10, y=40, width=app.winfo_width() - 20)
+    
+    # Raise timeline elements above cards so they're visible
+    app.raise_timeline_above_cards()
 
 def scroll(app, event, delta: int):
     """Scroll timelines and cards based on scroll event."""

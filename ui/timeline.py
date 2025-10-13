@@ -17,14 +17,14 @@ def draw_current_time_line(canvas: Canvas, width: int, start_hour: int, pixels_p
     y = ((current_minutes - day_start_minutes) / 60) * pixels_per_hour + 100 + offset_y
     
     # Create green dotted line with same style as hour lines
-    line = canvas.create_line(0, y, width, y, fill=Colors.TIMELINE_CURRENT_TIME_LINE, dash=(2, 2))
+    line = canvas.create_line(0, y, width, y, fill=Colors.TIMELINE_CURRENT_TIME_LINE, dash=(2, 2), tags="timeline")
     
     # Create time text with format based on mouse position
     time_format = "%H:%M:%S" if mouse_inside_window else "%H:%M"
     time_text = current_time.strftime(time_format)
     # Position text on the right side with some padding from the edge
     text_x = width - 5
-    text = canvas.create_text(text_x, y, anchor="ne", text=time_text, fill=Colors.TIMELINE_CURRENT_TIME_TEXT, font=("Arial", 9, "bold"))
+    text = canvas.create_text(text_x, y, anchor="ne", text=time_text, fill=Colors.TIMELINE_CURRENT_TIME_TEXT, font=("Arial", 9, "bold"), tags="timeline")
     
     return [line, text]
 
@@ -43,13 +43,13 @@ def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pi
         y = (minute / 60) * pixels_per_hour + 100 + offset_y
         color = Colors.TIMELINE_HOUR_LINE if min_in_hour == 0 else Colors.TIMELINE_MINUTE_LINE
         dash = (2, 2) if min_in_hour == 0 else (1, 4)
-        line = canvas.create_line(0, y, width, y, fill=color, dash=dash)
+        line = canvas.create_line(0, y, width, y, fill=color, dash=dash, tags="timeline")
         created_objects.append(line)
         if min_in_hour == 0:
-            text = canvas.create_text(5, y, anchor="nw", text=f"{hour}:00", fill=Colors.TIMELINE_TEXT)
+            text = canvas.create_text(5, y, anchor="nw", text=f"{hour}:00", fill=Colors.TIMELINE_TEXT, tags="timeline")
             created_objects.append(text)
         elif granularity < 60:
-            text = canvas.create_text(36, y, anchor="nw", text=f"{hour:02d}:{min_in_hour:02d}", fill=Colors.TIMELINE_MINUTE_TEXT, font=("Arial", 7))
+            text = canvas.create_text(36, y, anchor="nw", text=f"{hour:02d}:{min_in_hour:02d}", fill=Colors.TIMELINE_MINUTE_TEXT, font=("Arial", 7), tags="timeline")
             created_objects.append(text)
 
     return created_objects
