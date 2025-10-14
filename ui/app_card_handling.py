@@ -18,6 +18,33 @@ def _set_card_manipulation_state(app, card_id: int, is_being_manipulated: bool):
                 card_obj._being_resized = False
             break
 
+def _update_label_position(app, card_id: int):
+    """Update the label position to center it within the card during drag/resize."""
+    # Get card coordinates
+    coords = app.canvas.coords(card_id)
+    if len(coords) < 4:
+        return
+    
+    x1, y1, x2, y2 = coords
+    center_x = (x1 + x2) / 2
+    center_y = (y1 + y2) / 2
+    
+    # Find the card object and update its label and related element positions
+    for card_obj in getattr(app, 'cards', []):
+        if card_obj.card == card_id:
+            # Update main label (center of card)
+            if card_obj.label:
+                app.canvas.coords(card_obj.label, center_x, center_y)
+            # Update tasks count label (bottom-right corner)
+            if hasattr(card_obj, 'tasks_count_label') and card_obj.tasks_count_label:
+                app.canvas.coords(card_obj.tasks_count_label, x2 - 5, y2 - 5)
+            # Update time labels (left side of card)
+            if hasattr(card_obj, 'time_start_label') and card_obj.time_start_label:
+                app.canvas.coords(card_obj.time_start_label, x1 - 10, y1)
+            if hasattr(card_obj, 'time_end_label') and card_obj.time_end_label:
+                app.canvas.coords(card_obj.time_end_label, x1 - 10, y2)
+            break
+
 def on_card_drag(app, event):
     """Handle card drag event."""
     if not app._drag_data["item_ids"]:
@@ -36,6 +63,7 @@ def on_card_drag(app, event):
         snapped_minutes = round_to_nearest_5_minutes(int((new_top - 100 - app.offset_y) * 60 / app.pixels_per_hour))
         snapped_y = int(snapped_minutes * app.pixels_per_hour / 60) + 100 + app.offset_y
         app.canvas.coords(dragged_id, app.canvas.coords(dragged_id)[0], snapped_y, app.canvas.coords(dragged_id)[2], y_card_bottom)
+        _update_label_position(app, dragged_id)
     elif app._drag_data.get("resize_mode") == "bottom":
         # Resize from bottom
         y_card_top = app.canvas.coords(dragged_id)[1]
@@ -43,6 +71,7 @@ def on_card_drag(app, event):
         snapped_minutes = round_to_nearest_5_minutes(int((new_bottom - 100 - app.offset_y) * 60 / app.pixels_per_hour))
         snapped_y = int(snapped_minutes * app.pixels_per_hour / 60) + 100 + app.offset_y
         app.canvas.coords(dragged_id, app.canvas.coords(dragged_id)[0], y_card_top, app.canvas.coords(dragged_id)[2], snapped_y)
+        _update_label_position(app, dragged_id)
     else:
         # Normal drag (move)
         y = event.y

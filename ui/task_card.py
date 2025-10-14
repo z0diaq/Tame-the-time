@@ -159,6 +159,7 @@ class TaskCard:
         self.time_start_label = canvas.create_text(
             self.card_left - 10, self.y, text=f"{self.start_hour:02d}:{self.start_minute:02d}", font=("Arial", 8), anchor="e"
         )
+        canvas.itemconfig(self.time_start_label, tags=(tag))
         # Hide time_start_label if at 0 minutes
         if self.start_minute == 0:
             canvas.itemconfig(self.time_start_label, state="hidden")
@@ -167,6 +168,7 @@ class TaskCard:
         self.time_end_label = canvas.create_text(
             self.card_left - 10, self.y + self.height, text=end_time_text, font=("Arial", 8), anchor="e"
         )
+        canvas.itemconfig(self.time_end_label, tags=(tag))
         # Hide time_end_label if at 0 minutes
         if self.end_minute == 0 or not draw_end_time:
             canvas.itemconfig(self.time_end_label, state="hidden")
@@ -306,7 +308,9 @@ class TaskCard:
         # Move/resize card
         self.canvas.coords(self.card, self.card_left, self.y, self.card_right, self.y + height)
         # Update progress bar - always move it with the card even when hidden
-        should_show_progress = not is_moving and self.is_active_at(now)
+        # Don't show progress if card is being dragged or resized
+        is_being_manipulated = getattr(self, '_being_dragged', False) or getattr(self, '_being_resized', False)
+        should_show_progress = not is_moving and not is_being_manipulated and self.is_active_at(now)
         if should_show_progress:
             # Calculate total_seconds - handle cards that end past midnight
             hour_diff_for_progress = self.end_hour - self.start_hour
