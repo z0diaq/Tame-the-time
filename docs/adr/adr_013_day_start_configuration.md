@@ -24,17 +24,12 @@ We will replace the dual `start_hour`/`end_hour` configuration with a single `da
 - `day_start` represents the hour when a new day begins for the application
 - Default value: 0 (midnight)
 
-**2. Backward Compatibility**
-- Maintain `start_hour` and `end_hour` as derived values for existing code
-- `start_hour = day_start`
-- `end_hour = (day_start + 24) % 24` if `day_start != 0` else 24
-
-**3. User Interface**
+**2. User Interface**
 - Global Options dialog shows single "Day starts at (hour):" field
 - Help text explains the concept: "Hour when a new day begins for card management (0-23)"
 - Validation ensures value is between 0-23
 
-**4. Settings Persistence**
+**3. Settings Persistence**
 - Store `day_start` in user settings JSON file
 - Load from settings on application startup
 - Save immediately when changed through Global Options

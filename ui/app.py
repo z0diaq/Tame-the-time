@@ -129,9 +129,7 @@ class TimeboxApp(tk.Tk):
         self.geometry("400x700")
         # Initialize day_start from settings, default to 0 (midnight)
         self.day_start = self.settings.get("day_start", 0)
-        # Maintain backward compatibility with start_hour/end_hour
         self.start_hour = self.day_start
-        self.end_hour = (self.day_start + 24) % 24 if self.day_start != 0 else 24
         self.zoom_factor = 6.0
         self.pixels_per_hour = max(50, int(50 * self.zoom_factor))
         self.offset_y = 0
@@ -238,7 +236,7 @@ class TimeboxApp(tk.Tk):
         """Create timeline with the given granularity."""
         now = self.now_provider().time()
         return draw_timeline(
-            self.canvas, self.winfo_width(), self.start_hour, self.end_hour, self.pixels_per_hour, self.offset_y,
+            self.canvas, self.winfo_width(), self.start_hour, self.pixels_per_hour, self.offset_y,
             current_time=now, granularity=granularity
         )
 

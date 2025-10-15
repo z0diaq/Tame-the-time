@@ -28,17 +28,16 @@ def draw_current_time_line(canvas: Canvas, width: int, start_hour: int, pixels_p
     
     return [line, text]
 
-def draw_timeline(canvas: Canvas, width: int, start_hour: int, end_hour: int, pixels_per_hour: int, offset_y: int, current_time=None, granularity=60):
+def draw_timeline(canvas: Canvas, width: int, start_hour: int, pixels_per_hour: int, offset_y: int, current_time=None, granularity=60):
     """Draw the timeline on the canvas. granularity in minutes (default 60).
     
     Args:
         start_hour: Hour when the day starts for card management (day_start setting)
-        end_hour: Hour when the day ends (typically start_hour + 24)
     """
-    total_minutes = (end_hour - start_hour) * 60
+    total_minutes = 24 * 60
     created_objects = []
     for minute in range(0, total_minutes + 1, granularity):
-        hour = start_hour + minute // 60
+        hour = (start_hour + minute // 60) % 24
         min_in_hour = minute % 60
         y = (minute / 60) * pixels_per_hour + 100 + offset_y
         color = Colors.TIMELINE_HOUR_LINE if min_in_hour == 0 else Colors.TIMELINE_MINUTE_LINE

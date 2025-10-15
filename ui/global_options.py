@@ -209,9 +209,7 @@ def open_global_options(app):
             if 0 <= new_day_start < 24:
                 # Update day start setting
                 app.day_start = new_day_start
-                # Update derived values for backward compatibility
                 app.start_hour = new_day_start
-                app.end_hour = (new_day_start + 24) % 24 if new_day_start != 0 else 24
                 app.update_cards_after_size_change()
                 
                 # Update notification settings
