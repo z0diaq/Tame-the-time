@@ -27,7 +27,14 @@ def open_schedule(app):
         app.schedule.extend(new_schedule)
         # Ensure all loaded activities have unique IDs
         app.ensure_activity_ids()
+        # Ensure all tasks have UUIDs (migrate from string to object format)
+        app.ensure_task_uuids()
+        # Create daily task entries for today if needed
+        app._ensure_daily_task_entries()
+        # Create cards
         app.cards = app.create_task_cards()
+        # Load task done states from database after cards are created
+        app._load_daily_task_entries()
         app.update_cards_after_size_change()
         app.last_action = datetime.now()
         
