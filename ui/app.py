@@ -217,10 +217,7 @@ class TimeboxApp(tk.Tk):
         self.current_time_ids = self.create_current_time_line()
         self.show_timeline(granularity=60)
         self.cards = self.create_task_cards()
-        
-        # Raise timeline elements above cards so they're visible
-        self.raise_timeline_above_cards()
-        
+                
         # Load task done states from database after cards are created
         self._load_daily_task_entries()
         
@@ -271,11 +268,6 @@ class TimeboxApp(tk.Tk):
         for tid in getattr(self, 'timeline_5m_ids', []):
             self.canvas.itemconfig(tid, state="normal" if granularity == 5 else "hidden")
     
-    def raise_timeline_above_cards(self):
-        """Raise timeline elements above cards so they're visible."""
-        # Use tag-based raising for efficiency - raises all timeline elements at once
-        self.canvas.tag_raise("timeline")
-
     def scroll(self, event, delta: int):
         """Handle scroll events."""
         log_debug(f"Scrolling: {delta}, PPH: {self.pixels_per_hour}, Current Offset Y: {self.offset_y}")
@@ -324,10 +316,7 @@ class TimeboxApp(tk.Tk):
         
         # Show correct timeline granularity
         self.show_timeline(granularity=self.timeline_granularity)
-        
-        # Raise timeline elements above cards so they're visible
-        self.raise_timeline_above_cards()
-        
+                
         self.last_action = datetime.now()
 
     def restore_card_visuals(self):
@@ -346,10 +335,7 @@ class TimeboxApp(tk.Tk):
                     self.start_hour, self.pixels_per_hour, self.offset_y, 
                     now=now, width=self.winfo_width()
                 )
-        
-        # Raise timeline elements above cards so they're visible after modifications
-        self.raise_timeline_above_cards()
-        
+                
         self.card_visual_changed = False
 
     def update_status_bar(self):

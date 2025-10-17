@@ -105,8 +105,6 @@ def _refresh_active_card_if_undone_tasks(app, activity):
                     now=app.now_provider().time(),
                     width=app.winfo_width()
                 )
-                # Raise timeline above cards after card update to keep it visible
-                app.raise_timeline_above_cards()
 
 def _is_mouse_inside_window(app) -> bool:
     """Check if mouse is inside the window area."""
