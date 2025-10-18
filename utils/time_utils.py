@@ -119,6 +119,7 @@ class TimeUtils:
     def is_time_in_range(current_time: time, start_time_str: str, end_time_str: str) -> bool:
         """
         Check if current time falls within the given time range.
+        Handles activities that span past midnight (e.g., 23:30 to 01:30).
         
         Args:
             current_time: Current time object
@@ -131,7 +132,13 @@ class TimeUtils:
         start_time = TimeUtils.parse_time_with_validation(start_time_str)
         end_time = TimeUtils.parse_time_with_validation(end_time_str)
         
-        return start_time <= current_time < end_time
+        # Handle activities that cross midnight
+        if end_time < start_time:
+            # Activity crosses midnight - current time is active if it's either >= start_time OR < end_time
+            return current_time >= start_time or current_time < end_time
+        else:
+            # Normal case - activity within same day
+            return start_time <= current_time < end_time
 
 
 # Backward compatibility functions - these delegate to TimeUtils methods

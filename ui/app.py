@@ -492,17 +492,6 @@ class TimeboxApp(tk.Tk):
             return None, None
         today = now.date()
         
-        ''' Weekend handling
-        # If weekend, find first task on Monday
-        if now.weekday() >= 5:
-            # Find next Monday
-            days_ahead = 0 if now.weekday() == 0 else (7 - now.weekday())
-            monday = today + timedelta(days=days_ahead)
-            first = self.schedule[0]
-            next_time = datetime.combine(monday, parse_time_str(first['start_time']))
-            return first, next_time
-        '''
-        
         # Find next task after now
         for task in self.schedule:
             t = parse_time_str(task['start_time'])
