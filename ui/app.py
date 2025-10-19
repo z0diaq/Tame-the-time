@@ -198,6 +198,7 @@ class TimeboxApp(tk.Tk):
         self.time_label.place(x=10, y=10)
         self.activity_label = tk.Label(self, font=("Arial", 12), anchor="w", justify="left", bg=Colors.ACTIVITY_LABEL_BG, fg=Colors.ACTIVITY_LABEL_TEXT, relief="solid", bd=2)
         self.activity_label.place(x=10, y=40, width=380)
+        self._activity_label_full_text = ""  # Store full text for truncation on resize
         
         self.bind("<Configure>", lambda event: on_resize(self, event))
 

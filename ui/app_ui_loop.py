@@ -8,6 +8,62 @@ from ui.timeline import reposition_current_time_line
 import os
 import yaml
 from utils.locale_utils import get_weekday_name
+import tkinter.font as tkfont
+
+
+def truncate_text_to_width(text: str, font, max_width: int) -> str:
+    """
+    Truncate text to fit within max_width pixels, replacing overflow with '...'.
+    
+    Args:
+        text: The text to truncate (can be multi-line)
+        font: tkinter font object
+        max_width: Maximum width in pixels
+        
+    Returns:
+        Truncated text with '...' if needed
+    """
+    if max_width <= 0:
+        return text
+    
+    # Handle multi-line text by processing each line separately
+    lines = text.split('\n')
+    truncated_lines = []
+    
+    for line in lines:
+        # Measure the line width
+        line_width = font.measure(line)
+        
+        if line_width <= max_width:
+            # Line fits, keep as is
+            truncated_lines.append(line)
+        else:
+            # Line doesn't fit, truncate with '...'
+            ellipsis = '...'
+            ellipsis_width = font.measure(ellipsis)
+            
+            # Binary search for the right length
+            if ellipsis_width >= max_width:
+                # Not even room for ellipsis
+                truncated_lines.append(ellipsis)
+            else:
+                # Find how many characters fit
+                available_width = max_width - ellipsis_width
+                
+                # Simple character-by-character truncation
+                truncated = line
+                for i in range(len(line), 0, -1):
+                    test_text = line[:i]
+                    if font.measure(test_text) <= available_width:
+                        truncated = test_text + ellipsis
+                        break
+                else:
+                    truncated = ellipsis
+                
+                truncated_lines.append(truncated)
+    
+    return '\n'.join(truncated_lines)
+
 
 def update_ui(app):
     """Update the UI based on time changes and state."""
@@ -45,15 +101,23 @@ def update_ui(app):
     # --- UI update logic ---
     if activity:
         desc = "\n".join(f"{i+1}. {pt}" for i, pt in enumerate(activity["description"]))
-        app.activity_label.config(
-            text=f"Actions:\n{desc}"
-        )
+        full_text = f"Actions:\n{desc}"
+        
+        # Truncate text to fit label width
+        label_font = tkfont.Font(font=app.activity_label['font'])
+        label_width = app.activity_label.winfo_width()
+        # Account for padding and border (approx 10px on each side)
+        available_width = max(label_width - 20, 50)
+        truncated_text = truncate_text_to_width(full_text, label_font, available_width)
+        
+        app.activity_label.config(text=truncated_text)
+        app._activity_label_full_text = full_text  # Store for resize
         # Activity change notifications are now handled by the notification service
         app.last_activity = activity
     else:
         # --- Show time till next task if no active task ---
         if next_task is None:
-            text = "No scheduled task was found."
+            full_text = "No scheduled task was found."
         else:
             seconds_left = int((next_task_start - now).total_seconds())
             if seconds_left < 0:
@@ -61,8 +125,17 @@ def update_ui(app):
                 seconds_left += 24*3600
             hours, remainder = divmod(seconds_left, 3600)
             minutes, seconds = divmod(remainder, 60)
-            text = f"No active task\nNext: {next_task['name']} at {next_task['start_time']}\nTime left: {hours:02d}:{minutes:02d}:{seconds:02d}"
-        app.activity_label.config(text=text)
+            full_text = f"No active task\nNext: {next_task['name']} at {next_task['start_time']}\nTime left: {hours:02d}:{minutes:02d}:{seconds:02d}"
+        
+        # Truncate text to fit label width
+        label_font = tkfont.Font(font=app.activity_label['font'])
+        label_width = app.activity_label.winfo_width()
+        # Account for padding and border (approx 10px on each side)
+        available_width = max(label_width - 20, 50)
+        truncated_text = truncate_text_to_width(full_text, label_font, available_width)
+        
+        app.activity_label.config(text=truncated_text)
+        app._activity_label_full_text = full_text  # Store for resize
 
     # Redraw timeline and cards if no action for threshold time or at the start of each minute
     if should_update:

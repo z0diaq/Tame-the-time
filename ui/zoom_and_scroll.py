@@ -1,6 +1,26 @@
 from utils.logging import log_debug
 from ui.timeline import reposition_timeline, reposition_current_time_line
 from datetime import datetime
+import tkinter.font as tkfont
+
+
+def _update_activity_label_truncation(app):
+    """Update activity label text with truncation based on current window width."""
+    # Import here to avoid circular dependency
+    from ui.app_ui_loop import truncate_text_to_width
+    
+    # Only update if we have stored full text
+    if not hasattr(app, '_activity_label_full_text'):
+        return
+    
+    full_text = app._activity_label_full_text
+    label_font = tkfont.Font(font=app.activity_label['font'])
+    label_width = app.activity_label.winfo_width()
+    # Account for padding and border (approx 10px on each side)
+    available_width = max(label_width - 20, 50)
+    truncated_text = truncate_text_to_width(full_text, label_font, available_width)
+    app.activity_label.config(text=truncated_text)
+
 
 def move_timelines_and_cards(app, delta_y):
     """Move both timelines and all cards by delta_y."""
@@ -66,6 +86,9 @@ def resize_timelines_and_cards(app):
     mouse_inside = app._is_mouse_inside_window()
     reposition_current_time_line(app.canvas, app.current_time_ids, app.start_hour, app.pixels_per_hour, app.offset_y, app.winfo_width(), now, mouse_inside)
     app.activity_label.place(x=10, y=40, width=app.winfo_width() - 20)
+    
+    # Recalculate text truncation on resize
+    _update_activity_label_truncation(app)
     
 def scroll(app, event, delta: int):
     """Scroll timelines and cards based on scroll event."""
