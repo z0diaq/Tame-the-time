@@ -777,3 +777,56 @@ class TaskTrackingService:
             log_error(f"Failed to get task UUIDs: {e}")
             return []
     
+    def get_task_streak(self, task_uuid: str, target_date: date = None) -> int:
+        """
+        Calculate the current streak for a task.
+        A streak is the number of consecutive days (going backwards from target_date) 
+        where the task was completed (done_state = 1).
+        
+        Args:
+            task_uuid: The UUID of the task
+            target_date: The date to start counting from (defaults to today)
+        
+        Returns:
+            The number of consecutive days the task was completed (0 if never done or broken streak)
+        """
+        if target_date is None:
+            target_date = date.today()
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get all task entries for this task, ordered by date descending
+                cursor.execute('''
+                    SELECT date, done_state 
+                    FROM task_entries 
+                    WHERE task_uuid = ?
+                    ORDER BY date DESC
+                ''', (task_uuid,))
+                
+                rows = cursor.fetchall()
+                if not rows:
+                    return 0
+                
+                # Build a map of date -> done_state for efficient lookup
+                date_map = {datetime.fromisoformat(row[0]).date(): bool(row[1]) for row in rows}
+                
+                # Count consecutive days backwards from target_date
+                streak = 0
+                current_date = target_date
+                
+                while current_date in date_map:
+                    if date_map[current_date]:
+                        streak += 1
+                        current_date -= timedelta(days=1)
+                    else:
+                        # Streak broken
+                        break
+                
+                return streak
+                
+        except sqlite3.Error as e:
+            log_error(f"Failed to get task streak: {e}")
+            return 0
+    

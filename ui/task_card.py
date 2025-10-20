@@ -15,15 +15,18 @@ class TaskCard:
             pixels_per_hour: int,
             offset_y: int,
             width: int,
-            now_provider=datetime.datetime.now
+            now_provider=datetime.datetime.now,
+            task_tracking_service=None
         ):
         """Initialize a TaskCard with the given activity and display parameters.
         
         Args:
             start_of_workday: Hour when the day starts for card management (day_start setting)
+            task_tracking_service: Optional service for tracking task streaks
         """
         self.activity = activity
         self.now_provider = now_provider
+        self.task_tracking_service = task_tracking_service
         self.canvas = None
         
         # Use TimeUtils for consistent time parsing
@@ -64,7 +67,8 @@ class TaskCard:
             pixels_per_hour=0,  # Will be set later
             offset_y=0,  # Will be set later
             width=0,  # Will be set later
-            now_provider=self.now_provider
+            now_provider=self.now_provider,
+            task_tracking_service=self.task_tracking_service
         )
         clone.start_hour = self.start_hour
         clone.start_minute = self.start_minute
@@ -74,6 +78,11 @@ class TaskCard:
         clone.height = self.height
         clone.card_left = self.card_left
         clone.card_right = self.card_right
+        # Copy task tracking data if present
+        if hasattr(self, '_tasks_done'):
+            clone._tasks_done = self._tasks_done.copy() if self._tasks_done else None
+        if hasattr(self, '_task_uuids'):
+            clone._task_uuids = self._task_uuids.copy() if self._task_uuids else None
         return clone    
 
     def set_being_modified(self, being_modified: bool):
@@ -180,10 +189,13 @@ class TaskCard:
             done_count = sum(tasks_done)
             total_count = len(tasks)
             
+            # Generate text with streak information
+            tasks_text = self._generate_tasks_text()
+            
             color = self._get_task_count_color(done_count, total_count, now)
             self.tasks_count_label = canvas.create_text(
                 self.card_right - 5, self.y + self.height - 5,
-                text=f"Tasks: {done_count}/{total_count}",
+                text=tasks_text,
                 font=("Arial", 8, "bold"), anchor="se", fill=color
             )
             canvas.itemconfig(self.tasks_count_label, tags=(tag))
@@ -191,6 +203,36 @@ class TaskCard:
             self.tasks_count_label = None
         return self
 
+    def _generate_tasks_text(self) -> str:
+        """Generate the tasks display text with streak information.
+        
+        Returns:
+            Formatted string like "Tasks: 2/3 (5, 0, 3)" where numbers in parentheses are streak counts
+        """
+        tasks = self.activity.get("tasks", [])
+        if not tasks:
+            return ""
+        
+        tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
+        done_count = sum(tasks_done)
+        total_count = len(tasks)
+        
+        # Calculate streak information if task_tracking_service is available
+        streak_info = ""
+        if self.task_tracking_service and hasattr(self, '_task_uuids'):
+            streaks = []
+            for task_uuid in self._task_uuids:
+                if task_uuid:
+                    streak = self.task_tracking_service.get_task_streak(task_uuid)
+                    streaks.append(str(streak))
+                else:
+                    streaks.append("0")
+            
+            if streaks:
+                streak_info = f" ({', '.join(streaks)})"
+        
+        return f"Tasks: {done_count}/{total_count}{streak_info}"
+    
     def _get_task_count_color(self, done_count: int, total_count: int, now: time = None) -> str:
         """Get the color for task count display based on completion status and card's time status."""
         # Check if card is being dragged or resized (disable special coloring)
@@ -358,7 +400,8 @@ class TaskCard:
             tasks_done = getattr(self, '_tasks_done', [False] * len(tasks))
             done_count = sum(tasks_done)
             total_count = len(tasks)
-            tasks_text = f"Tasks: {done_count}/{total_count}"
+            # Generate text with streak information
+            tasks_text = self._generate_tasks_text()
             
             if not hasattr(self, 'tasks_count_label') or self.tasks_count_label is None:
                 self.tasks_count_label = self.canvas.create_text(
@@ -407,7 +450,8 @@ def create_task_cards(
     pixels_per_hour: int,
     offset_y: int,
     width: int,
-    now_provider=None
+    now_provider=None,
+    task_tracking_service=None
 ) -> List[TaskCard]:
     """Create task card objects and draw them on the canvas."""
     cards = []
@@ -415,7 +459,8 @@ def create_task_cards(
     active_y = None
     count = len(schedule)
     for index, activity in enumerate(schedule):
-        card_obj = TaskCard(activity, start_of_workday, pixels_per_hour, offset_y, width, now_provider=now_provider)
+        card_obj = TaskCard(activity, start_of_workday, pixels_per_hour, offset_y, width, 
+                          now_provider=now_provider, task_tracking_service=task_tracking_service)
         draw_end_time = False
         # Draw end time if there is a gap between this and the next card
         if index < count - 1:

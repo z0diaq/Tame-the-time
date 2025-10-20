@@ -287,7 +287,8 @@ class TimeboxApp(tk.Tk):
             self.pixels_per_hour,
             self.offset_y,
             self.winfo_width(),
-            now_provider=self.now_provider
+            now_provider=self.now_provider,
+            task_tracking_service=self.task_tracking_service
         )
         for card_obj in cards:
             # Bind events to each card
