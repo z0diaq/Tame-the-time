@@ -489,22 +489,37 @@ class TimeboxApp(tk.Tk):
         #self.update_status_bar()
 
     def get_next_task_and_time(self, now):
-        """Returns (next_task_dict, next_task_start_datetime)."""
+        """Returns (next_task_dict, next_task_start_datetime) - the task closest in time after now."""
         if not self.schedule or len(self.schedule) == 0:
             return None, None
         today = now.date()
+        tomorrow = today + timedelta(days=1)
         
-        # Find next task after now
+        # Find task with smallest time difference from now (closest upcoming task)
+        closest_task = None
+        closest_task_dt = None
+        smallest_diff = None
+        
         for task in self.schedule:
             t = parse_time_str(task['start_time'])
+            # Check task on today
             task_dt = datetime.combine(today, t)
             if task_dt > now:
-                return task, task_dt
-        # If none found, return first task of next day
-        tomorrow = today + timedelta(days=1)
-        first = self.schedule[0]
-        next_time = datetime.combine(tomorrow, parse_time_str(first['start_time']))
-        return first, next_time
+                diff = (task_dt - now).total_seconds()
+                if smallest_diff is None or diff < smallest_diff:
+                    smallest_diff = diff
+                    closest_task = task
+                    closest_task_dt = task_dt
+            
+            # Also check task on tomorrow (in case we're near end of day)
+            task_dt_tomorrow = datetime.combine(tomorrow, t)
+            diff_tomorrow = (task_dt_tomorrow - now).total_seconds()
+            if smallest_diff is None or diff_tomorrow < smallest_diff:
+                smallest_diff = diff_tomorrow
+                closest_task = task
+                closest_task_dt = task_dt_tomorrow
+        
+        return closest_task, closest_task_dt
 
     def on_cancel_callback(self, card_obj):
         """Callback for when the edit window is cancelled."""
