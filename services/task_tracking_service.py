@@ -783,6 +783,11 @@ class TaskTrackingService:
         A streak is the number of consecutive days (going backwards from target_date) 
         where the task was completed (done_state = 1).
         
+        New behavior:
+        - Ignores current day if task is not done (day isn't finished yet)
+        - Ignores dates with no data (missing entries don't break the streak)
+        - Only breaks streak when an entry exists but is marked as not done (False)
+        
         Args:
             task_uuid: The UUID of the task
             target_date: The date to start counting from (defaults to today)
@@ -812,17 +817,33 @@ class TaskTrackingService:
                 # Build a map of date -> done_state for efficient lookup
                 date_map = {datetime.fromisoformat(row[0]).date(): bool(row[1]) for row in rows}
                 
-                # Count consecutive days backwards from target_date
-                streak = 0
+                # Start from target_date
                 current_date = target_date
                 
-                while current_date in date_map:
-                    if date_map[current_date]:
-                        streak += 1
-                        current_date -= timedelta(days=1)
+                # If target_date is today and task is not done, skip it (day isn't finished yet)
+                if current_date == date.today() and current_date in date_map and not date_map[current_date]:
+                    current_date -= timedelta(days=1)
+                
+                # Count consecutive days backwards
+                streak = 0
+                # Set a reasonable limit to avoid infinite loops (e.g., 10 years back)
+                max_days_back = 3650
+                days_checked = 0
+                
+                while days_checked < max_days_back:
+                    days_checked += 1
+                    
+                    if current_date in date_map:
+                        if date_map[current_date]:
+                            # Task was completed on this day
+                            streak += 1
+                            current_date -= timedelta(days=1)
+                        else:
+                            # Task was not completed on this day - streak broken
+                            break
                     else:
-                        # Streak broken
-                        break
+                        # No data for this date - skip it and continue counting backwards
+                        current_date -= timedelta(days=1)
                 
                 return streak
                 
