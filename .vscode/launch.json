@@ -42,6 +42,14 @@
             "program": "TameTheTime.py",
             "console": "integratedTerminal",
             "args": "--config settings_test.yaml --db test.db"
+        },
+        {
+            "name": "Tuesday_settings_251007 config",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "TameTheTime.py",
+            "console": "integratedTerminal",
+            "args": "--config Tuesday_settings_251007.yaml"
         }
     ]
 }
