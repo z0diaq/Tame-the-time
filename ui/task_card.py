@@ -1,6 +1,6 @@
 from datetime import time
 import datetime
-from tkinter import Canvas
+from tkinter import Canvas, font as tkfont
 import tkinter as tk
 from typing import Dict, List
 from utils.logging import log_info, log_debug
@@ -57,6 +57,50 @@ class TaskCard:
         self.finished_color = Colors.FINISHED_TASK
         self.active_color = Colors.ACTIVE_TASK
         self.inactive_color = Colors.INACTIVE_TASK
+
+    def _truncate_text_to_width(self, canvas: Canvas, text: str, max_width: int) -> str:
+        """Truncate text to fit within max_width, adding '...' if truncated.
+        
+        Args:
+            canvas: The canvas to measure text on
+            text: The text to truncate
+            max_width: Maximum width in pixels
+            
+        Returns:
+            Truncated text that fits within max_width
+        """
+        if not text:
+            return text
+            
+        # Create a temporary font object for measurement
+        font = tkfont.Font(font=("Arial", 10))  # Default font size for labels
+        
+        # Check if text already fits
+        text_width = font.measure(text)
+        if text_width <= max_width:
+            return text
+        
+        # Binary search for the optimal truncation point
+        min_len = 0
+        max_len = len(text)
+        best_text = text
+        
+        while min_len <= max_len:
+            mid_len = (min_len + max_len) // 2
+            if mid_len <= 3:  # Need at least some characters for "..."
+                min_len = mid_len + 1
+                continue
+                
+            truncated = text[:mid_len] + "..."
+            truncated_width = font.measure(truncated)
+            
+            if truncated_width <= max_width:
+                best_text = truncated
+                min_len = mid_len + 1
+            else:
+                max_len = mid_len - 1
+        
+        return best_text
 
     # Make a clone function that will set the same properties as the original TaskCard
     def clone(self):
@@ -143,7 +187,10 @@ class TaskCard:
         )
         self.card = canvas.create_rectangle(self.card_left, self.y, self.card_right, self.y + self.height, fill=color, outline=Colors.CARD_OUTLINE)
         # Progress bar for active card
-        self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=self.activity["name"])
+        # Calculate available width for text (with some padding)
+        available_width = (self.card_right - self.card_left) - 20  # 10px padding on each side
+        truncated_text = self._truncate_text_to_width(canvas, self.activity["name"], available_width)
+        self.label = canvas.create_text((self.card_left + self.card_right) // 2, self.y + self.height // 2, text=truncated_text)
         if is_active:
             # Calculate total_seconds - handle cards that end past midnight
             hour_diff_for_progress = self.end_hour - self.start_hour
@@ -392,7 +439,10 @@ class TaskCard:
         self.canvas.itemconfig(self.time_end_label, state="hidden" if self.end_minute == 0 or not show_end_time else "normal")
 
         self.canvas.coords(self.label, (self.card_left + self.card_right) // 2, self.y + self.height // 2)
-        self.canvas.itemconfig(self.label, text=self.activity["name"])
+        # Calculate available width for text (with some padding)
+        available_width = (self.card_right - self.card_left) - 20  # 10px padding on each side
+        truncated_text = self._truncate_text_to_width(self.canvas, self.activity["name"], available_width)
+        self.canvas.itemconfig(self.label, text=truncated_text)
 
         # Update or create tasks count label
         tasks = self.activity.get("tasks", [])
