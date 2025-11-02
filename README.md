@@ -11,5 +11,5 @@ Features:
 
 ## Screenshots
 
-![Main view](https://github.com/z0diaq/Tame-the-time/251101_main_view.png)
+![Main view](https://github.com/z0diaq/Tame-the-time/blob/main/251101_main_view.png)
 
