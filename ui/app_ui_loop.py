@@ -66,7 +66,19 @@ def truncate_text_to_width(text: str, font, max_width: int) -> str:
 
 
 def update_ui(app):
-    """Update the UI based on time changes and state."""
+    """
+    Main UI update loop that refreshes all time-dependent UI elements.
+    
+    This function is the core of the UI update cycle. It:
+    - Checks for day rollovers and handles schedule changes
+    - Updates time display and current time line position
+    - Manages activity notifications and status updates
+    - Triggers timeline/card redraws when needed
+    - Schedules the next update cycle
+    
+    Args:
+        app: The main TimeboxApp instance containing all UI state and components
+    """
     now = app.now_provider()
     
     # Check for day rollover and handle it
@@ -153,7 +165,17 @@ def update_ui(app):
     app.after(UIConstants.UI_UPDATE_INTERVAL_MS, lambda: update_ui(app))
 
 def _refresh_active_card_if_undone_tasks(app, activity):
-    """Refresh only active card to show blinking tasks count."""
+    """
+    Refresh only the currently active card to update visual indicators for undone tasks.
+    
+    This lightweight update is used to show the blinking tasks count indicator
+    without redrawing the entire timeline. It finds the card corresponding to
+    the active activity and updates only that card's visuals.
+    
+    Args:
+        app: The main TimeboxApp instance
+        activity: Dictionary containing the current activity data, or None if no active task
+    """
     if not activity:
         return
     
@@ -180,7 +202,18 @@ def _refresh_active_card_if_undone_tasks(app, activity):
                 )
 
 def _is_mouse_inside_window(app) -> bool:
-    """Check if mouse is inside the window area."""
+    """
+    Check if the mouse cursor is currently inside the application window boundaries.
+    
+    Used to prevent UI updates while the user is interacting with the window,
+    which could interfere with mouse-based operations like dragging or clicking.
+    
+    Args:
+        app: The main TimeboxApp instance
+        
+    Returns:
+        bool: True if mouse is inside window boundaries, False otherwise or on error
+    """
     try:
         mouse_x = app.winfo_pointerx()
         mouse_y = app.winfo_pointery()
@@ -195,7 +228,26 @@ def _is_mouse_inside_window(app) -> bool:
         return False
 
 def _should_update_ui(app, now: datetime, activity: Dict) -> bool:
-    """Determine if UI needs updating based on time changes and state."""
+    """
+    Determine if a full UI redraw is needed based on various conditions.
+    
+    This function implements the logic to minimize unnecessary UI redraws while
+    ensuring the UI stays current. It checks multiple conditions:
+    - First run (no previous update)
+    - Mouse position (avoid interfering with user interaction)
+    - Card visual changes
+    - Active task progress (every 10 seconds)
+    - Inactivity threshold (every 20 seconds)
+    - Minute changes (to show active card transitions)
+    
+    Args:
+        app: The main TimeboxApp instance
+        now: Current datetime for comparison
+        activity: Current activity dictionary, or None if no active task
+        
+    Returns:
+        bool: True if full UI redraw should occur, False to skip redraw
+    """
     # Always update on first run
     if not hasattr(app, '_last_ui_update'):
         log_debug("No previous _last_ui_update")
@@ -334,7 +386,17 @@ def _handle_day_rollover(app, now: datetime) -> None:
 
 
 def _reset_timeline_to_top(app, now: datetime) -> None:
-    """Reset timeline view to start from the top (current time centered)."""
+    """
+    Reset timeline view to center on the current time for the new day.
+    
+    This function is called during day rollover to reposition the timeline
+    so the current time is visible in the center of the window. Respects
+    the 'disable_auto_centering' setting - if enabled, no repositioning occurs.
+    
+    Args:
+        app: The main TimeboxApp instance
+        now: Current datetime used to calculate the center position
+    """
     try:
         # Only center if auto-centering is enabled (disable_auto_centering is False)
         if not getattr(app, 'disable_auto_centering', False):
@@ -357,7 +419,16 @@ def _reset_timeline_to_top(app, now: datetime) -> None:
 
 
 def _reset_all_task_completion_status(app) -> None:
-    """Reset all task completion status to undone for the new day."""
+    """
+    Reset all task completion status to undone for the new day.
+    
+    Iterates through all task cards and resets their _tasks_done arrays to False,
+    then triggers visual updates to reflect the reset state. This gives users
+    a fresh start for task tracking each day.
+    
+    Args:
+        app: The main TimeboxApp instance containing the task cards to reset
+    """
     try:
         reset_count = 0
         for card_obj in getattr(app, 'cards', []):
@@ -484,7 +555,16 @@ def _load_new_schedule_and_replace_cards(app, schedule_path: str) -> bool:
 
 
 def _create_new_day_task_entries(app) -> None:
-    """Create new daily task entries for the new day."""
+    """
+    Create new daily task tracking entries in the database for the new day.
+    
+    Uses the task tracking service to create database entries for all tasks
+    in the current schedule. This enables completion tracking and statistics
+    for the new day's activities.
+    
+    Args:
+        app: The main TimeboxApp instance with task_tracking_service and schedule
+    """
     try:
         if hasattr(app, 'task_tracking_service') and app.task_tracking_service:
             entries_created = app.task_tracking_service.create_daily_task_entries(app.schedule)
