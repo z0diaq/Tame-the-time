@@ -1,10 +1,53 @@
 import tkinter as tk
 import tkinter.messagebox as messagebox
+import re
+import webbrowser
 from ui.card_dialogs import open_edit_card_window, open_card_tasks_window
 from ui.task_card import TaskCard
 from utils.time_utils import round_to_nearest_5_minutes
 from utils.logging import log_debug
 from utils.translator import t
+
+def extract_urls_from_tasks(card_obj):
+    """Extract URLs from not-done tasks in a card.
+    
+    Args:
+        card_obj: The TaskCard object to extract URLs from
+        
+    Returns:
+        List of tuples (task_name, url) for each URL found in not-done tasks
+    """
+    urls = []
+    activity = card_obj.activity
+    tasks = activity.get('tasks', [])
+    
+    if not tasks:
+        return urls
+    
+    # Get tasks_done status from card object
+    tasks_done = getattr(card_obj, '_tasks_done', [False] * len(tasks))
+    
+    # URL regex pattern - matches http://, https://, and www. URLs
+    url_pattern = re.compile(
+        r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+        r'|www\\.(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    )
+    
+    # Extract URLs from not-done tasks
+    for i, task in enumerate(tasks):
+        # Only process not-done tasks
+        if i < len(tasks_done) and tasks_done[i]:
+            continue
+            
+        # Extract URLs from task text
+        found_urls = url_pattern.findall(task)
+        for url in found_urls:
+            # Ensure www URLs have http:// prefix
+            if url.startswith('www.'):
+                url = 'http://' + url
+            urls.append((task, url))
+    
+    return urls
 
 def show_canvas_context_menu(app, event):
     # Determine if click is on a card
@@ -58,6 +101,31 @@ def show_canvas_context_menu(app, event):
         # Show Tasks menu option if there are tasks
         if 'tasks' in activity and activity['tasks']:
             menu.add_command(label=t("context_menu.tasks"), command=open_card_tasks)
+        
+        # Check for URLs in not-done tasks
+        urls = extract_urls_from_tasks(card_under_cursor)
+        if urls:
+            # Create submenu for URLs
+            url_menu = tk.Menu(menu, tearoff=0)
+            
+            # Add each URL as a submenu item
+            for task_name, url in urls:
+                # Truncate task name for display if it's too long
+                display_name = task_name[:50] + "..." if len(task_name) > 50 else task_name
+                
+                # Create a closure to capture the URL
+                def open_url(url_to_open=url):
+                    """Open the URL in the system's default browser."""
+                    try:
+                        webbrowser.open(url_to_open)
+                        log_debug(f"Opening URL: {url_to_open}")
+                    except Exception as e:
+                        log_debug(f"Error opening URL {url_to_open}: {e}")
+                        messagebox.showerror("Error", f"Failed to open URL: {str(e)}")
+                
+                url_menu.add_command(label=f"{display_name}", command=open_url)
+            
+            menu.add_cascade(label=t("context_menu.open_url"), menu=url_menu)
         
         def remove_card():
             """Remove the card under cursor with confirmation."""

@@ -24,6 +24,7 @@ This will be fixed at a later time.
 | [ADR-012](adr_012_json_internationalization.md) | JSON-Based Internationalization System | Accepted | 2025-09-16 |
 | [ADR-013](adr_013_day_start_configuration.md) | Day Start Configuration for Card Management | Accepted | 2025-09-20 |
 | [ADR-014](adr_014_forgiving_streak_counting.md) | Forgiving Streak Counting Logic for Task Completion | Accepted | 2025-10-24 |
+| [ADR-015](adr_015_url_extraction_context_menu.md) | URL Extraction and Opening from Task Context Menu | Accepted | 2025-11-13 |
 
 ## ADR Categories
 
@@ -47,13 +48,17 @@ This will be fixed at a later time.
 - **ADR-013**: Day Start Configuration - Flexible daily schedule alignment
 - **ADR-014**: Forgiving Streak Counting - User-friendly task streak logic
 
+### User Experience Features
+- **ADR-015**: URL Extraction from Context Menu - Quick access to task-embedded URLs
+
 ## How to Use ADRs
 
 1. **For New Contributors**: Read ADRs 001, 002, and 006 to understand the overall architecture
-2. **For UI Development**: Focus on ADRs 002, 007, and 009
+2. **For UI Development**: Focus on ADRs 002, 007, 009, and 015
 3. **For Data/Persistence**: Review ADRs 003, 004, and 010
 4. **For Task Tracking & Statistics**: See ADRs 003 and 014 for database and streak logic
 5. **For Testing**: ADR-005 explains the dependency injection pattern crucial for testing
+6. **For User Experience**: See ADR-015 for context menu enhancements
 
 ## Creating New ADRs
 
