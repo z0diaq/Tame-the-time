@@ -38,14 +38,18 @@ def extract_urls_from_tasks(card_obj):
         # Only process not-done tasks
         if i < len(tasks_done) and tasks_done[i]:
             continue
-            
+
+        task_name = task.get('name', '')
+        if not isinstance(task_name, str):
+            continue
+                
         # Extract URLs from task text
-        found_urls = url_pattern.findall(task)
+        found_urls = url_pattern.findall(task_name)
         for url in found_urls:
             # Ensure www URLs have http:// prefix
             if url.startswith('www.'):
                 url = 'http://' + url
-            urls.append((task, url))
+            urls.append((task_name, url))
     
     return urls
 
