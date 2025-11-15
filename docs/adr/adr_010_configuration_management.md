@@ -3,7 +3,7 @@
 **Title:** Configuration Management Strategy  
 **Status:** Accepted  
 **Date:** 2025-08-03
-**Updated:** 2025-08-15
+**Updated:** 2025-11-15
 
 ## Context
 
@@ -56,6 +56,24 @@ class UIConstants:
 ```bash
 python TameTheTime.py --time "2025-06-04T16:55:00" --no-notification
 ```
+
+### Startup Schedule Selection
+
+When the application starts, the schedule to load is determined by a combination of user settings, command-line parameters, and weekday-specific templates:
+
+- If a `--config` path is provided on the command line, that file is loaded directly.
+- If no `--config` is provided, the application reads `last_schedule_path` from the user settings JSON.
+- If `last_schedule_path` points to an existing, non-default schedule file (i.e. not `default_settings.yaml`), the user is prompted whether to:
+  - Load the last schedule (`last_schedule_path`), or
+  - Load the default/day-based schedule.
+- If `last_schedule_path` is `default_settings.yaml`, the application silently uses the default/day-based schedule without showing a dialog.
+- If `last_schedule_path` is missing or the file no longer exists, the application falls back to the default/day-based schedule.
+
+The default/day-based schedule resolution is handled by the configuration loader:
+
+- For the current weekday, the loader first looks for `"<Weekday>_settings.yaml"` (e.g. `"Monday_settings.yaml"`).
+- If a weekday-specific file exists, it is loaded.
+- Otherwise, `default_settings.yaml` is used.
 
 ### Notification Configuration Management
 
