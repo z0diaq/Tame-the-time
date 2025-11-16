@@ -32,7 +32,8 @@
     "mark_as_done": "Mark as Done",
     "mark_as_undone": "Mark as Undone",
     "last_schedule": "Last Schedule",
-    "default_schedule": "Default Schedule"
+    "default_schedule": "Default Schedule",
+    "proceed": "Proceed"
   },
   "task": {
     "done_prefix": "[Done]"
@@ -54,7 +55,8 @@
     "ignore_weekends": "Ignore weekends",
     "title": "Title:",
     "description": "Description:",
-    "tasks_one_per_line": "Tasks (one per line):"
+    "tasks_one_per_line": "Tasks (one per line):",
+    "select_schedule_to_load": "Select schedule to load:"
   },
   "combo": {
     "disabled": "Disabled",
@@ -136,7 +138,13 @@
     "unsaved_tasks_warning": "This activity contains unsaved tasks, please save schedule first.\n\nUnsaved tasks:\n{unsaved_list}",
     "confirm_remove_card": "Are you sure you want to remove '{card_name}'?",
     "confirm_remove_all_cards": "Are you sure you want to remove all cards?",
-    "schedule_selection_prompt": "Which schedule would you like to load?\n\nLast schedule: {last_schedule}"
+    "schedule_selection_prompt": "Which schedule would you like to load?\n\nLast schedule: {last_schedule}",
+    "day_schedule_available_hint": "Note: A schedule for today is also available in the list above."
+  },
+  "schedule_option": {
+    "last_used": "{filename} (Last used)",
+    "today": "{filename} (Today's schedule)",
+    "default": "default_settings.yaml (Default)"
   },
   "activity": {
     "unknown_activity": "Unknown Activity"

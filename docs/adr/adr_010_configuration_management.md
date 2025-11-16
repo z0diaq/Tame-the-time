@@ -61,13 +61,29 @@ python TameTheTime.py --time "2025-06-04T16:55:00" --no-notification
 
 When the application starts, the schedule to load is determined by a combination of user settings, command-line parameters, and weekday-specific templates:
 
-- If a `--config` path is provided on the command line, that file is loaded directly.
-- If no `--config` is provided, the application reads `last_schedule_path` from the user settings JSON.
-- If `last_schedule_path` points to an existing, non-default schedule file (i.e. not `default_settings.yaml`), the user is prompted whether to:
-  - Load the last schedule (`last_schedule_path`), or
-  - Load the default/day-based schedule.
-- If `last_schedule_path` is `default_settings.yaml`, the application silently uses the default/day-based schedule without showing a dialog.
-- If `last_schedule_path` is missing or the file no longer exists, the application falls back to the default/day-based schedule.
+**Dialog Display Logic:**
+- If a `--config` path is provided on the command line, that file is loaded directly (no dialog).
+- If no `--config` is provided, the application checks for:
+  - `last_schedule_path` from user settings (excluding `default_settings.yaml`)
+  - Day-specific schedule for today (e.g., `Monday_settings.yaml`)
+- A dialog is shown if **either** a last schedule or day-specific schedule exists.
+- If neither exists, the application silently uses `default_settings.yaml`.
+
+**Dialog Structure:**
+The dialog presents a dropdown list (radio buttons) with schedule options in priority order:
+1. **Last used schedule** (if exists): `"{filename} (Last used)"`
+2. **Today's schedule** (if exists and different from last): `"{filename} (Today's schedule)"`
+3. **Default schedule** (always available): `"default_settings.yaml (Default)"`
+
+**Conditional Hint:**
+- A hint message is displayed below the dropdown if **both** last schedule and day-specific schedule exist.
+- The hint informs the user: "Note: A schedule for today is also available in the list above."
+- The hint is **not** shown if the day-specific schedule is already the first/only option (no previous schedule).
+
+**User Interaction:**
+- User selects one option from the dropdown
+- Single "Proceed" button loads the selected schedule
+- Closing the dialog (X button) defaults to the first option
 
 The default/day-based schedule resolution is handled by the configuration loader:
 

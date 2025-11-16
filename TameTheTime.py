@@ -114,20 +114,20 @@ def load_user_settings() -> dict:
             return json.load(f)
     return {}
 
-def ask_schedule_selection(last_schedule_path: str) -> Optional[str]:
-    """Show dialog asking user which schedule to load.
+def ask_schedule_selection(last_schedule_path: Optional[str], day_schedule_path: Optional[str]) -> Optional[str]:
+    """Show dialog with dropdown asking user which schedule to load.
     
     Args:
-        last_schedule_path: Path to the last loaded schedule
+        last_schedule_path: Path to the last loaded schedule (None if none or was default)
+        day_schedule_path: Path to today's day-specific schedule (None if doesn't exist)
         
     Returns:
-        Path to load (either last_schedule_path or None for default), 
-        or False if user cancelled
+        Path to load, or None for default schedule
     """
     # Create a temporary root window for the dialog
     root = tk.Tk()
     root.title(t("window.schedule_selection"))
-    root.geometry("400x150")
+    root.geometry("450x180")
     root.resizable(False, False)
     
     # Center the window on screen
@@ -136,41 +136,88 @@ def ask_schedule_selection(last_schedule_path: str) -> Optional[str]:
     y = (root.winfo_screenheight() // 2) - (root.winfo_height() // 2)
     root.geometry(f"+{x}+{y}")
     
-    # Get short filename for display
-    filename = os.path.basename(last_schedule_path)
+    # Build dropdown options in priority order
+    options = []  # List of (display_text, path_value) tuples
     
-    # Format the message with the last schedule path
-    message = t("message.schedule_selection_prompt").format(last_schedule=filename)
+    # 1. Last used schedule (highest priority if exists)
+    if last_schedule_path and os.path.exists(last_schedule_path):
+        filename = os.path.basename(last_schedule_path)
+        display = t("schedule_option.last_used").format(filename=filename)
+        options.append((display, last_schedule_path))
+    
+    # 2. Today's schedule (second priority if exists and different from last)
+    if day_schedule_path and os.path.exists(day_schedule_path):
+        if not last_schedule_path or day_schedule_path != last_schedule_path:
+            filename = os.path.basename(day_schedule_path)
+            display = t("schedule_option.today").format(filename=filename)
+            options.append((display, day_schedule_path))
+    
+    # 3. Default schedule (always available)
+    options.append((t("schedule_option.default"), None))
+    
+    # Extract display texts for combobox values
+    display_texts = [display for display, _ in options]
     
     result = {"choice": None}
     
-    def on_last_schedule():
-        result["choice"] = last_schedule_path
+    def on_proceed():
+        # Get selected index from combobox and map to path
+        selected_text = dropdown_var.get()
+        selected_idx = display_texts.index(selected_text)
+        result["choice"] = options[selected_idx][1]
         root.quit()
         root.destroy()
     
-    def on_default_schedule():
-        result["choice"] = None  # None means use default
-        root.quit()
-        root.destroy()
+    # Label
+    label = tk.Label(root, text=t("label.select_schedule_to_load"), padx=20, pady=10)
+    label.pack(anchor="w")
     
-    # Message label
-    label = tk.Label(root, text=message, wraplength=350, justify="left", padx=20, pady=20)
-    label.pack()
+    # Dropdown (Combobox)
+    from tkinter import ttk
+    dropdown_frame = tk.Frame(root)
+    dropdown_frame.pack(fill="x", padx=20, pady=5)
+    
+    dropdown_var = tk.StringVar(value=display_texts[0])  # Default to first option
+    combobox = ttk.Combobox(
+        dropdown_frame,
+        textvariable=dropdown_var,
+        values=display_texts,
+        state="readonly",
+        width=55
+    )
+    combobox.pack(fill="x", pady=2)
+    combobox.current(0)  # Select first option
+    
+    # Conditional hint: Show only if both last and day schedules exist
+    show_hint = (
+        last_schedule_path and os.path.exists(last_schedule_path) and
+        day_schedule_path and os.path.exists(day_schedule_path) and
+        last_schedule_path != day_schedule_path
+    )
+    
+    if show_hint:
+        hint_label = tk.Label(
+            root,
+            text=t("message.day_schedule_available_hint"),
+            wraplength=400,
+            justify="left",
+            padx=20,
+            pady=5,
+            fg="#666666",
+            font=("TkDefaultFont", 9, "italic")
+        )
+        hint_label.pack(anchor="w")
     
     # Button frame
     button_frame = tk.Frame(root)
     button_frame.pack(pady=10)
     
-    # Buttons
-    last_btn = tk.Button(button_frame, text=t("button.last_schedule"), command=on_last_schedule, width=15)
-    last_btn.pack(side=tk.LEFT, padx=5)
+    # Proceed button
+    proceed_btn = tk.Button(button_frame, text=t("button.proceed"), command=on_proceed, width=15)
+    proceed_btn.pack()
     
-    default_btn = tk.Button(button_frame, text=t("button.default_schedule"), command=on_default_schedule, width=15)
-    default_btn.pack(side=tk.LEFT, padx=5)
-    
-    # Handle window close (X button)
-    root.protocol("WM_DELETE_WINDOW", on_default_schedule)
+    # Handle window close (X button) - default to first option
+    root.protocol("WM_DELETE_WINDOW", on_proceed)
     
     # Bring window to front and focus
     root.lift()
@@ -205,25 +252,41 @@ def main() -> None:
         current_language = settings.get('current_language', 'en')
         init_translator(current_language)
         
-        # If there's a last schedule and it exists, ask user which to load
-        # Skip the dialog if last schedule was default_settings.yaml
-        if (last_schedule_path and 
-            os.path.exists(last_schedule_path) and 
-            not last_schedule_path.endswith('default_settings.yaml')):
-            log_info(f"Found last schedule: {last_schedule_path}")
-            selected_path = ask_schedule_selection(last_schedule_path)
+        # Import here to avoid circular dependency
+        from config.config_loader import get_day_config_path
+        from utils.locale_utils import get_weekday_name
+        
+        # Determine if there's a day-specific schedule for today
+        current_day = get_now().date().weekday()
+        day_schedule_filename = f"{get_weekday_name(current_day)}_settings.yaml"
+        day_schedule_path = day_schedule_filename if os.path.exists(day_schedule_filename) else None
+        
+        # Prepare last_schedule_path for dialog (None if it was default)
+        last_schedule_for_dialog = None
+        if last_schedule_path and not last_schedule_path.endswith('default_settings.yaml'):
+            last_schedule_for_dialog = last_schedule_path
+        
+        # Show dialog if there's either a last schedule or a day-specific schedule
+        should_show_dialog = (
+            (last_schedule_for_dialog and os.path.exists(last_schedule_for_dialog)) or
+            (day_schedule_path and os.path.exists(day_schedule_path))
+        )
+        
+        if should_show_dialog:
+            if last_schedule_for_dialog:
+                log_info(f"Found last schedule: {last_schedule_for_dialog}")
+            if day_schedule_path:
+                log_info(f"Found day-specific schedule: {day_schedule_path}")
             
-            # selected_path will be either:
-            # - last_schedule_path (user chose last schedule)
-            # - None (user chose default schedule)
+            selected_path = ask_schedule_selection(last_schedule_for_dialog, day_schedule_path)
             config_path = selected_path
             
             if config_path:
-                log_info(f"User selected last schedule: {config_path}")
+                log_info(f"User selected schedule: {config_path}")
             else:
                 log_info("User selected default schedule")
-        elif last_schedule_path and last_schedule_path.endswith('default_settings.yaml'):
-            log_info("Last schedule was default_settings.yaml, using default schedule")
+        else:
+            log_info("No previous or day-specific schedule found, using default schedule")
     
     schedule: List[Dict[str, Any]]
     schedule, config_path = load_schedule(config_path, now_provider=get_now)
