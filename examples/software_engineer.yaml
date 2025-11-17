@@ -1,0 +1,125 @@
+- description:
+  - Review yesterday's progress and plan today's priorities
+  - Check pull requests and team notifications
+  - Set 3 main goals for the day
+  end_time: '9:30'
+  id: a1b2c3d4-0001-0001-0001-000000000001
+  name: Morning Standup Prep
+  start_time: '9:00'
+  tasks:
+  - name: Review PRs
+    uuid: a1b2c3d4-0001-0001-0001-100000000001
+  - name: Plan daily goals
+    uuid: a1b2c3d4-0001-0001-0001-100000000002
+- description:
+  - Daily team standup meeting
+  - Share progress and blockers
+  - Coordinate with team members
+  end_time: '9:45'
+  id: a1b2c3d4-0001-0001-0001-000000000002
+  name: Daily Standup
+  start_time: '9:30'
+- description:
+  - Deep work on complex features
+  - Disable notifications and Slack
+  - Use Pomodoro technique if needed
+  end_time: '11:30'
+  id: a1b2c3d4-0001-0001-0001-000000000003
+  name: Deep Work - Feature Development
+  start_time: '9:45'
+  tasks:
+  - name: Implement feature X
+    uuid: a1b2c3d4-0001-0001-0001-100000000003
+  - name: Write unit tests
+    uuid: a1b2c3d4-0001-0001-0001-100000000004
+- description:
+  - Step away from computer
+  - Stretch, walk, or quick exercise
+  - Hydrate and rest eyes
+  end_time: '11:45'
+  id: a1b2c3d4-0001-0001-0001-000000000004
+  name: Mid-Morning Break
+  start_time: '11:30'
+- description:
+  - Review code from team members
+  - Provide constructive feedback
+  - Check for code quality and best practices
+  end_time: '12:30'
+  id: a1b2c3d4-0001-0001-0001-000000000005
+  name: Code Review Session
+  start_time: '11:45'
+  tasks:
+  - name: Review PR #1
+    uuid: a1b2c3d4-0001-0001-0001-100000000005
+  - name: Review PR #2
+    uuid: a1b2c3d4-0001-0001-0001-100000000006
+- description:
+  - Step away from screens completely
+  - Have lunch and recharge
+  - Brief walk if possible
+  end_time: '13:30'
+  id: a1b2c3d4-0001-0001-0001-000000000006
+  name: Lunch Break
+  start_time: '12:30'
+- description:
+  - Sprint planning or backlog grooming
+  - Discuss technical approach
+  - Estimate story points
+  end_time: '14:30'
+  id: a1b2c3d4-0001-0001-0001-000000000007
+  name: Team Planning Meeting
+  start_time: '13:30'
+- description:
+  - Quick break between meetings and deep work
+  - Prepare workspace for focused session
+  end_time: '14:45'
+  id: a1b2c3d4-0001-0001-0001-000000000008
+  name: Transition Break
+  start_time: '14:30'
+- description:
+  - Continue feature development
+  - Focus on implementation and testing
+  - Document complex decisions
+  end_time: '16:30'
+  id: a1b2c3d4-0001-0001-0001-000000000009
+  name: Deep Work - Implementation
+  start_time: '14:45'
+  tasks:
+  - name: Complete feature implementation
+    uuid: a1b2c3d4-0001-0001-0001-100000000007
+  - name: Integration tests
+    uuid: a1b2c3d4-0001-0001-0001-100000000008
+- description:
+  - Short break to rest eyes and mind
+  - Quick stretch or walk
+  end_time: '16:45'
+  id: a1b2c3d4-0001-0001-0001-000000000010
+  name: Afternoon Break
+  start_time: '16:30'
+- description:
+  - Address urgent bugs or support tickets
+  - Handle Slack messages and emails
+  - Quick fixes and minor improvements
+  end_time: '17:30'
+  id: a1b2c3d4-0001-0001-0001-000000000011
+  name: Bug Fixes & Communication
+  start_time: '16:45'
+  tasks:
+  - name: Fix critical bug
+    uuid: a1b2c3d4-0001-0001-0001-100000000009
+  - name: Respond to team messages
+    uuid: a1b2c3d4-0001-0001-0001-100000000010
+- description:
+  - Review what was accomplished today
+  - Update task status and documentation
+  - Plan priorities for tomorrow
+  - Push commits and close PRs
+  end_time: '18:00'
+  id: a1b2c3d4-0001-0001-0001-000000000012
+  name: End of Day Wrap-up
+  start_time: '17:30'
+  tasks:
+  - name: Update documentation
+    uuid: a1b2c3d4-0001-0001-0001-100000000011
+  - name: Plan tomorrow
+    uuid: a1b2c3d4-0001-0001-0001-100000000012
