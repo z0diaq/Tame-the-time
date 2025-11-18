@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Tuple, Optional
 from utils.logging import log_debug, log_error, log_info
+from utils.time_utils import TimeUtils
 
 
 class TaskTrackingService:
@@ -82,14 +83,19 @@ class TaskTrackingService:
             log_error(f"Failed to initialize task tracking database: {e}")
             raise
     
-    def create_daily_task_entries(self, activities: List[Dict], target_date: date = None) -> int:
+    def create_daily_task_entries(self, activities: List[Dict], target_date: date = None, day_start_hour: int = 0) -> int:
         """
         Create task entries for all saved tasks for a specific date.
         Only creates entries for tasks that exist in the task_to_uuid table.
         Returns the number of entries created.
+        
+        Args:
+            activities: List of activity dictionaries containing tasks
+            target_date: Date to create entries for (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         date_str = target_date.isoformat()
         timestamp = datetime.now().isoformat()
@@ -152,13 +158,18 @@ class TaskTrackingService:
             log_error(f"Failed to create daily task entries: {e}")
             raise
     
-    def mark_task_done(self, task_uuid: str, target_date: date = None) -> bool:
+    def mark_task_done(self, task_uuid: str, target_date: date = None, day_start_hour: int = 0) -> bool:
         """
         Mark a task as done for a specific date and update timestamp.
         Returns True if successful, False otherwise.
+        
+        Args:
+            task_uuid: UUID of the task to mark as done
+            target_date: Date to mark task for (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         date_str = target_date.isoformat()
         timestamp = datetime.now().isoformat()
@@ -185,13 +196,18 @@ class TaskTrackingService:
             log_error(f"Failed to mark task as done: {e}")
             return False
     
-    def mark_task_undone(self, task_uuid: str, target_date: date = None) -> bool:
+    def mark_task_undone(self, task_uuid: str, target_date: date = None, day_start_hour: int = 0) -> bool:
         """
         Mark a task as not done for a specific date and update timestamp.
         Returns True if successful, False otherwise.
+        
+        Args:
+            task_uuid: UUID of the task to mark as undone
+            target_date: Date to mark task for (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         date_str = target_date.isoformat()
         timestamp = datetime.now().isoformat()
@@ -218,7 +234,7 @@ class TaskTrackingService:
             log_error(f"Failed to mark task as undone: {e}")
             return False
     
-    def add_new_task_entry(self, activity_id: str, task_name: str, task_uuid: str = None, target_date: date = None) -> str:
+    def add_new_task_entry(self, activity_id: str, task_name: str, task_uuid: str = None, target_date: date = None, day_start_hour: int = 0) -> str:
         """
         Add a new task entry for a specific date.
         First registers the task in task_to_uuid table (uses provided UUID or creates new one if needed),
@@ -228,12 +244,13 @@ class TaskTrackingService:
             activity_id: The activity's UUID
             task_name: The task's name
             task_uuid: Optional existing UUID for the task (if already assigned)
-            target_date: The date for the entry (defaults to today)
+            target_date: The date for the entry (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         
         Returns the task UUID if successful, None otherwise.
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         date_str = target_date.isoformat()
         timestamp = datetime.now().isoformat()
@@ -291,13 +308,17 @@ class TaskTrackingService:
             log_error(f"Failed to add new task entry: {e}")
             return None
        
-    def get_task_done_states(self, target_date: date = None) -> Dict[str, bool]:
+    def get_task_done_states(self, target_date: date = None, day_start_hour: int = 0) -> Dict[str, bool]:
         """
         Get done states for all tasks on a specific date.
         Returns dict with task_uuid as key and done_state as value.
+        
+        Args:
+            target_date: Date to check tasks for (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         date_str = target_date.isoformat()
         
@@ -354,7 +375,7 @@ class TaskTrackingService:
     
     def get_task_statistics(self, task_list: List[str], 
                           grouping: str = "Day", ignore_weekends: bool = False,
-                          limit: int = 10) -> Dict[str, List[Dict]]:
+                          limit: int = 10, day_start_hour: int = 0) -> Dict[str, List[Dict]]:
         """
         Get statistics for specified tasks.
         
@@ -363,6 +384,7 @@ class TaskTrackingService:
             grouping: "Day", "Week", "Month", or "Year"
             ignore_weekends: Skip Saturday and Sunday data
             limit: Maximum number of data points to return
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         
         Returns:
             Dict with task UUIDs as keys and list of data points as values
@@ -379,16 +401,16 @@ class TaskTrackingService:
                 for task_uuid in task_list:
                     if grouping == "Day":
                         data = self._get_daily_statistics(cursor, task_uuid, 
-                                                        ignore_weekends, limit)
+                                                        ignore_weekends, limit, day_start_hour)
                     elif grouping == "Week":
                         data = self._get_weekly_statistics(cursor, task_uuid, 
-                                                         ignore_weekends, limit)
+                                                         ignore_weekends, limit, day_start_hour)
                     elif grouping == "Month":
                         data = self._get_monthly_statistics(cursor, task_uuid, 
-                                                          ignore_weekends, limit)
+                                                          ignore_weekends, limit, day_start_hour)
                     else:  # Year
                         data = self._get_yearly_statistics(cursor, task_uuid, 
-                                                         ignore_weekends, limit)
+                                                         ignore_weekends, limit, day_start_hour)
                     
                     results[task_uuid] = data
                 
@@ -399,10 +421,10 @@ class TaskTrackingService:
             return {}
     
     def _get_daily_statistics(self, cursor, task_uuid: str,
-                            ignore_weekends: bool, limit: int) -> List[Dict]:
+                            ignore_weekends: bool, limit: int, day_start_hour: int) -> List[Dict]:
         """Get daily statistics for a task."""
         # Get last N days of data
-        end_date = date.today()
+        end_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         start_date = end_date - timedelta(days=limit * 2)  # Get extra days in case of weekends
         
         cursor.execute('''
@@ -434,10 +456,10 @@ class TaskTrackingService:
         return data[:limit]
     
     def _get_weekly_statistics(self, cursor, task_uuid: str,
-                             ignore_weekends: bool, limit: int) -> List[Dict]:
+                             ignore_weekends: bool, limit: int, day_start_hour: int) -> List[Dict]:
         """Get weekly statistics for a task."""
         # Get last N weeks of data
-        end_date = date.today()
+        end_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         start_date = end_date - timedelta(weeks=limit * 2)  # Get extra weeks
         
         cursor.execute('''
@@ -490,10 +512,10 @@ class TaskTrackingService:
         return data[:limit]
 
     def _get_monthly_statistics(self, cursor, task_uuid: str,
-                              ignore_weekends: bool, limit: int) -> List[Dict]:
+                              ignore_weekends: bool, limit: int, day_start_hour: int) -> List[Dict]:
         """Get monthly statistics for a task."""
         # Get last N months of data
-        end_date = date.today()
+        end_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         start_date = end_date.replace(day=1) - timedelta(days=limit * 32)  # Get extra months
         
         cursor.execute('''
@@ -548,10 +570,10 @@ class TaskTrackingService:
         return data[:limit]
 
     def _get_yearly_statistics(self, cursor, task_uuid: str,
-                             ignore_weekends: bool, limit: int) -> List[Dict]:
+                             ignore_weekends: bool, limit: int, day_start_hour: int) -> List[Dict]:
         """Get yearly statistics for a task."""
         # Get last N years of data
-        end_date = date.today()
+        end_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         start_date = end_date.replace(month=1, day=1) - timedelta(days=limit * 366)  # Get extra years
         
         cursor.execute('''
@@ -749,13 +771,19 @@ class TaskTrackingService:
         
         return unsaved_tasks
      
-    def get_task_uuids_by_activity_and_name(self, activity_id: str, task_name: str, target_date: date = None) -> List[str]:
+    def get_task_uuids_by_activity_and_name(self, activity_id: str, task_name: str, target_date: date = None, day_start_hour: int = 0) -> List[str]:
         """
         Get task UUIDs for a specific activity and task name on a given date.
         Returns list of task UUIDs.
+        
+        Args:
+            activity_id: UUID of the activity
+            task_name: Name of the task
+            target_date: Date to check tasks for (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         date_str = target_date.isoformat()
         
@@ -777,7 +805,7 @@ class TaskTrackingService:
             log_error(f"Failed to get task UUIDs: {e}")
             return []
     
-    def get_task_streak(self, task_uuid: str, target_date: date = None) -> int:
+    def get_task_streak(self, task_uuid: str, target_date: date = None, day_start_hour: int = 0) -> int:
         """
         Calculate the current streak for a task.
         A streak is the number of consecutive days (going backwards from target_date) 
@@ -789,14 +817,15 @@ class TaskTrackingService:
         - Only breaks streak when an entry exists but is marked as not done (False)
         
         Args:
-            task_uuid: The UUID of the task
-            target_date: The date to start counting from (defaults to today)
-        
+            task_uuid: UUID of the task to check
+            target_date: End date for streak calculation (uses logical date if None)
+            day_start_hour: Hour when day starts (0-23), used for logical date calculation
+            
         Returns:
             The number of consecutive days the task was completed (0 if never done or broken streak)
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
         
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -820,8 +849,11 @@ class TaskTrackingService:
                 # Start from target_date
                 current_date = target_date
                 
+                # Get logical today for comparison
+                logical_today = TimeUtils.get_logical_date(datetime.now(), day_start_hour)
+                
                 # If target_date is today and task is not done, skip it (day isn't finished yet)
-                if current_date == date.today() and current_date in date_map and not date_map[current_date]:
+                if current_date == logical_today and current_date in date_map and not date_map[current_date]:
                     current_date -= timedelta(days=1)
                 
                 # Count consecutive days backwards

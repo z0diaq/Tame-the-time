@@ -567,7 +567,8 @@ def _create_new_day_task_entries(app) -> None:
     """
     try:
         if hasattr(app, 'task_tracking_service') and app.task_tracking_service:
-            entries_created = app.task_tracking_service.create_daily_task_entries(app.schedule)
+            day_start = getattr(app, 'day_start', 0)
+            entries_created = app.task_tracking_service.create_daily_task_entries(app.schedule, day_start_hour=day_start)
             if entries_created > 0:
                 log_info(f"Created {entries_created} new task entries for new day")
         else:

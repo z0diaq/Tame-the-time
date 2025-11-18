@@ -131,7 +131,8 @@ def open_edit_card_window(app, card_obj, on_cancel_callback=None):
                             existing_uuid = task_obj.get("uuid")
                             break
                     
-                    task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task_name, existing_uuid)
+                    day_start = getattr(app, 'day_start', 0)
+                    task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task_name, existing_uuid, day_start_hour=day_start)
                     if task_uuid:
                         log_info(f"Added new task entry for '{task_name}' with UUID '{task_uuid}' in activity '{new_title}'")
                     else:
@@ -196,7 +197,8 @@ def open_card_tasks_window(app, card_obj):
     # Load task done states from database if available
     if hasattr(app, 'task_tracking_service'):
         try:
-            done_states = app.task_tracking_service.get_task_done_states()
+            day_start = getattr(app, 'day_start', 0)
+            done_states = app.task_tracking_service.get_task_done_states(day_start_hour=day_start)
             activity_id = card_obj.activity.get("id")
             if activity_id:
                 tasks = card_obj.activity.get("tasks", [])
@@ -309,13 +311,15 @@ def open_card_tasks_window(app, card_obj):
                             if isinstance(task, dict):
                                 task_uuid_to_use = task.get("uuid")
                             
-                            task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task_name, task_uuid_to_use)
+                            day_start = getattr(app, 'day_start', 0)
+                            task_uuid = app.task_tracking_service.add_new_task_entry(activity_id, task_name, task_uuid_to_use, day_start_hour=day_start)
                             if not hasattr(card_obj, '_task_uuids'):
                                 card_obj._task_uuids = [None] * len(tasks)
                             card_obj._task_uuids[idx] = task_uuid
                     
                     if task_uuid:
-                        success = app.task_tracking_service.mark_task_done(task_uuid)
+                        day_start = getattr(app, 'day_start', 0)
+                        success = app.task_tracking_service.mark_task_done(task_uuid, day_start_hour=day_start)
                         if success:
                             log_info(f"Marked task '{task_name}' (UUID: {task_uuid}) as done in database")
                         else:
@@ -346,7 +350,8 @@ def open_card_tasks_window(app, card_obj):
                         task_uuid = card_obj._task_uuids[idx]
                     
                     if task_uuid:
-                        success = app.task_tracking_service.mark_task_undone(task_uuid)
+                        day_start = getattr(app, 'day_start', 0)
+                        success = app.task_tracking_service.mark_task_undone(task_uuid, day_start_hour=day_start)
                         if success:
                             log_info(f"Marked task '{task_name}' (UUID: {task_uuid}) as undone in database")
                         else:

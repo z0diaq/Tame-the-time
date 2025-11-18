@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, date
 from typing import Dict, List, Optional, Any, Tuple
 from constants import ValidationConstants
 
@@ -139,6 +139,43 @@ class TimeUtils:
         else:
             # Normal case - activity within same day
             return start_time <= current_time < end_time
+    
+    @staticmethod
+    def get_logical_date(current_datetime: datetime, day_start_hour: int = 0) -> date:
+        """
+        Calculate the logical date based on day_start configuration.
+        
+        The logical date represents which "day" we're in from a planning perspective,
+        which may differ from the calendar date. For example, if day_start is 6 AM,
+        then times from 00:00-05:59 are considered part of the previous day.
+        
+        Args:
+            current_datetime: Current datetime to evaluate
+            day_start_hour: Hour when a new day begins (0-23), default is 0 (midnight)
+            
+        Returns:
+            date: The logical date for task tracking purposes
+            
+        Examples:
+            >>> # With day_start=6 (6 AM)
+            >>> TimeUtils.get_logical_date(datetime(2025, 11, 18, 3, 0), 6)
+            date(2025, 11, 17)  # 3 AM is before 6 AM, so it's part of Nov 17
+            
+            >>> TimeUtils.get_logical_date(datetime(2025, 11, 18, 8, 0), 6)
+            date(2025, 11, 18)  # 8 AM is after 6 AM, so it's Nov 18
+        """
+        # Validate day_start_hour
+        if not (0 <= day_start_hour <= 23):
+            raise ValueError(f"day_start_hour must be between 0-23, got {day_start_hour}")
+        
+        current_hour = current_datetime.hour
+        current_date = current_datetime.date()
+        
+        # If current hour is before day_start, we're still in the previous logical day
+        if current_hour < day_start_hour:
+            return current_date - timedelta(days=1)
+        else:
+            return current_date
 
 
 # Backward compatibility functions - these delegate to TimeUtils methods

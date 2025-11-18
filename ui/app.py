@@ -107,6 +107,10 @@ class TimeboxApp(tk.Tk):
         # Store schedule reference
         self.schedule = schedule
         
+        # Initialize day_start from settings BEFORE any task operations, default to 0 (midnight)
+        # This must be set early to ensure correct logical date calculations during startup
+        self.day_start = self.settings.get("day_start", 0)
+        
         # Ensure all activities have unique IDs (migrate existing data)
         self.ensure_activity_ids()
         
@@ -114,6 +118,7 @@ class TimeboxApp(tk.Tk):
         self.ensure_task_uuids()
         
         # Create daily task entries for today if needed
+        # NOTE: This now correctly uses day_start for logical date calculation
         self._ensure_daily_task_entries()
 
         now = now_provider().time()
@@ -127,8 +132,6 @@ class TimeboxApp(tk.Tk):
         utils.notification.gotify_url = self.settings.get("gotify_url", "")
         self.title(t("window.main_title"))
         self.geometry("400x700")
-        # Initialize day_start from settings, default to 0 (midnight)
-        self.day_start = self.settings.get("day_start", 0)
         self.start_hour = self.day_start
         self.zoom_factor = 6.0
         self.pixels_per_hour = max(50, int(50 * self.zoom_factor))
@@ -596,7 +599,8 @@ class TimeboxApp(tk.Tk):
     def _ensure_daily_task_entries(self):
         """Ensure that task entries exist for today's tasks."""
         try:
-            entries_created = self.task_tracking_service.create_daily_task_entries(self.schedule)
+            day_start = getattr(self, 'day_start', 0)
+            entries_created = self.task_tracking_service.create_daily_task_entries(self.schedule, day_start_hour=day_start)
             if entries_created > 0:
                 log_info(f"Created {entries_created} task entries for today")
         except Exception as e:
@@ -606,7 +610,8 @@ class TimeboxApp(tk.Tk):
         """Load task done states for current date from database."""
         try:
             # Get task done states from database for today (UUID -> bool mapping)
-            done_states = self.task_tracking_service.get_task_done_states()
+            day_start = getattr(self, 'day_start', 0)
+            done_states = self.task_tracking_service.get_task_done_states(day_start_hour=day_start)
             
             if not done_states:
                 log_debug("No task done states found in database for today")
