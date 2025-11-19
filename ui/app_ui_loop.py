@@ -1,7 +1,7 @@
 from utils.time_utils import get_current_activity
 from utils.logging import log_debug, log_error, log_info
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 from constants import UIConstants
 from models.schedule import ScheduledActivity
 from ui.timeline import reposition_current_time_line
@@ -9,6 +9,7 @@ import os
 import yaml
 from utils.locale_utils import get_weekday_name
 import tkinter.font as tkfont
+from ui.day_rollover_dialog import show_day_rollover_dialog
 
 
 def truncate_text_to_width(text: str, font, max_width: int) -> str:
@@ -79,6 +80,11 @@ def update_ui(app):
     Args:
         app: The main TimeboxApp instance containing all UI state and components
     """
+    # Pause updates if day rollover dialog is being shown
+    if getattr(app, '_day_rollover_dialog_active', False):
+        app.after(UIConstants.UI_UPDATE_INTERVAL_MS, lambda: update_ui(app))
+        return
+    
     now = app.now_provider()
     
     # Check for day rollover and handle it
@@ -451,7 +457,10 @@ def _reset_all_task_completion_status(app) -> None:
 
 def _check_and_load_new_day_schedule(app, now: datetime) -> bool:
     """
-    Check if a schedule file exists for the new day and load it if found.
+    Check if a schedule file exists for the new day and ask user whether to load it.
+    
+    This function shows a modal dialog to ask the user if they want to load the new
+    schedule or keep the current one. Timeline updates are paused during the dialog.
     
     Args:
         app: The main application instance
@@ -465,13 +474,36 @@ def _check_and_load_new_day_schedule(app, now: datetime) -> bool:
         
         if new_schedule_path and os.path.exists(new_schedule_path):
             log_info(f"Found schedule file for new day: {new_schedule_path}")
-            return _load_new_schedule_and_replace_cards(app, new_schedule_path)
+            
+            # Get weekday name for display
+            current_weekday = now.weekday()  # 0=Monday, 6=Sunday
+            weekday_name = get_weekday_name(current_weekday)
+            
+            # Set flag to pause UI updates during dialog
+            app._day_rollover_dialog_active = True
+            
+            try:
+                # Show modal dialog and wait for user choice
+                user_wants_new_schedule = show_day_rollover_dialog(
+                    app, weekday_name, new_schedule_path
+                )
+                
+                if user_wants_new_schedule:
+                    log_info("User chose to load new schedule")
+                    return _load_new_schedule_and_replace_cards(app, new_schedule_path)
+                else:
+                    log_info("User chose to keep current schedule")
+                    return False
+            finally:
+                # Always clear the pause flag
+                app._day_rollover_dialog_active = False
         else:
             log_debug(f"No specific schedule file found for new day, keeping current schedule")
             return False
             
     except Exception as e:
         log_error(f"Failed to check/load new day schedule: {e}")
+        app._day_rollover_dialog_active = False  # Ensure flag is cleared on error
         return False
 
 

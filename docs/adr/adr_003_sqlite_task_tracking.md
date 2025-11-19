@@ -91,3 +91,197 @@ CREATE INDEX idx_task_to_uuid_task_name ON task_to_uuid(task_name);
 2. **CSV Files**: Easy to read but no relational capabilities, manual parsing overhead
 3. **PostgreSQL/MySQL**: Overkill requiring external server setup for desktop app
 4. **NoSQL (MongoDB)**: Additional dependency, unnecessary for structured task data
+
+---
+
+## Database Entry Creation Timing (2025-11-19)
+
+**Update Status:** Enhanced  
+**Priority:** Consistency
+
+### Background
+
+During day rollover (when current time passes the `day_start` hour), the application creates new daily task tracking entries in the database. Previously, these entries were created automatically during the rollover process.
+
+### Enhancement: Deferred Entry Creation
+
+With the implementation of **Interactive Day Rollover** (see ADR-013), database entry creation timing was refined to ensure consistency with user choices.
+
+#### Previous Behavior
+
+**Automatic Entry Creation:**
+```python
+def _handle_day_rollover(app, now: datetime) -> None:
+    # 1. Load new schedule if exists (automatic)
+    schedule_loaded = _check_and_load_new_day_schedule(app, now)
+    
+    # 2. Reset timeline
+    _reset_timeline_to_top(app, now)
+    
+    # 3. Reset task status (if no new schedule)
+    if not schedule_loaded:
+        _reset_all_task_completion_status(app)
+    
+    # 4. Create DB entries immediately
+    _create_new_day_task_entries(app)  # ← Created before user choice
+```
+
+**Problem:**
+- Database entries created before user decides on schedule
+- If user chooses to load new schedule, entries might be for wrong tasks
+- Timing inconsistency between schedule loading and DB entry creation
+
+#### Enhanced Behavior
+
+**Deferred Entry Creation:**
+```python
+def _handle_day_rollover(app, now: datetime) -> None:
+    # 1. Ask user about new schedule (interactive dialog, pauses updates)
+    schedule_loaded = _check_and_load_new_day_schedule(app, now)
+    
+    # 2. Reset timeline
+    _reset_timeline_to_top(app, now)
+    
+    # 3. Reset task status (if user chose to keep current schedule)
+    if not schedule_loaded:
+        _reset_all_task_completion_status(app)
+    
+    # 4. Create DB entries AFTER user choice
+    _create_new_day_task_entries(app)  # ← Created after user decision
+```
+
+**Benefits:**
+- Database entries match the schedule user chose to use
+- No orphaned entries for tasks from unloaded schedules
+- Clear temporal ordering: detect → ask → act → persist
+- Consistent with user expectations
+
+### Implementation Details
+
+#### Timeline Pause During Dialog
+
+**File:** `ui/app_ui_loop.py`
+
+When the day rollover dialog is shown:
+
+1. **Pause Flag Set:**
+   ```python
+   app._day_rollover_dialog_active = True
+   ```
+
+2. **Updates Skip All Processing:**
+   ```python
+   def update_ui(app):
+       if getattr(app, '_day_rollover_dialog_active', False):
+           app.after(UIConstants.UI_UPDATE_INTERVAL_MS, lambda: update_ui(app))
+           return  # Skip updates, including DB operations
+   ```
+
+3. **Dialog Shown and Waits:**
+   ```python
+   user_wants_new_schedule = show_day_rollover_dialog(app, weekday, path)
+   ```
+
+4. **Action Taken Based on Choice:**
+   ```python
+   if user_wants_new_schedule:
+       _load_new_schedule_and_replace_cards(app, path)
+   ```
+
+5. **Pause Flag Cleared:**
+   ```python
+   app._day_rollover_dialog_active = False
+   ```
+
+6. **DB Entries Created:**
+   ```python
+   _create_new_day_task_entries(app)  # Now creates for correct schedule
+   ```
+
+#### Database Entry Creation
+
+**File:** `ui/app_ui_loop.py`
+
+```python
+def _create_new_day_task_entries(app) -> None:
+    """
+    Create new daily task tracking entries in the database for the new day.
+    
+    This function is called AFTER user makes their day rollover choice,
+    ensuring entries are created for the schedule the user decided to use.
+    """
+    try:
+        if hasattr(app, 'task_tracking_service') and app.task_tracking_service:
+            day_start = getattr(app, 'day_start', 0)
+            entries_created = app.task_tracking_service.create_daily_task_entries(
+                app.schedule, 
+                day_start_hour=day_start
+            )
+            if entries_created > 0:
+                log_info(f"Created {entries_created} new task entries for new day")
+    except Exception as e:
+        log_error(f"Failed to create new day task entries: {e}")
+```
+
+### User Experience Benefits
+
+✅ **Database Integrity**
+- Entries always match the active schedule
+- No cleanup needed for incorrect entries
+- One-to-one correspondence between cards and DB entries
+
+✅ **Logical Consistency**
+- Database reflects user's actual choice
+- No speculative writes before decision
+- Clear cause-and-effect sequence
+
+✅ **Performance**
+- No redundant DB operations
+- Single write operation after choice
+- No need to delete/recreate entries
+
+### Technical Guarantees
+
+**Order of Operations (Guaranteed):**
+
+1. Day rollover detected
+2. UI updates paused (`_day_rollover_dialog_active = True`)
+3. Dialog shown to user (modal, blocking)
+4. User makes choice (dialog waits)
+5. Choice executed (load new or keep current)
+6. UI updates resumed (`_day_rollover_dialog_active = False`)
+7. Database entries created for chosen schedule
+8. Status bar updated to reflect new entries
+
+**Error Handling:**
+
+```python
+try:
+    # Show dialog and get choice
+    user_wants_new_schedule = show_day_rollover_dialog(...)
+    
+    if user_wants_new_schedule:
+        return _load_new_schedule_and_replace_cards(app, schedule_path)
+finally:
+    # ALWAYS clear pause flag, even on error
+    app._day_rollover_dialog_active = False
+```
+
+This ensures:
+- UI never permanently freezes
+- Database operations always proceed
+- Application remains responsive even on errors
+
+### Backward Compatibility
+
+✅ **Fully compatible**
+
+- If no weekday schedule file exists, no dialog shown
+- Database entries created immediately (as before)
+- Existing `day_start` logic unchanged
+- No migration needed for existing databases
+
+### Related ADRs
+
+- **ADR-013**: Day Start Configuration (interactive day rollover implementation)
+- **ADR-010**: Configuration Management Strategy (schedule file detection)

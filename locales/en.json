@@ -10,7 +10,8 @@
     "task_statistics": "Task Statistics",
     "edit_card": "Edit Card",
     "tasks_for": "Tasks for {activity_name}",
-    "schedule_selection": "Schedule Selection"
+    "schedule_selection": "Schedule Selection",
+    "day_rollover_prompt": "New Day Detected"
   },
   "menu": {
     "file": "File",
@@ -33,7 +34,9 @@
     "mark_as_undone": "Mark as Undone",
     "last_schedule": "Last Schedule",
     "default_schedule": "Default Schedule",
-    "proceed": "Proceed"
+    "proceed": "Proceed",
+    "load_new_schedule": "Load New Schedule",
+    "keep_current_schedule": "Keep Current Schedule"
   },
   "task": {
     "done_prefix": "[Done]"
@@ -139,7 +142,10 @@
     "confirm_remove_card": "Are you sure you want to remove '{card_name}'?",
     "confirm_remove_all_cards": "Are you sure you want to remove all cards?",
     "schedule_selection_prompt": "Which schedule would you like to load?\n\nLast schedule: {last_schedule}",
-    "day_schedule_available_hint": "Note: A schedule for today is also available in the list above."
+    "day_schedule_available_hint": "Note: A schedule for today is also available in the list above.",
+    "day_rollover_schedule_found": "A new day has started and a schedule file for {weekday} was found:\n\n{schedule_path}\n\nWould you like to load this schedule or keep the current one?",
+    "load_new_schedule_confirm": "The new schedule will be loaded and all current cards will be replaced.",
+    "keep_current_schedule_confirm": "Task completion status will be reset for the new day."
   },
   "schedule_option": {
     "last_used": "{filename} (Last used)",

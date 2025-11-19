@@ -5,12 +5,13 @@
     "version": "1.0.0"
   },
   "window": {
-    "main_title": "Cronograma de Timeboxing",
+    "main_title": "Línea de tiempo de timeboxing",
     "global_options": "Opciones Globales",
     "task_statistics": "Estadísticas de Tareas",
     "edit_card": "Editar Tarjeta",
     "tasks_for": "Tareas para {activity_name}",
-    "schedule_selection": "Selección de Cronograma"
+    "schedule_selection": "Selección de Cronograma",
+    "day_rollover_prompt": "Nuevo Día Detectado"
   },
   "menu": {
     "file": "Archivo",
@@ -26,14 +27,16 @@
     "tasks": "Tareas"
   },
   "button": {
-    "ok": "Ok",
+    "ok": "Aceptar",
     "cancel": "Cancelar",
     "save": "Guardar",
-    "mark_as_done": "Marcar como completado",
-    "mark_as_undone": "Marcar como no completado",
+    "mark_as_done": "Marcar como Completada",
+    "mark_as_undone": "Marcar como No Completada",
     "last_schedule": "Último Cronograma",
     "default_schedule": "Cronograma Predeterminado",
-    "proceed": "Continuar"
+    "proceed": "Continuar",
+    "load_new_schedule": "Cargar Nuevo Cronograma",
+    "keep_current_schedule": "Mantener Cronograma Actual"
   },
   "task": {
     "done_prefix": "[Completado]"
@@ -139,7 +142,10 @@
     "confirm_remove_card": "¿Estás seguro de que quieres eliminar '{card_name}'?",
     "confirm_remove_all_cards": "¿Estás seguro de que quieres eliminar todas las tarjetas?",
     "schedule_selection_prompt": "¿Qué cronograma te gustaría cargar?\n\nÚltimo cronograma: {last_schedule}",
-    "day_schedule_available_hint": "Nota: Un cronograma para hoy también está disponible en la lista anterior."
+    "day_schedule_available_hint": "Nota: Un cronograma para hoy también está disponible en la lista anterior.",
+    "day_rollover_schedule_found": "Ha comenzado un nuevo día y se encontró un archivo de cronograma para {weekday}:\n\n{schedule_path}\n\n¿Te gustaría cargar este cronograma o mantener el actual?",
+    "load_new_schedule_confirm": "El nuevo cronograma se cargará y todas las tarjetas actuales serán reemplazadas.",
+    "keep_current_schedule_confirm": "El estado de completitud de las tareas se restablecerá para el nuevo día."
   },
   "schedule_option": {
     "last_used": "{filename} (Último usado)",

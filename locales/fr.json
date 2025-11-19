@@ -5,12 +5,13 @@
     "version": "1.0.0"
   },
   "window": {
-    "main_title": "Chronologie de Timeboxing",
+    "main_title": "Ligne de temps de timeboxing",
     "global_options": "Options Globales",
     "task_statistics": "Statistiques des Tâches",
     "edit_card": "Modifier la Carte",
     "tasks_for": "Tâches pour {activity_name}",
-    "schedule_selection": "Sélection du Planning"
+    "schedule_selection": "Sélection du Planning",
+    "day_rollover_prompt": "Nouveau Jour Détecté"
   },
   "menu": {
     "file": "Fichier",
@@ -29,11 +30,13 @@
     "ok": "Ok",
     "cancel": "Annuler",
     "save": "Enregistrer",
-    "mark_as_done": "Marquer comme terminé",
-    "mark_as_undone": "Marquer comme non terminé",
+    "mark_as_done": "Marquer comme Terminé",
+    "mark_as_undone": "Marquer comme Non Terminé",
     "last_schedule": "Dernier Planning",
     "default_schedule": "Planning par Défaut",
-    "proceed": "Continuer"
+    "proceed": "Continuer",
+    "load_new_schedule": "Charger le Nouveau Planning",
+    "keep_current_schedule": "Conserver le Planning Actuel"
   },
   "task": {
     "done_prefix": "[Terminé]"
@@ -140,7 +143,10 @@
     "confirm_remove_card": "Êtes-vous sûr de vouloir supprimer '{card_name}'?",
     "confirm_remove_all_cards": "Êtes-vous sûr de vouloir supprimer toutes les cartes?",
     "schedule_selection_prompt": "Quel planning souhaitez-vous charger ?\n\nDernier planning : {last_schedule}",
-    "day_schedule_available_hint": "Remarque : Un planning pour aujourd'hui est également disponible dans la liste ci-dessus."
+    "day_schedule_available_hint": "Remarque : Un planning pour aujourd'hui est également disponible dans la liste ci-dessus.",
+    "day_rollover_schedule_found": "Un nouveau jour a commencé et un fichier de planning pour {weekday} a été trouvé :\n\n{schedule_path}\n\nVoulez-vous charger ce planning ou conserver celui actuel ?",
+    "load_new_schedule_confirm": "Le nouveau planning sera chargé et toutes les cartes actuelles seront remplacées.",
+    "keep_current_schedule_confirm": "L'état de complétion des tâches sera réinitialisé pour le nouveau jour."
   },
   "schedule_option": {
     "last_used": "{filename} (Dernier utilisé)",

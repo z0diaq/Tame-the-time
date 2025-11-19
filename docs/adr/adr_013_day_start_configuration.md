@@ -306,3 +306,253 @@ The logical date implementation now **correctly aligns** with the `day_start` co
 - ✅ Startup initialization
 
 Users with non-midnight `day_start` configurations now experience **correct and consistent** behavior throughout the application. This fix ensures that the `day_start` concept is properly implemented not just for UI rollover, but for all data persistence operations.
+
+---
+
+## Interactive Day Rollover (2025-11-19)
+
+**Update Status:** Implemented  
+**Priority:** Enhancement
+
+### Feature Overview
+
+Added interactive user confirmation when a new day starts and a weekday-specific schedule file is available. Instead of automatically loading the new schedule, the application now pauses timeline updates and prompts the user to choose their preferred action.
+
+### Problem Addressed
+
+**Previous Behavior:**
+- Day rollover was fully automatic
+- If a weekday schedule file existed, it was loaded immediately without user awareness
+- Users had no control over whether to switch schedules
+- Could be disruptive if user was in the middle of tracking tasks
+
+**User Impact:**
+- Unexpected schedule changes could interrupt workflow
+- No opportunity to finish current day's tasks before switching
+- Lack of transparency about when and why schedules changed
+
+### Solution Implemented
+
+#### 1. Modal Confirmation Dialog
+
+**File:** `ui/day_rollover_dialog.py`
+
+Created a new modal dialog class that:
+- Shows when day rollover occurs and a new schedule file is found
+- Displays weekday name and schedule file path
+- Presents two clear options:
+  - **Load New Schedule**: Replaces all current cards with new schedule
+  - **Keep Current Schedule**: Resets task completion status but keeps cards
+- Provides helpful hints about what each choice does
+- Blocks timeline updates until user makes a choice
+- Cannot be dismissed without making a selection
+
+**Dialog Features:**
+- Modal window (blocks parent window interaction)
+- Centered on main application window
+- Fully localized (EN/FR/ES translations)
+- Visual hierarchy (primary action highlighted in green)
+- Keyboard navigation support
+- Clear messaging about consequences of each choice
+
+#### 2. Timeline Update Pause Mechanism
+
+**File:** `ui/app_ui_loop.py`
+
+Modified the main UI update loop to:
+- Check for `_day_rollover_dialog_active` flag before processing updates
+- Continue scheduling updates but skip all processing when flag is set
+- Resume normal operation immediately after user makes choice
+
+**Implementation Details:**
+```python
+# In update_ui()
+if getattr(app, '_day_rollover_dialog_active', False):
+    app.after(UIConstants.UI_UPDATE_INTERVAL_MS, lambda: update_ui(app))
+    return  # Skip all updates while dialog is shown
+```
+
+This ensures:
+- Timeline doesn't move while user is deciding
+- No database entries created until after choice
+- Clean separation between detection and action
+
+#### 3. Updated Day Rollover Logic
+
+**Enhanced `_check_and_load_new_day_schedule()` function:**
+
+**Before (Automatic):**
+```python
+if new_schedule_path and os.path.exists(new_schedule_path):
+    log_info(f"Found schedule file for new day: {new_schedule_path}")
+    return _load_new_schedule_and_replace_cards(app, new_schedule_path)
+```
+
+**After (Interactive):**
+```python
+if new_schedule_path and os.path.exists(new_schedule_path):
+    log_info(f"Found schedule file for new day: {new_schedule_path}")
+    
+    # Get weekday name for display
+    weekday_name = get_weekday_name(now.weekday())
+    
+    # Set flag to pause UI updates during dialog
+    app._day_rollover_dialog_active = True
+    
+    try:
+        # Show modal dialog and wait for user choice
+        user_wants_new_schedule = show_day_rollover_dialog(
+            app, weekday_name, new_schedule_path
+        )
+        
+        if user_wants_new_schedule:
+            return _load_new_schedule_and_replace_cards(app, new_schedule_path)
+        else:
+            return False  # Keep current schedule
+    finally:
+        app._day_rollover_dialog_active = False
+```
+
+#### 4. Translation Support
+
+**Files Modified:**
+- `locales/en.json`
+- `locales/fr.json`
+- `locales/es.json`
+
+**New Translation Keys:**
+- `window.day_rollover_prompt`: Dialog title
+- `button.load_new_schedule`: Primary action button
+- `button.keep_current_schedule`: Secondary action button
+- `message.day_rollover_schedule_found`: Main dialog message
+- `message.load_new_schedule_confirm`: Hint for load action
+- `message.keep_current_schedule_confirm`: Hint for keep action
+
+**Example Translations:**
+
+| Language | Load Button | Keep Button |
+|----------|-------------|-------------|
+| English | "Load New Schedule" | "Keep Current Schedule" |
+| French | "Charger le Nouveau Planning" | "Conserver le Planning Actuel" |
+| Spanish | "Cargar Nuevo Cronograma" | "Mantener Cronograma Actual" |
+
+### User Experience Flow
+
+**When day rollover occurs:**
+
+1. **Detection Phase** (Automatic)
+   - Application detects time has passed `day_start` hour
+   - Checks if weekday-specific schedule file exists (e.g., `Monday_settings.yaml`)
+
+2. **If schedule file exists:**
+   - Timeline updates pause immediately
+   - Modal dialog appears showing:
+     - "A new day has started..."
+     - Weekday name (e.g., "Monday")
+     - Schedule file path
+     - Two action buttons with hints
+
+3. **User makes choice:**
+   - **Option A: Load New Schedule**
+     - All current cards deleted
+     - New schedule loaded from file
+     - Cards created from new schedule
+     - Task tracking entries created for new day
+     - Timeline resumes with new schedule
+   
+   - **Option B: Keep Current Schedule**
+     - Current cards remain unchanged
+     - Task completion status reset to undone
+     - Task tracking entries created for new day
+     - Timeline resumes with current schedule
+
+4. **If no schedule file exists:**
+   - Automatic behavior (same as choosing "Keep Current")
+   - Task status reset
+   - Task entries created
+   - No user intervention needed
+
+### Benefits Achieved
+
+✅ **User Control**
+- Users decide when to switch schedules
+- Can finish current day's work before switching
+- Transparent about schedule availability
+
+✅ **Workflow Preservation**
+- No unexpected interruptions
+- Timeline pauses during decision
+- All updates resume cleanly after choice
+
+✅ **Database Consistency**
+- Task entries only created after user chooses
+- No premature database writes
+- Correct logical date used based on choice
+
+✅ **Clear Communication**
+- Dialog explains what file was found
+- Hints describe consequences of each option
+- Fully localized for international users
+
+✅ **Robust Error Handling**
+- Pause flag always cleared (try/finally)
+- Graceful fallback on errors
+- Logging tracks user choices
+
+### Technical Implementation
+
+**Key Design Decisions:**
+
+1. **Modal Dialog Pattern**
+   - Prevents user from interacting with main window
+   - Forces conscious decision
+   - Standard pattern used elsewhere in app (Global Options, etc.)
+
+2. **Pause Flag Mechanism**
+   - Simple boolean flag (`_day_rollover_dialog_active`)
+   - Checked at start of each update cycle
+   - Minimal performance impact
+   - Easy to extend for future modal operations
+
+3. **Try/Finally Safety**
+   - Ensures pause flag is always cleared
+   - Prevents permanent UI freeze on errors
+   - Maintains application responsiveness
+
+4. **Weekday Name Localization**
+   - Uses existing `get_weekday_name()` utility
+   - Consistent with schedule file naming
+   - Automatically adapts to user's language
+
+### Files Modified
+
+1. **`ui/day_rollover_dialog.py`** (NEW) - Modal dialog implementation
+2. **`ui/app_ui_loop.py`** - Pause mechanism and dialog integration
+3. **`locales/en.json`** - English translations
+4. **`locales/fr.json`** - French translations
+5. **`locales/es.json`** - Spanish translations
+
+### Backward Compatibility
+
+✅ **Fully backward compatible**
+
+- Existing `day_start` configuration continues to work
+- Day rollover detection logic unchanged
+- Task tracking and logical date functions unchanged
+- If no weekday schedule file exists, behaves as before
+
+### Related ADRs
+
+- **ADR-010**: Configuration Management Strategy (settings persistence)
+- **ADR-007**: Canvas-Based Rendering (timeline updates)
+- **ADR-003**: SQLite Task Tracking (database entry creation timing)
+
+### Future Enhancements
+
+Potential improvements to consider:
+
+- [ ] Option to "always load/always keep" without asking
+- [ ] Remember user's last choice as default
+- [ ] Preview of new schedule before loading
+- [ ] Diff view showing schedule changes
+- [ ] Scheduled auto-switch at specific time
