@@ -1,0 +1,158 @@
+{
+  "_meta": {
+    "display_name": "Polski",
+    "language_code": "pl",
+    "version": "1.0.0"
+  },
+  "window": {
+    "main_title": "Oś czasu timeboxingu",
+    "global_options": "Opcje globalne",
+    "task_statistics": "Statystyki zadań",
+    "edit_card": "Edytuj kartę",
+    "tasks_for": "Zadania dla {activity_name}",
+    "schedule_selection": "Wybór harmonogramu",
+    "day_rollover_prompt": "Wykryto nowy dzień"
+  },
+  "menu": {
+    "file": "Plik",
+    "open": "Otwórz",
+    "clear": "Wyczyść",
+    "save": "Zapisz",
+    "save_as": "Zapisz jako",
+    "disable_auto_centering": "Wyłącz automatyczne centrowanie",
+    "options": "Opcje",
+    "global_options": "Opcje globalne",
+    "always_on_top": "Zawsze na wierzchu",
+    "statistics": "Statystyki",
+    "tasks": "Zadania"
+  },
+  "button": {
+    "ok": "Ok",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "mark_as_done": "Oznacz jako wykonane",
+    "mark_as_undone": "Oznacz jako niewykonane",
+    "last_schedule": "Ostatni harmonogram",
+    "default_schedule": "Domyślny harmonogram",
+    "proceed": "Kontynuuj",
+    "load_new_schedule": "Wczytaj nowy harmonogram",
+    "keep_current_schedule": "Zachowaj obecny harmonogram"
+  },
+  "task": {
+    "done_prefix": "[Wykonane]"
+  },
+  "label": {
+    "day_start": "Dzień rozpoczyna się o (godzina):",
+    "day_start_help": "Godzina, o której rozpoczyna się nowy dzień dla zarządzania kartami (0-23)",
+    "notification": "Powiadomienie:",
+    "language": "Język:",
+    "gotify_url": "URL Gotify:",
+    "gotify_token": "Token Gotify:",
+    "advance_notification_settings": "Ustawienia powiadomień z wyprzedzeniem:",
+    "enable_advance_notifications": "Włącz powiadomienia z wyprzedzeniem",
+    "seconds_before_activity": "Sekund przed aktywnością:",
+    "select_tasks": "Wybierz zadania:",
+    "show_only_known_activity": "Pokaż tylko zadania ze znaną aktywnością",
+    "show_only_current_schedule": "Pokaż tylko zadania z obecnego harmonogramu",
+    "grouping": "Grupowanie:",
+    "ignore_weekends": "Ignoruj weekendy",
+    "title": "Tytuł:",
+    "description": "Opis:",
+    "tasks_one_per_line": "Zadania (jedno na linię):",
+    "select_schedule_to_load": "Wybierz harmonogram do wczytania:"
+  },
+  "combo": {
+    "disabled": "Wyłączone",
+    "gotify": "Gotify",
+    "day": "Dzień",
+    "week": "Tydzień",
+    "month": "Miesiąc",
+    "year": "Rok"
+  },
+  "status": {
+    "no_tasks_today": "Nie znaleziono zadań na dziś",
+    "today_statistics": "Statystyki zadań na dziś: ",
+    "missed": "pominięte",
+    "todo": "do zrobienia",
+    "incoming": "nadchodzące",
+    "active": "aktywne",
+    "done": "wykonane",
+    "save_schedule_warning": "Zapisz harmonogram, aby obsłużyć wszystkie zadania"
+  },
+  "chart": {
+    "daily_completion": "Dzienne wykonanie zadań",
+    "weekly_completion": "Tygodniowy wskaźnik wykonania",
+    "monthly_completion": "Miesięczny wskaźnik wykonania",
+    "yearly_completion": "Roczny wskaźnik wykonania",
+    "date": "Data",
+    "week": "Tydzień",
+    "month": "Miesiąc",
+    "year": "Rok",
+    "completed_not_completed": "Wykonane (1) / Niewykonane (0)",
+    "completion_rate": "Wskaźnik wykonania",
+    "select_tasks_message": "Wybierz zadania z listy, aby zobaczyć statystyki"
+  },
+  "datetime": {
+    "weekdays": [
+      "Poniedziałek",
+      "Wtorek",
+      "Środa",
+      "Czwartek",
+      "Piątek",
+      "Sobota",
+      "Niedziela"
+    ],
+    "weekdays_short": [
+      "Pn",
+      "Wt",
+      "Śr",
+      "Cz",
+      "Pt",
+      "So",
+      "Nd"
+    ]
+  },
+  "context_menu": {
+    "edit": "Edytuj",
+    "clone": "Klonuj",
+    "tasks": "Zadania",
+    "open_url": "Otwórz URL",
+    "remove": "Usuń",
+    "new": "Nowy",
+    "remove_all": "Usuń wszystkie",
+    "new_task": "Nowe zadanie"
+  },
+  "dialog": {
+    "error": "Błąd",
+    "warning": "Ostrzeżenie",
+    "confirm": "Potwierdź",
+    "invalid_input": "Nieprawidłowe dane",
+    "invalid_gotify_url": "Nieprawidłowy URL Gotify",
+    "duplicate_task_names": "Zduplikowane nazwy zadań",
+    "unsaved_tasks": "Niezapisane zadania",
+    "confirm_removal": "Potwierdź usunięcie",
+    "confirm_remove_all": "Potwierdź"
+  },
+  "message": {
+    "invalid_day_start": "Godzina rozpoczęcia dnia musi być między 0 a 23.",
+    "invalid_advance_seconds": "Sekundy powiadomienia z wyprzedzeniem muszą być między 0 a 3600 (1 godzina).",
+    "gotify_url_format": "URL Gotify nie wygląda prawidłowo - oczekiwany format to http(s)://<ip/nazwa>:<port>/message. Czy chcesz to poprawić?",
+    "duplicate_tasks": "Dwa zadania mają taką samą nazwę: {duplicate_list}. Nie będzie można poprawnie obliczyć statystyk. Czy chcesz kontynuować?",
+    "unsaved_tasks_warning": "Ta aktywność zawiera niezapisane zadania, proszę najpierw zapisać harmonogram.\n\nNiezapisane zadania:\n{unsaved_list}",
+    "confirm_remove_card": "Czy na pewno chcesz usunąć '{card_name}'?",
+    "confirm_remove_all_cards": "Czy na pewno chcesz usunąć wszystkie karty?",
+    "schedule_selection_prompt": "Który harmonogram chcesz wczytać?\n\nOstatni harmonogram: {last_schedule}",
+    "day_schedule_available_hint": "Uwaga: Harmonogram na dziś jest również dostępny na powyższej liście.",
+    "day_rollover_schedule_found": "Rozpoczął się nowy dzień i znaleziono plik harmonogramu dla {weekday}:\n\n{schedule_path}\n\nCzy chcesz wczytać ten harmonogram czy zachować obecny?",
+    "load_new_schedule_confirm": "Nowy harmonogram zostanie wczytany i wszystkie obecne karty zostaną zastąpione.",
+    "keep_current_schedule_confirm": "Status wykonania zadań zostanie zresetowany dla nowego dnia."
+  },
+  "schedule_option": {
+    "last_used": "{filename} (Ostatnio używany)",
+    "today": "{filename} (Harmonogram na dziś)",
+    "default": "default_settings.yaml (Domyślny)"
+  },
+  "activity": {
+    "unknown_activity": "Nieznana aktywność"
+  }
+}
