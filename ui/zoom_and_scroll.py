@@ -23,7 +23,12 @@ def _update_activity_label_truncation(app):
 
 
 def move_timelines_and_cards(app, delta_y):
-    """Move both timelines and all cards by delta_y."""
+    """Move both timelines and all cards by delta_y.
+    
+    This function only moves canvas objects without recalculating visual properties,
+    which makes scrolling fast and smooth. Visual updates (colors, text, progress bars)
+    are handled by the regular UI update loop.
+    """
     for tid in getattr(app, 'timeline_1h_ids', []):
         app.canvas.move(tid, 0, delta_y)
     for tid in getattr(app, 'timeline_5m_ids', []):
@@ -31,16 +36,17 @@ def move_timelines_and_cards(app, delta_y):
     # Move current time line
     for tid in getattr(app, 'current_time_ids', []):
         app.canvas.move(tid, 0, delta_y)
-    now = app.now_provider().time()
-    # Move all cards
+    # Move all cards and their associated canvas items
     for card_obj in app.cards:
         card_obj.y += delta_y
-        for cid in [card_obj.card, card_obj.label]:
+        # Move all card canvas items (card, label, progress, time labels, task count)
+        for cid in [card_obj.card, card_obj.label, 
+                    getattr(card_obj, 'progress', None),
+                    getattr(card_obj, 'time_start_label', None),
+                    getattr(card_obj, 'time_end_label', None),
+                    getattr(card_obj, 'tasks_count_label', None)]:
             if cid:
                 app.canvas.move(cid, 0, delta_y)
-        card_obj.update_card_visuals(
-            card_obj.start_hour, card_obj.start_minute, app.start_hour, app.pixels_per_hour, app.offset_y, now=now, width=app.winfo_width()
-        )
 
 def is_mouse_in_window(app):
     """Check if mouse is in the window."""
