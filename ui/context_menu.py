@@ -3,6 +3,7 @@ import tkinter.messagebox as messagebox
 import re
 import webbrowser
 from ui.card_dialogs import open_edit_card_window, open_card_tasks_window
+from ui.move_card_dialog import open_move_card_dialog
 from ui.task_card import TaskCard
 from utils.time_utils import round_to_nearest_5_minutes
 from utils.logging import log_debug
@@ -130,6 +131,60 @@ def show_canvas_context_menu(app, event):
                 url_menu.add_command(label=f"{display_name}", command=open_url)
             
             menu.add_cascade(label=t("context_menu.open_url"), menu=url_menu)
+        
+        def move_card():
+            """Move the card to a new time position."""
+            result = open_move_card_dialog(app, card_under_cursor, app)
+            if result:
+                new_hour, new_minute = result
+                log_debug(f"Moving card from {card_under_cursor.start_hour:02d}:{card_under_cursor.start_minute:02d} to {new_hour:02d}:{new_minute:02d}")
+                
+                # Calculate card duration
+                duration_hours = card_under_cursor.end_hour - card_under_cursor.start_hour
+                duration_minutes = card_under_cursor.end_minute - card_under_cursor.start_minute
+                
+                if duration_minutes < 0:
+                    duration_hours -= 1
+                    duration_minutes += 60
+                
+                if duration_hours < 0:
+                    duration_hours += 24
+                
+                # Update card times
+                card_under_cursor.start_hour = new_hour
+                card_under_cursor.start_minute = new_minute
+                
+                # Calculate new end time
+                end_minutes = new_minute + duration_minutes
+                end_hour = new_hour + duration_hours
+                
+                if end_minutes >= 60:
+                    end_hour += 1
+                    end_minutes -= 60
+                
+                end_hour = end_hour % 24
+                
+                card_under_cursor.end_hour = end_hour
+                card_under_cursor.end_minute = end_minutes
+                
+                # Update activity times
+                card_under_cursor.activity["start_time"] = f"{new_hour:02d}:{new_minute:02d}"
+                card_under_cursor.activity["end_time"] = f"{end_hour:02d}:{end_minutes:02d}"
+                
+                # Update corresponding activity in schedule
+                activity_id = card_under_cursor.activity.get("id")
+                if activity_id:
+                    for activity in app.schedule:
+                        if activity.get("id") == activity_id:
+                            activity["start_time"] = f"{new_hour:02d}:{new_minute:02d}"
+                            activity["end_time"] = f"{end_hour:02d}:{end_minutes:02d}"
+                            break
+                
+                # Redraw all cards with updated positions
+                app.update_cards_after_size_change()
+                app.schedule_changed = True
+                
+        menu.add_command(label=t("context_menu.move"), command=move_card)
         
         def remove_card():
             """Remove the card under cursor with confirmation."""

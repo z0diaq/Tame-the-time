@@ -11,7 +11,8 @@
     "edit_card": "Edit Card",
     "tasks_for": "Tasks for {activity_name}",
     "schedule_selection": "Schedule Selection",
-    "day_rollover_prompt": "New Day Detected"
+    "day_rollover_prompt": "New Day Detected",
+    "move_card": "Move Card"
   },
   "menu": {
     "file": "File",
@@ -59,7 +60,12 @@
     "title": "Title:",
     "description": "Description:",
     "tasks_one_per_line": "Tasks (one per line):",
-    "select_schedule_to_load": "Select schedule to load:"
+    "select_schedule_to_load": "Select schedule to load:",
+    "current_time": "Current card time: {time}",
+    "move_option_new_time": "Option 1: Set new time (HH:MM)",
+    "move_option_shift": "Option 2: Shift by amount (±HH:MM)",
+    "time_format_hint": "(format: HH:MM)",
+    "shift_format_hint": "(e.g., 01:30 or -01:30 for backwards)"
   },
   "combo": {
     "disabled": "Disabled",
@@ -117,6 +123,7 @@
     "clone": "Clone",
     "tasks": "Tasks",
     "open_url": "Open URL",
+    "move": "Move",
     "remove": "Remove",
     "new": "New",
     "remove_all": "Remove all",
@@ -145,7 +152,11 @@
     "day_schedule_available_hint": "Note: A schedule for today is also available in the list above.",
     "day_rollover_schedule_found": "A new day has started and a schedule file for {weekday} was found:\n\n{schedule_path}\n\nWould you like to load this schedule or keep the current one?",
     "load_new_schedule_confirm": "The new schedule will be loaded and all current cards will be replaced.",
-    "keep_current_schedule_confirm": "Task completion status will be reset for the new day."
+    "keep_current_schedule_confirm": "Task completion status will be reset for the new day.",
+    "invalid_time_format": "Invalid time format",
+    "invalid_shift_format": "Invalid shift format",
+    "move_crosses_day_boundary": "Cannot move card: the new position would cross the day boundary (day starts at {day_start}:00). Please choose a time that keeps the card within the same day period.",
+    "move_conflict_warning": "The card will overlap with the following card(s):\n\n{conflict_list}\n\nDo you want to proceed anyway?"
   },
   "schedule_option": {
     "last_used": "{filename} (Last used)",

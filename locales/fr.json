@@ -11,7 +11,8 @@
     "edit_card": "Modifier la Carte",
     "tasks_for": "Tâches pour {activity_name}",
     "schedule_selection": "Sélection du Planning",
-    "day_rollover_prompt": "Nouveau Jour Détecté"
+    "day_rollover_prompt": "Nouveau Jour Détecté",
+    "move_card": "Déplacer la Carte"
   },
   "menu": {
     "file": "Fichier",
@@ -59,7 +60,12 @@
     "title": "Titre:",
     "description": "Description:",
     "tasks_one_per_line": "Tâches (une par ligne):",
-    "select_schedule_to_load": "Sélectionner le planning à charger:"
+    "select_schedule_to_load": "Sélectionner le planning à charger:",
+    "current_time": "Heure actuelle de la carte : {time}",
+    "move_option_new_time": "Option 1 : Définir une nouvelle heure (HH:MM)",
+    "move_option_shift": "Option 2 : Décaler d'un montant (±HH:MM)",
+    "time_format_hint": "(format : HH:MM)",
+    "shift_format_hint": "(ex. 01:30 ou -01:30 pour reculer)"
   },
   "combo": {
     "disabled": "Désactivé",
@@ -116,7 +122,8 @@
     "edit": "Modifier",
     "clone": "Cloner",
     "tasks": "Tâches",
-    "open_url": "Ouvrir URL",
+    "open_url": "Ouvrir l'URL",
+    "move": "Déplacer",
     "remove": "Supprimer",
     "new": "Nouveau",
     "remove_all": "Tout supprimer",
@@ -140,13 +147,17 @@
     "gotify_url_format": "L'URL Gotify ne semble pas correcte - le format attendu est http(s)://<ip/nom>:<port>/message. Voulez-vous la corriger?",
     "duplicate_tasks": "Deux tâches ont le même nom: {duplicate_list}. Les statistiques ne pourront pas être calculées correctement. Voulez-vous continuer?",
     "unsaved_tasks_warning": "Cette activité contient des tâches non enregistrées, veuillez d'abord enregistrer le planning.\n\nTâches non enregistrées:\n{unsaved_list}",
-    "confirm_remove_card": "Êtes-vous sûr de vouloir supprimer '{card_name}'?",
-    "confirm_remove_all_cards": "Êtes-vous sûr de vouloir supprimer toutes les cartes?",
+    "confirm_remove_card": "Êtes-vous sûr de vouloir supprimer '{card_name}' ?",
+    "confirm_remove_all_cards": "Êtes-vous sûr de vouloir supprimer toutes les cartes ?",
     "schedule_selection_prompt": "Quel planning souhaitez-vous charger ?\n\nDernier planning : {last_schedule}",
-    "day_schedule_available_hint": "Remarque : Un planning pour aujourd'hui est également disponible dans la liste ci-dessus.",
-    "day_rollover_schedule_found": "Un nouveau jour a commencé et un fichier de planning pour {weekday} a été trouvé :\n\n{schedule_path}\n\nVoulez-vous charger ce planning ou conserver celui actuel ?",
+    "day_schedule_available_hint": "Note : Un planning pour aujourd'hui est également disponible dans la liste ci-dessus.",
+    "day_rollover_schedule_found": "Un nouveau jour a commencé et un fichier de planning pour {weekday} a été trouvé :\n\n{schedule_path}\n\nSouhaitez-vous charger ce planning ou conserver l'actuel ?",
     "load_new_schedule_confirm": "Le nouveau planning sera chargé et toutes les cartes actuelles seront remplacées.",
-    "keep_current_schedule_confirm": "L'état de complétion des tâches sera réinitialisé pour le nouveau jour."
+    "keep_current_schedule_confirm": "Le statut d'achèvement des tâches sera réinitialisé pour le nouveau jour.",
+    "invalid_time_format": "Format d'heure invalide",
+    "invalid_shift_format": "Format de décalage invalide",
+    "move_crosses_day_boundary": "Impossible de déplacer la carte : la nouvelle position franchirait la limite du jour (le jour commence à {day_start}:00). Veuillez choisir une heure qui maintient la carte dans la même période de jour.",
+    "move_conflict_warning": "La carte va chevaucher la/les carte(s) suivante(s) :\n\n{conflict_list}\n\nVoulez-vous continuer quand même ?"
   },
   "schedule_option": {
     "last_used": "{filename} (Dernier utilisé)",

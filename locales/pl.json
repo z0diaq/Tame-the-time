@@ -11,7 +11,8 @@
     "edit_card": "Edytuj kartę",
     "tasks_for": "Zadania dla {activity_name}",
     "schedule_selection": "Wybór harmonogramu",
-    "day_rollover_prompt": "Wykryto nowy dzień"
+    "day_rollover_prompt": "Wykryto nowy dzień",
+    "move_card": "Przenieś kartę"
   },
   "menu": {
     "file": "Plik",
@@ -59,7 +60,12 @@
     "title": "Tytuł:",
     "description": "Opis:",
     "tasks_one_per_line": "Zadania (jedno na linię):",
-    "select_schedule_to_load": "Wybierz harmonogram do wczytania:"
+    "select_schedule_to_load": "Wybierz harmonogram do wczytania:",
+    "current_time": "Aktualny czas karty: {time}",
+    "move_option_new_time": "Opcja 1: Ustaw nową godzinę (HH:MM)",
+    "move_option_shift": "Opcja 2: Przesuń o określoną ilość (±HH:MM)",
+    "time_format_hint": "(format: HH:MM)",
+    "shift_format_hint": "(np. 01:30 lub -01:30 do tyłu)"
   },
   "combo": {
     "disabled": "Wyłączone",
@@ -117,6 +123,7 @@
     "clone": "Klonuj",
     "tasks": "Zadania",
     "open_url": "Otwórz URL",
+    "move": "Przenieś",
     "remove": "Usuń",
     "new": "Nowy",
     "remove_all": "Usuń wszystkie",
@@ -145,7 +152,11 @@
     "day_schedule_available_hint": "Uwaga: Harmonogram na dziś jest również dostępny na powyższej liście.",
     "day_rollover_schedule_found": "Rozpoczął się nowy dzień i znaleziono plik harmonogramu dla {weekday}:\n\n{schedule_path}\n\nCzy chcesz wczytać ten harmonogram czy zachować obecny?",
     "load_new_schedule_confirm": "Nowy harmonogram zostanie wczytany i wszystkie obecne karty zostaną zastąpione.",
-    "keep_current_schedule_confirm": "Status wykonania zadań zostanie zresetowany dla nowego dnia."
+    "keep_current_schedule_confirm": "Status wykonania zadań zostanie zresetowany dla nowego dnia.",
+    "invalid_time_format": "Nieprawidłowy format czasu",
+    "invalid_shift_format": "Nieprawidłowy format przesunięcia",
+    "move_crosses_day_boundary": "Nie można przenieść karty: nowa pozycja przekroczyłaby granicę dnia (dzień rozpoczyna się o {day_start}:00). Proszę wybrać godzinę, która utrzyma kartę w tym samym okresie dnia.",
+    "move_conflict_warning": "Karta będzie nakladać się z następującą(ymi) kartą(ami):\n\n{conflict_list}\n\nCzy chcesz kontynuować mimo to?"
   },
   "schedule_option": {
     "last_used": "{filename} (Ostatnio używany)",

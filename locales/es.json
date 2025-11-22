@@ -11,7 +11,8 @@
     "edit_card": "Editar Tarjeta",
     "tasks_for": "Tareas para {activity_name}",
     "schedule_selection": "Selección de Cronograma",
-    "day_rollover_prompt": "Nuevo Día Detectado"
+    "day_rollover_prompt": "Nuevo Día Detectado",
+    "move_card": "Mover Tarjeta"
   },
   "menu": {
     "file": "Archivo",
@@ -59,7 +60,12 @@
     "title": "Título:",
     "description": "Descripción:",
     "tasks_one_per_line": "Tareas (una por línea):",
-    "select_schedule_to_load": "Seleccionar cronograma para cargar:"
+    "select_schedule_to_load": "Seleccionar cronograma para cargar:",
+    "current_time": "Hora actual de la tarjeta: {time}",
+    "move_option_new_time": "Opción 1: Establecer nueva hora (HH:MM)",
+    "move_option_shift": "Opción 2: Desplazar por cantidad (±HH:MM)",
+    "time_format_hint": "(formato: HH:MM)",
+    "shift_format_hint": "(ej. 01:30 o -01:30 para atrás)"
   },
   "combo": {
     "disabled": "Deshabilitado",
@@ -117,6 +123,7 @@
     "clone": "Clonar",
     "tasks": "Tareas",
     "open_url": "Abrir URL",
+    "move": "Mover",
     "remove": "Eliminar",
     "new": "Nuevo",
     "remove_all": "Eliminar todo",
@@ -141,11 +148,15 @@
     "unsaved_tasks_warning": "Esta actividad contiene tareas no guardadas, por favor guarda el cronograma primero.\n\nTareas no guardadas:\n{unsaved_list}",
     "confirm_remove_card": "¿Estás seguro de que quieres eliminar '{card_name}'?",
     "confirm_remove_all_cards": "¿Estás seguro de que quieres eliminar todas las tarjetas?",
-    "schedule_selection_prompt": "¿Qué cronograma te gustaría cargar?\n\nÚltimo cronograma: {last_schedule}",
+    "schedule_selection_prompt": "¿Qué cronograma deseas cargar?\n\nÚltimo cronograma: {last_schedule}",
     "day_schedule_available_hint": "Nota: Un cronograma para hoy también está disponible en la lista anterior.",
-    "day_rollover_schedule_found": "Ha comenzado un nuevo día y se encontró un archivo de cronograma para {weekday}:\n\n{schedule_path}\n\n¿Te gustaría cargar este cronograma o mantener el actual?",
+    "day_rollover_schedule_found": "Ha comenzado un nuevo día y se encontró un archivo de cronograma para {weekday}:\n\n{schedule_path}\n\n¿Deseas cargar este cronograma o mantener el actual?",
     "load_new_schedule_confirm": "El nuevo cronograma se cargará y todas las tarjetas actuales serán reemplazadas.",
-    "keep_current_schedule_confirm": "El estado de completitud de las tareas se restablecerá para el nuevo día."
+    "keep_current_schedule_confirm": "El estado de finalización de las tareas se restablecerá para el nuevo día.",
+    "invalid_time_format": "Formato de hora inválido",
+    "invalid_shift_format": "Formato de desplazamiento inválido",
+    "move_crosses_day_boundary": "No se puede mover la tarjeta: la nueva posición cruzaría el límite del día (el día comienza a las {day_start}:00). Por favor, elige una hora que mantenga la tarjeta dentro del mismo período del día.",
+    "move_conflict_warning": "La tarjeta se superpondrá con la(s) siguiente(s) tarjeta(s):\n\n{conflict_list}\n\n¿Deseas continuar de todos modos?"
   },
   "schedule_option": {
     "last_used": "{filename} (Último usado)",
