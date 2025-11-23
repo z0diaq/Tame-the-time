@@ -25,6 +25,7 @@ This will be fixed at a later time.
 | [ADR-013](adr_013_day_start_configuration.md) | Day Start Configuration for Card Management | Accepted | 2025-09-20 |
 | [ADR-014](adr_014_forgiving_streak_counting.md) | Forgiving Streak Counting Logic for Task Completion | Accepted | 2025-10-24 |
 | [ADR-015](adr_015_url_extraction_context_menu.md) | URL Extraction and Opening from Task Context Menu | Accepted | 2025-11-13 |
+| [ADR-016](adr_016_card_repositioning.md) | Interactive Card Repositioning with Time Validation | Accepted | 2025-11-22 |
 
 ## ADR Categories
 
@@ -50,15 +51,16 @@ This will be fixed at a later time.
 
 ### User Experience Features
 - **ADR-015**: URL Extraction from Context Menu - Quick access to task-embedded URLs
+- **ADR-016**: Card Repositioning - Interactive card movement with validation
 
 ## How to Use ADRs
 
 1. **For New Contributors**: Read ADRs 001, 002, and 006 to understand the overall architecture
-2. **For UI Development**: Focus on ADRs 002, 007, 009, and 015
+2. **For UI Development**: Focus on ADRs 002, 007, 009, 015, and 016
 3. **For Data/Persistence**: Review ADRs 003, 004, and 010
 4. **For Task Tracking & Statistics**: See ADRs 003 and 014 for database and streak logic
 5. **For Testing**: ADR-005 explains the dependency injection pattern crucial for testing
-6. **For User Experience**: See ADR-015 for context menu enhancements
+6. **For User Experience**: See ADRs 015 and 016 for context menu enhancements
 
 ## Creating New ADRs
 
