@@ -45,6 +45,16 @@ class MoveCardDialog:
         
         self._create_widgets()
         
+        # Bind keyboard shortcuts
+        self.dialog.bind('<Return>', lambda e: self._on_ok())
+        self.dialog.bind('<Escape>', lambda e: self._on_cancel())
+        
+        # Set focus to the dialog and the first entry field
+        self.dialog.focus_set()
+        self.new_time_entry.focus_set()
+        self.new_time_entry.select_range(0, tk.END)  # Select all text for easy replacement
+        self.new_time_entry.icursor(tk.END)  # Move cursor to end
+        
     def _create_widgets(self):
         """Create dialog widgets."""
         # Main frame
