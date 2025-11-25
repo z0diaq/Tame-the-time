@@ -1,5 +1,6 @@
 from utils.logging import log_debug
 from ui.timeline import reposition_timeline, reposition_current_time_line
+from utils.time_utils import get_current_activity
 from datetime import datetime
 import tkinter.font as tkfont
 
@@ -36,6 +37,9 @@ def move_timelines_and_cards(app, delta_y):
     # Move current time line
     for tid in getattr(app, 'current_time_ids', []):
         app.canvas.move(tid, 0, delta_y)
+
+    now = app.now_provider()
+    current_activity = get_current_activity(app.schedule, now)
     # Move all cards and their associated canvas items
     for card_obj in app.cards:
         card_obj.y += delta_y
@@ -47,6 +51,13 @@ def move_timelines_and_cards(app, delta_y):
                     getattr(card_obj, 'tasks_count_label', None)]:
             if cid:
                 app.canvas.move(cid, 0, delta_y)
+            
+            # If card is the same as current_card or have progress bar - update its visuals
+            if card_obj.activity == current_activity or getattr(card_obj, 'progress', None):
+                card_obj.update_card_visuals(
+                    card_obj.start_hour, card_obj.start_minute, app.start_hour, app.pixels_per_hour, app.offset_y, now=now.time(), width=app.winfo_width()
+                )
+
 
 def is_mouse_in_window(app):
     """Check if mouse is in the window."""
