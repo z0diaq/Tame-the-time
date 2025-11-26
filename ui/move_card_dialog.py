@@ -21,6 +21,7 @@ class MoveCardDialog:
         self.card_obj = card_obj
         self.app = app
         self.result = None  # Will store the new start time if user confirms
+        self._updating_fields = False  # Flag to prevent infinite update loops
         
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
@@ -99,6 +100,12 @@ class MoveCardDialog:
         
         tk.Label(shift_frame, text=t("label.shift_format_hint")).pack(side=tk.LEFT)
         
+        # Bind entries to sync with each other
+        self.new_time_entry.bind('<KeyRelease>', self._on_new_time_changed)
+        self.new_time_entry.bind('<FocusOut>', self._on_new_time_changed)
+        self.shift_entry.bind('<KeyRelease>', self._on_shift_changed)
+        self.shift_entry.bind('<FocusOut>', self._on_shift_changed)
+        
         # Buttons
         button_frame = tk.Frame(main_frame)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
@@ -138,6 +145,97 @@ class MoveCardDialog:
             return time_obj.hour, time_obj.minute, is_negative
         except ValueError as e:
             raise ValueError(f"{t('message.invalid_shift_format')}: {str(e)}")
+    
+    def _on_new_time_changed(self, event=None):
+        """
+        Handle changes to new_time_entry and update shift_entry accordingly.
+        
+        Args:
+            event: Tkinter event (unused)
+        """
+        if self._updating_fields:
+            return
+        
+        new_time_str = self.new_time_entry.get().strip()
+        if not new_time_str:
+            return
+        
+        try:
+            # Parse the new time
+            time_obj = TimeUtils.parse_time_with_validation(new_time_str)
+            new_hour = time_obj.hour
+            new_minute = time_obj.minute
+            
+            # Calculate shift from current time
+            current_minutes = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+            new_minutes = new_hour * 60 + new_minute
+            shift_minutes = new_minutes - current_minutes
+            
+            # Determine sign and format
+            is_negative = shift_minutes < 0
+            abs_shift = abs(shift_minutes)
+            shift_hours = abs_shift // 60
+            shift_mins = abs_shift % 60
+            
+            # Update shift_entry
+            self._updating_fields = True
+            try:
+                sign = "-" if is_negative else ""
+                self.shift_entry.delete(0, tk.END)
+                self.shift_entry.insert(0, f"{sign}{shift_hours:02d}:{shift_mins:02d}")
+            finally:
+                self._updating_fields = False
+                
+        except ValueError:
+            # Invalid time format, don't update shift
+            pass
+    
+    def _on_shift_changed(self, event=None):
+        """
+        Handle changes to shift_entry and update new_time_entry accordingly.
+        
+        Args:
+            event: Tkinter event (unused)
+        """
+        if self._updating_fields:
+            return
+        
+        shift_str = self.shift_entry.get().strip()
+        if not shift_str:
+            return
+        
+        try:
+            # Parse the shift
+            shift_hours, shift_minutes, is_negative = self._parse_shift_time(shift_str)
+            
+            # Calculate new time
+            current_minutes = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+            shift_total_minutes = shift_hours * 60 + shift_minutes
+            
+            if is_negative:
+                new_minutes = current_minutes - shift_total_minutes
+            else:
+                new_minutes = current_minutes + shift_total_minutes
+            
+            # Handle wrap around (keep within 24 hour period)
+            new_minutes = new_minutes % (24 * 60)
+            if new_minutes < 0:
+                new_minutes += 24 * 60
+            
+            new_hour = new_minutes // 60
+            new_minute = new_minutes % 60
+            
+            # Update new_time_entry
+            self._updating_fields = True
+            try:
+                self.new_time_entry.delete(0, tk.END)
+                self.new_time_entry.insert(0, f"{new_hour:02d}:{new_minute:02d}")
+            finally:
+                self._updating_fields = False
+                
+        except ValueError:
+            # Invalid shift format, don't update new time
+            pass
     
     def _calculate_new_time(self):
         """
