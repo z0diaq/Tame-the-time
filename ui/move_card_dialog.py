@@ -33,13 +33,13 @@ class MoveCardDialog:
         self.dialog.protocol("WM_DELETE_WINDOW", self._on_cancel)
         
         # Center dialog on parent
-        self.dialog.geometry("500x250")
+        self.dialog.geometry("500x320")
         parent_x = parent.winfo_x()
         parent_y = parent.winfo_y()
         parent_width = parent.winfo_width()
         parent_height = parent.winfo_height()
         dialog_width = 500
-        dialog_height = 250
+        dialog_height = 320
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         self.dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
@@ -106,6 +106,56 @@ class MoveCardDialog:
         self.shift_entry.bind('<KeyRelease>', self._on_shift_changed)
         self.shift_entry.bind('<FocusOut>', self._on_shift_changed)
         
+        # Horizontal separator
+        separator = tk.Frame(main_frame, height=2, bd=1, relief=tk.SUNKEN)
+        separator.pack(fill=tk.X, pady=(10, 10))
+        
+        # Quick adjustment buttons
+        quick_adjust_frame = tk.Frame(main_frame)
+        quick_adjust_frame.pack(anchor=tk.W, pady=(0, 15))
+        
+        tk.Button(
+            quick_adjust_frame,
+            text="+1h",
+            command=lambda: self._adjust_time(60),
+            width=6
+        ).pack(side=tk.LEFT, padx=(0, 3))
+        
+        tk.Button(
+            quick_adjust_frame,
+            text="-1h",
+            command=lambda: self._adjust_time(-60),
+            width=6
+        ).pack(side=tk.LEFT, padx=(0, 3))
+        
+        tk.Button(
+            quick_adjust_frame,
+            text="+30m",
+            command=lambda: self._adjust_time(30),
+            width=6
+        ).pack(side=tk.LEFT, padx=(0, 3))
+        
+        tk.Button(
+            quick_adjust_frame,
+            text="-30m",
+            command=lambda: self._adjust_time(-30),
+            width=6
+        ).pack(side=tk.LEFT, padx=(0, 3))
+        
+        tk.Button(
+            quick_adjust_frame,
+            text="+5m",
+            command=lambda: self._adjust_time(5),
+            width=6
+        ).pack(side=tk.LEFT, padx=(0, 3))
+        
+        tk.Button(
+            quick_adjust_frame,
+            text="-5m",
+            command=lambda: self._adjust_time(-5),
+            width=6
+        ).pack(side=tk.LEFT)
+        
         # Buttons
         button_frame = tk.Frame(main_frame)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
@@ -145,6 +195,60 @@ class MoveCardDialog:
             return time_obj.hour, time_obj.minute, is_negative
         except ValueError as e:
             raise ValueError(f"{t('message.invalid_shift_format')}: {str(e)}")
+    
+    def _adjust_time(self, minutes_delta):
+        """
+        Adjust the current time by the specified number of minutes.
+        
+        Args:
+            minutes_delta: Number of minutes to add (positive) or subtract (negative)
+        """
+        try:
+            # Get current time from new_time_entry
+            new_time_str = self.new_time_entry.get().strip()
+            time_obj = TimeUtils.parse_time_with_validation(new_time_str)
+            
+            # Convert to total minutes
+            current_minutes = time_obj.hour * 60 + time_obj.minute
+            
+            # Add delta
+            adjusted_minutes = current_minutes + minutes_delta
+            
+            # Handle wrap around (keep within 24 hour period)
+            adjusted_minutes = adjusted_minutes % (24 * 60)
+            if adjusted_minutes < 0:
+                adjusted_minutes += 24 * 60
+            
+            # Convert back to hours and minutes
+            new_hour = adjusted_minutes // 60
+            new_minute = adjusted_minutes % 60
+            
+            # Update new_time_entry (this will automatically trigger sync with shift_entry)
+            self.new_time_entry.delete(0, tk.END)
+            self.new_time_entry.insert(0, f"{new_hour:02d}:{new_minute:02d}")
+            
+            # Manually trigger the sync to update shift_entry
+            self._on_new_time_changed()
+            
+        except ValueError:
+            # If current time is invalid, start from card's current time
+            current_minutes = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+            adjusted_minutes = current_minutes + minutes_delta
+            
+            # Handle wrap around
+            adjusted_minutes = adjusted_minutes % (24 * 60)
+            if adjusted_minutes < 0:
+                adjusted_minutes += 24 * 60
+            
+            new_hour = adjusted_minutes // 60
+            new_minute = adjusted_minutes % 60
+            
+            # Update new_time_entry
+            self.new_time_entry.delete(0, tk.END)
+            self.new_time_entry.insert(0, f"{new_hour:02d}:{new_minute:02d}")
+            
+            # Manually trigger the sync
+            self._on_new_time_changed()
     
     def _on_new_time_changed(self, event=None):
         """
