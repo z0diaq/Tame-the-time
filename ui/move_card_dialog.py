@@ -22,6 +22,7 @@ class MoveCardDialog:
         self.app = app
         self.result = None  # Will store the new start time if user confirms
         self._updating_fields = False  # Flag to prevent infinite update loops
+        self.adjust_following_var = None  # Checkbox variable for adjusting following cards
         
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
@@ -156,6 +157,16 @@ class MoveCardDialog:
             width=6
         ).pack(side=tk.LEFT)
         
+        # Checkbox for adjusting following cards (only if there are following cards)
+        following_cards = self._get_following_cards()
+        if following_cards:
+            self.adjust_following_var = tk.BooleanVar(value=False)
+            tk.Checkbutton(
+                main_frame,
+                text=t("label.adjust_following_cards"),
+                variable=self.adjust_following_var
+            ).pack(anchor=tk.W, pady=(10, 0))
+        
         # Buttons
         button_frame = tk.Frame(main_frame)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
@@ -195,6 +206,94 @@ class MoveCardDialog:
             return time_obj.hour, time_obj.minute, is_negative
         except ValueError as e:
             raise ValueError(f"{t('message.invalid_shift_format')}: {str(e)}")
+    
+    def _get_following_cards(self):
+        """
+        Get all cards that start after the current card.
+        
+        Returns:
+            List of TaskCard objects sorted by start time
+        """
+        current_start_mins = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+        day_start = getattr(self.app, 'day_start', 0)
+        day_start_mins = day_start * 60
+        
+        # Normalize current card start time relative to day_start
+        if current_start_mins < day_start_mins:
+            current_start_mins += 24 * 60
+        
+        following = []
+        for card in self.app.cards:
+            if card == self.card_obj:
+                continue
+            
+            card_start_mins = card.start_hour * 60 + card.start_minute
+            # Normalize card start time relative to day_start
+            if card_start_mins < day_start_mins:
+                card_start_mins += 24 * 60
+            
+            if card_start_mins > current_start_mins:
+                following.append((card, card_start_mins))
+        
+        # Sort by start time
+        following.sort(key=lambda x: x[1])
+        return [card for card, _ in following]
+    
+    def _validate_following_cards_shift(self, shift_minutes):
+        """
+        Validate that shifting all following cards won't cause them to exceed day boundary.
+        
+        Args:
+            shift_minutes: Number of minutes to shift (positive or negative)
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        following_cards = self._get_following_cards()
+        if not following_cards:
+            return True, None
+        
+        day_start = getattr(self.app, 'day_start', 0)
+        day_start_mins = day_start * 60
+        
+        # Check the last card's end time after shift
+        last_card = following_cards[-1]
+        last_end_mins = last_card.end_hour * 60 + last_card.end_minute
+        
+        # Normalize to day_start
+        if last_end_mins < day_start_mins:
+            last_end_mins += 24 * 60
+        
+        # Apply shift
+        new_last_end_mins = last_end_mins + shift_minutes
+        
+        # Check if it exceeds the day boundary (day_start of next day)
+        max_minutes = day_start_mins + 24 * 60
+        
+        if new_last_end_mins > max_minutes:
+            last_card_name = last_card.activity.get('name', 'Unknown')
+            last_end_hour = (new_last_end_mins // 60) % 24
+            last_end_min = new_last_end_mins % 60
+            return False, t("message.following_cards_exceed_boundary", 
+                          card_name=last_card_name,
+                          end_time=f"{last_end_hour:02d}:{last_end_min:02d}",
+                          day_start=day_start)
+        
+        # Check if any card would start before day_start
+        for card in following_cards:
+            card_start_mins = card.start_hour * 60 + card.start_minute
+            if card_start_mins < day_start_mins:
+                card_start_mins += 24 * 60
+            
+            new_card_start_mins = card_start_mins + shift_minutes
+            
+            if new_card_start_mins < day_start_mins:
+                card_name = card.activity.get('name', 'Unknown')
+                return False, t("message.following_cards_before_boundary",
+                              card_name=card_name,
+                              day_start=day_start)
+        
+        return True, None
     
     def _adjust_time(self, minutes_delta):
         """
@@ -548,20 +647,41 @@ class MoveCardDialog:
             )
             return
         
-        # Check for conflicts
-        conflicts = self._check_conflicts(new_hour, new_minute)
-        if conflicts:
-            conflict_names = [card.activity.get('name', 'Unknown') for card in conflicts]
-            conflict_list = "\n".join([f"- {name}" for name in conflict_names])
+        # Check if we should adjust following cards
+        adjust_following = self.adjust_following_var and self.adjust_following_var.get()
+        following_cards_to_shift = []
+        shift_minutes = 0
+        
+        if adjust_following:
+            following_cards_to_shift = self._get_following_cards()
             
-            if not messagebox.askyesno(
-                t("dialog.warning"),
-                t("message.move_conflict_warning", conflict_list=conflict_list)
-            ):
+            # Calculate shift amount
+            current_start_mins = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+            new_start_mins = new_hour * 60 + new_minute
+            shift_minutes = new_start_mins - current_start_mins
+            
+            # Validate that following cards won't exceed day boundary
+            is_valid, error_msg = self._validate_following_cards_shift(shift_minutes)
+            if not is_valid:
+                messagebox.showerror(t("dialog.error"), error_msg)
                 return
         
+        # Check for conflicts (only if not adjusting following cards)
+        if not adjust_following:
+            conflicts = self._check_conflicts(new_hour, new_minute)
+            if conflicts:
+                conflict_names = [card.activity.get('name', 'Unknown') for card in conflicts]
+                conflict_list = "\n".join([f"- {name}" for name in conflict_names])
+                
+                if not messagebox.askyesno(
+                    t("dialog.warning"),
+                    t("message.move_conflict_warning", conflict_list=conflict_list)
+                ):
+                    return
+        
         # Store result and close
-        self.result = (new_hour, new_minute)
+        # Result format: (new_hour, new_minute, adjust_following, following_cards_list, shift_minutes)
+        self.result = (new_hour, new_minute, adjust_following, following_cards_to_shift, shift_minutes)
         self.dialog.destroy()
     
     def _on_cancel(self):

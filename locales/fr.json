@@ -65,7 +65,8 @@
     "move_option_new_time": "Option 1 : Définir une nouvelle heure (HH:MM)",
     "move_option_shift": "Option 2 : Décaler d'un montant (±HH:MM)",
     "time_format_hint": "(format : HH:MM)",
-    "shift_format_hint": "(ex. 01:30 ou -01:30 pour reculer)"
+    "shift_format_hint": "(ex. 01:30 ou -01:30 pour reculer)",
+    "adjust_following_cards": "Ajuster toutes les cartes suivantes du même montant"
   },
   "combo": {
     "disabled": "Désactivé",
@@ -157,7 +158,9 @@
     "invalid_time_format": "Format d'heure invalide",
     "invalid_shift_format": "Format de décalage invalide",
     "move_crosses_day_boundary": "Impossible de déplacer la carte : la nouvelle position franchirait la limite du jour (le jour commence à {day_start}:00). Veuillez choisir une heure qui maintient la carte dans la même période de jour.",
-    "move_conflict_warning": "La carte va chevaucher la/les carte(s) suivante(s) :\n\n{conflict_list}\n\nVoulez-vous continuer quand même ?"
+    "move_conflict_warning": "La carte va chevaucher la/les carte(s) suivante(s) :\n\n{conflict_list}\n\nVoulez-vous continuer quand même ?",
+    "following_cards_exceed_boundary": "Impossible de décaler les cartes suivantes : La carte '{card_name}' se terminerait à {end_time}, ce qui est au-delà de la limite du jour (le jour commence à {day_start}:00). Veuillez réduire le décalage.",
+    "following_cards_before_boundary": "Impossible de décaler les cartes suivantes : La carte '{card_name}' commencerait avant la limite du jour (le jour commence à {day_start}:00). Veuillez augmenter le décalage."
   },
   "schedule_option": {
     "last_used": "{filename} (Dernier utilisé)",

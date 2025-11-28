@@ -65,7 +65,8 @@
     "move_option_new_time": "Opción 1: Establecer nueva hora (HH:MM)",
     "move_option_shift": "Opción 2: Desplazar por cantidad (±HH:MM)",
     "time_format_hint": "(formato: HH:MM)",
-    "shift_format_hint": "(ej. 01:30 o -01:30 para atrás)"
+    "shift_format_hint": "(ej. 01:30 o -01:30 para atrás)",
+    "adjust_following_cards": "Ajustar todas las tarjetas siguientes por la misma cantidad"
   },
   "combo": {
     "disabled": "Deshabilitado",
@@ -156,7 +157,9 @@
     "invalid_time_format": "Formato de hora inválido",
     "invalid_shift_format": "Formato de desplazamiento inválido",
     "move_crosses_day_boundary": "No se puede mover la tarjeta: la nueva posición cruzaría el límite del día (el día comienza a las {day_start}:00). Por favor, elige una hora que mantenga la tarjeta dentro del mismo período del día.",
-    "move_conflict_warning": "La tarjeta se superpondrá con la(s) siguiente(s) tarjeta(s):\n\n{conflict_list}\n\n¿Deseas continuar de todos modos?"
+    "move_conflict_warning": "La tarjeta se superpondrá con la(s) siguiente(s) tarjeta(s):\n\n{conflict_list}\n\n¿Deseas continuar de todos modos?",
+    "following_cards_exceed_boundary": "No se pueden desplazar las tarjetas siguientes: La tarjeta '{card_name}' terminaría a las {end_time}, que está más allá del límite del día (el día comienza a las {day_start}:00). Por favor, reduce el desplazamiento.",
+    "following_cards_before_boundary": "No se pueden desplazar las tarjetas siguientes: La tarjeta '{card_name}' comenzaría antes del límite del día (el día comienza a las {day_start}:00). Por favor, aumenta el desplazamiento."
   },
   "schedule_option": {
     "last_used": "{filename} (Último usado)",

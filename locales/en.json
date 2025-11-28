@@ -65,7 +65,8 @@
     "move_option_new_time": "Option 1: Set new time (HH:MM)",
     "move_option_shift": "Option 2: Shift by amount (±HH:MM)",
     "time_format_hint": "(format: HH:MM)",
-    "shift_format_hint": "(e.g., 01:30 or -01:30 for backwards)"
+    "shift_format_hint": "(e.g., 01:30 or -01:30 for backwards)",
+    "adjust_following_cards": "Adjust all following cards by same amount"
   },
   "combo": {
     "disabled": "Disabled",
@@ -156,7 +157,9 @@
     "invalid_time_format": "Invalid time format",
     "invalid_shift_format": "Invalid shift format",
     "move_crosses_day_boundary": "Cannot move card: the new position would cross the day boundary (day starts at {day_start}:00). Please choose a time that keeps the card within the same day period.",
-    "move_conflict_warning": "The card will overlap with the following card(s):\n\n{conflict_list}\n\nDo you want to proceed anyway?"
+    "move_conflict_warning": "The card will overlap with the following card(s):\n\n{conflict_list}\n\nDo you want to proceed anyway?",
+    "following_cards_exceed_boundary": "Cannot shift following cards: The card '{card_name}' would end at {end_time}, which is beyond the day boundary (day starts at {day_start}:00). Please reduce the shift amount.",
+    "following_cards_before_boundary": "Cannot shift following cards: The card '{card_name}' would start before the day boundary (day starts at {day_start}:00). Please increase the shift amount."
   },
   "schedule_option": {
     "last_used": "{filename} (Last used)",

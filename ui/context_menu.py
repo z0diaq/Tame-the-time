@@ -136,7 +136,7 @@ def show_canvas_context_menu(app, event):
             """Move the card to a new time position."""
             result = open_move_card_dialog(app, card_under_cursor, app)
             if result:
-                new_hour, new_minute = result
+                new_hour, new_minute, adjust_following, following_cards, shift_minutes = result
                 log_debug(f"Moving card from {card_under_cursor.start_hour:02d}:{card_under_cursor.start_minute:02d} to {new_hour:02d}:{new_minute:02d}")
                 
                 # Calculate card duration
@@ -179,6 +179,54 @@ def show_canvas_context_menu(app, event):
                             activity["start_time"] = f"{new_hour:02d}:{new_minute:02d}"
                             activity["end_time"] = f"{end_hour:02d}:{end_minutes:02d}"
                             break
+                
+                # If adjusting following cards, shift them by the same amount
+                if adjust_following and following_cards:
+                    log_debug(f"Shifting {len(following_cards)} following cards by {shift_minutes} minutes")
+                    
+                    for following_card in following_cards:
+                        # Calculate new start time
+                        old_start_mins = following_card.start_hour * 60 + following_card.start_minute
+                        new_start_mins = old_start_mins + shift_minutes
+                        
+                        # Handle wrap around
+                        new_start_mins = new_start_mins % (24 * 60)
+                        if new_start_mins < 0:
+                            new_start_mins += 24 * 60
+                        
+                        new_start_hour = new_start_mins // 60
+                        new_start_minute = new_start_mins % 60
+                        
+                        # Calculate new end time
+                        old_end_mins = following_card.end_hour * 60 + following_card.end_minute
+                        new_end_mins = old_end_mins + shift_minutes
+                        
+                        # Handle wrap around
+                        new_end_mins = new_end_mins % (24 * 60)
+                        if new_end_mins < 0:
+                            new_end_mins += 24 * 60
+                        
+                        new_end_hour = new_end_mins // 60
+                        new_end_minute = new_end_mins % 60
+                        
+                        # Update card times
+                        following_card.start_hour = new_start_hour
+                        following_card.start_minute = new_start_minute
+                        following_card.end_hour = new_end_hour
+                        following_card.end_minute = new_end_minute
+                        
+                        # Update activity times
+                        following_card.activity["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
+                        following_card.activity["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
+                        
+                        # Update corresponding activity in schedule
+                        following_activity_id = following_card.activity.get("id")
+                        if following_activity_id:
+                            for activity in app.schedule:
+                                if activity.get("id") == following_activity_id:
+                                    activity["start_time"] = f"{new_start_hour:02d}:{new_start_minute:02d}"
+                                    activity["end_time"] = f"{new_end_hour:02d}:{new_end_minute:02d}"
+                                    break
                 
                 # Redraw all cards with updated positions
                 app.update_cards_after_size_change()
