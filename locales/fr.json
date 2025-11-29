@@ -66,7 +66,7 @@
     "move_option_shift": "Option 2 : Décaler d'un montant (±HH:MM)",
     "time_format_hint": "(format : HH:MM)",
     "shift_format_hint": "(ex. 01:30 ou -01:30 pour reculer)",
-    "adjust_following_cards": "Ajuster toutes les cartes suivantes du même montant"
+    "adjustment_mode": "Mode d'ajustement :"
   },
   "combo": {
     "disabled": "Désactivé",
@@ -74,7 +74,11 @@
     "day": "Jour",
     "week": "Semaine",
     "month": "Mois",
-    "year": "Année"
+    "year": "Année",
+    "adjust_current_only": "Modifier uniquement la carte actuelle",
+    "adjust_current_and_following": "Modifier la carte actuelle et les suivantes",
+    "adjust_current_and_previous": "Modifier la carte actuelle et les précédentes",
+    "adjust_all_cards": "Modifier toutes les cartes"
   },
   "status": {
     "no_tasks_today": "Aucune tâche trouvée pour aujourd'hui",

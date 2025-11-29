@@ -39,6 +39,71 @@ We will implement an interactive card repositioning feature accessible via the c
 
 Both methods preserve card duration automatically.
 
+### Multi-Card Adjustment Modes
+
+**Adjustment Mode Selection** (v2 - Added 2025-11-29)
+
+The dialog now includes a combobox that allows users to adjust multiple cards simultaneously when moving a card. The available modes are:
+
+**1. Change only current card** (Default)
+- Only the selected card is moved
+- Other cards remain in their original positions
+- Conflict detection is active
+- Best for: Individual card adjustments
+
+**2. Change current and following cards**
+- Selected card moves to new position
+- All cards that start after the current card are shifted by the same amount
+- Maintains relative spacing between cards
+- Conflict detection is disabled (all following cards move together)
+- Validates that the last card doesn't exceed day boundary
+- Visibility: Only shown if there are cards after the current one
+- Best for: Bulk forward adjustments
+
+**3. Change current and previous cards**
+- Selected card moves to new position
+- All cards that start before the current card are shifted by the same amount
+- Maintains relative spacing between cards
+- Conflict detection is disabled (all previous cards move together)
+- Validates that cards don't start before day_start
+- Visibility: Only shown if there are cards before the current one
+- Best for: Bulk backward adjustments
+
+**4. Change all cards**
+- Selected card moves to new position
+- All other cards in the schedule are shifted by the same amount
+- Entire timeline shifts together
+- Conflict detection is disabled
+- Validates day boundary constraints for all cards
+- Visibility: Only shown if there are other cards (current is not the only one)
+- Best for: Schedule-wide time shifts
+
+The combobox is only displayed when there are other adjustment options available. If the current card is the only card in the schedule, no combobox appears.
+
+### Quick Adjustment Buttons
+
+**Time Adjustment Shortcuts** (v2 - Added 2025-11-28)
+
+Six convenient buttons provide instant time adjustments:
+- **+1h / -1h**: Add or subtract 1 hour
+- **+30m / -30m**: Add or subtract 30 minutes
+- **+5m / -5m**: Add or subtract 5 minutes
+
+These buttons:
+- Instantly update both input fields (absolute and relative time)
+- Maintain synchronization between the two input methods
+- Work with all adjustment modes
+- Handle 24-hour wraparound automatically
+- Provide quick common adjustments without manual typing
+
+### Field Synchronization
+
+The absolute time and shift amount fields are fully synchronized:
+- Changing absolute time automatically calculates and displays the shift
+- Changing shift amount automatically calculates and displays the new absolute time
+- Quick adjustment buttons update both fields
+- Synchronization works in real-time as user types
+
 ### Validation System
 
 **Day Boundary Protection**
@@ -60,10 +125,13 @@ Both methods preserve card duration automatically.
 ```python
 class MoveCardDialog:
     - Shows current card time
-    - Two input fields (absolute/relative)
+    - Two synchronized input fields (absolute/relative)
+    - Quick adjustment buttons (+1h, -1h, +30m, -30m, +5m, -5m)
+    - Adjustment mode combobox (contextual visibility)
     - Format hints for user guidance
     - Modal blocking dialog
     - Centered on parent window
+    - Auto-resizes based on content (370px height for v2)
 ```
 
 **Validation Logic:**
@@ -103,23 +171,31 @@ All error messages, hints, and labels translated.
 - **Two Input Methods**: Supports different user mental models
 - **Preserved Duration**: Card length maintained automatically
 - **Day Integrity**: Prevents invalid moves across day boundaries
-- **Conflict Awareness**: Users informed of overlaps before confirming
+- **Conflict Awareness**: Users informed of overlaps before confirming (single card mode)
 - **Non-Destructive**: Can cancel without losing card data
-- **Localized**: Full support for all application languages
+- **Localized**: Full support for all application languages (EN, FR, ES, PL)
 - **Discoverable**: Integrated into existing context menu pattern
+- **Quick Adjustments**: One-click buttons for common time shifts (v2)
+- **Field Synchronization**: Real-time updates between absolute and relative times (v2)
+- **Multi-Card Efficiency**: Shift multiple cards simultaneously (v2)
+- **Contextual UI**: Adjustment options adapt to card position (v2)
+- **Batch Operations**: Move entire schedule sections with one operation (v2)
 
 **Negative:**
-- **Learning Curve**: Two input methods might confuse new users initially
+- **Learning Curve**: Multiple input methods and adjustment modes might confuse new users initially
 - **Modal Dialog**: Blocks interaction during repositioning
 - **No Visual Preview**: Can't see new position before committing
 - **No Undo**: Once confirmed, move is permanent (requires manual reversal)
-- **Conflict Flexibility**: Allowing overlaps might lead to ambiguous schedules
+- **Conflict Flexibility**: Allowing overlaps might lead to ambiguous schedules (single card mode)
+- **Increased Complexity**: More options require more understanding (v2)
+- **No Selective Multi-Card**: Can't choose specific cards to move together (v2)
 
 **Neutral:**
 - **Performance**: Dialog creation and validation are lightweight operations
 - **Code Organization**: Adds new file but follows existing patterns
-- **Dependencies**: Uses only standard Tkinter components
-- **Complexity**: Conflict detection algorithm handles edge cases but adds code
+- **Dependencies**: Uses only standard Tkinter components (ttk for combobox in v2)
+- **Complexity**: Conflict detection and multi-card logic handle edge cases but add code
+- **Dialog Size**: Larger dialog (370px) accommodates new features (v2)
 
 ## Use Cases
 
@@ -157,6 +233,41 @@ User: Can confirm or cancel
 Current: Card at 15:00-16:00
 Action: Move → Enter "-02:00"
 Result: Card moves to 13:00-14:00
+```
+
+### Scenario 6: Multi-Card Forward Shift (v2)
+```
+Current: Cards at 09:00, 10:00, 11:00, 12:00
+Action: Move 09:00 card → Select "Change current and following cards" → Enter "09:30"
+Result: All cards shift forward by 30 minutes → 09:30, 10:30, 11:30, 12:30
+```
+
+### Scenario 7: Multi-Card Backward Shift (v2)
+```
+Current: Cards at 14:00, 15:00, 16:00, 17:00
+Action: Move 17:00 card → Select "Change current and previous cards" → Enter "16:30"
+Result: All cards shift backward by 30 minutes → 13:30, 14:30, 15:30, 16:30
+```
+
+### Scenario 8: Schedule-Wide Time Shift (v2)
+```
+Current: Full day schedule from 08:00 to 20:00
+Action: Move any card → Select "Change all cards" → Enter "+01:00"
+Result: Entire schedule shifts by 1 hour → 09:00 to 21:00
+```
+
+### Scenario 9: Quick Adjustment (v2)
+```
+Current: Card at 10:00-11:00
+Action: Move → Click "+30m" button twice
+Result: Card moves to 11:00-12:00
+```
+
+### Scenario 10: Boundary Validation with Multi-Card (v2)
+```
+Current: Cards ending at 23:30 (day_start=0)
+Action: Move → Select "Change all cards" → Enter "+01:00"
+Result: Error - "Card 'Evening Activity' would end at 00:30, beyond day boundary"
 ```
 
 ## Alternatives Considered
@@ -214,6 +325,12 @@ Result: Card moves to 13:00-14:00
 - `_parse_shift_time()`: Handles ±HH:MM format with sign
 - `_check_day_boundary()`: Validates against day_start configuration
 - `_check_conflicts()`: Detects overlapping time ranges
+- `_get_following_cards()`: Returns sorted list of cards after current (v2)
+- `_get_previous_cards()`: Returns sorted list of cards before current (v2)
+- `_validate_following_cards_shift()`: Validates multi-card boundary constraints (v2)
+- `_adjust_time()`: Applies quick adjustment button changes (v2)
+- `_on_new_time_changed()`: Synchronizes absolute time to shift field (v2)
+- `_on_shift_changed()`: Synchronizes shift field to absolute time (v2)
 - `show()`: Modal display with result return
 
 **Dependencies:**
@@ -224,15 +341,17 @@ Result: Card moves to 13:00-14:00
 ## Future Considerations
 
 1. **Drag-and-Drop Support**: Add visual repositioning alongside dialog method
-2. **Batch Move**: Select multiple cards and move together
+2. ~~**Batch Move**: Select multiple cards and move together~~ ✓ **IMPLEMENTED (v2)**: Multi-card adjustment modes
 3. **Undo/Redo**: Support for reverting move operations
 4. **Visual Preview**: Show ghost card at new position before confirming
 5. **Auto-Conflict Resolution**: Suggest alternative times when conflicts detected
-6. **Keyboard Shortcuts**: Quick shifts with Ctrl+Arrow keys
+6. ~~**Keyboard Shortcuts**: Quick shifts with Ctrl+Arrow keys~~ ⚠️ **PARTIALLY IMPLEMENTED (v2)**: Quick adjustment buttons (+1h, -1h, +30m, -30m, +5m, -5m)
 7. **Move History**: Track recent moves for quick reversal
 8. **Smart Snapping**: Auto-align to adjacent cards or time boundaries
 9. **Recurring Moves**: Apply same move to multiple days/weeks
 10. **Conflict Highlighting**: Visual indication of overlap severity
+11. **Gap Detection**: Warn if moving creates large gaps in schedule
+12. **Time Range Constraints**: Allow setting valid time ranges per card type
 
 ## Testing Considerations
 
@@ -246,7 +365,15 @@ Result: Card moves to 13:00-14:00
 7. Invalid time format input (should error)
 8. Edge case: midnight wrap-around
 9. Edge case: very short cards (< 5 minutes)
-10. Test in all four supported languages
+10. Test in all four supported languages (EN, FR, ES, PL)
+11. Quick adjustment buttons (+1h, -1h, +30m, -30m, +5m, -5m) (v2)
+12. Field synchronization between absolute and relative inputs (v2)
+13. Multi-card mode: Change current and following cards (v2)
+14. Multi-card mode: Change current and previous cards (v2)
+15. Multi-card mode: Change all cards (v2)
+16. Combobox visibility based on card position (v2)
+17. Boundary validation with multi-card adjustments (v2)
+18. Quick button + multi-card mode combination (v2)
 
 **Validation Tests:**
 - Day boundary detection with various day_start values (0, 4, 6, 18)
@@ -254,3 +381,7 @@ Result: Card moves to 13:00-14:00
 - Conflict detection with midnight-spanning cards
 - Time arithmetic with negative shifts
 - Format validation for HH:MM input
+- Multi-card shift boundary validation (v2)
+- Field synchronization accuracy (v2)
+- Previous/following card identification logic (v2)
+- Combobox option filtering (v2)

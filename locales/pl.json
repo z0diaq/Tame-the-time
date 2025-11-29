@@ -65,7 +65,8 @@
     "move_option_new_time": "Opcja 1: Ustaw nową godzinę (HH:MM)",
     "move_option_shift": "Opcja 2: Przesuń o określoną ilość (±HH:MM)",
     "time_format_hint": "(format: HH:MM)",
-    "shift_format_hint": "(np. 01:30 lub -01:30 do tyłu)"
+    "shift_format_hint": "(np. 01:30 lub -01:30 do tyłu)",
+    "adjustment_mode": "Tryb dostosowania:"
   },
   "combo": {
     "disabled": "Wyłączone",
@@ -73,7 +74,11 @@
     "day": "Dzień",
     "week": "Tydzień",
     "month": "Miesiąc",
-    "year": "Rok"
+    "year": "Rok",
+    "adjust_current_only": "Zmień tylko bieżącą kartę",
+    "adjust_current_and_following": "Zmień bieżącą i następne karty",
+    "adjust_current_and_previous": "Zmień bieżącą i poprzednie karty",
+    "adjust_all_cards": "Zmień wszystkie karty"
   },
   "status": {
     "no_tasks_today": "Nie znaleziono zadań na dziś",

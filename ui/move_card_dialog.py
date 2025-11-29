@@ -22,7 +22,8 @@ class MoveCardDialog:
         self.app = app
         self.result = None  # Will store the new start time if user confirms
         self._updating_fields = False  # Flag to prevent infinite update loops
-        self.adjust_following_var = None  # Checkbox variable for adjusting following cards
+        self.adjust_mode_var = None  # Combobox variable for adjustment mode
+        self.adjust_mode_combo = None  # Combobox widget
         
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
@@ -40,7 +41,7 @@ class MoveCardDialog:
         parent_width = parent.winfo_width()
         parent_height = parent.winfo_height()
         dialog_width = 500
-        dialog_height = 320
+        dialog_height = 370
         x = parent_x + (parent_width - dialog_width) // 2
         y = parent_y + (parent_height - dialog_height) // 2
         self.dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
@@ -107,10 +108,6 @@ class MoveCardDialog:
         self.shift_entry.bind('<KeyRelease>', self._on_shift_changed)
         self.shift_entry.bind('<FocusOut>', self._on_shift_changed)
         
-        # Horizontal separator
-        separator = tk.Frame(main_frame, height=2, bd=1, relief=tk.SUNKEN)
-        separator.pack(fill=tk.X, pady=(10, 10))
-        
         # Quick adjustment buttons
         quick_adjust_frame = tk.Frame(main_frame)
         quick_adjust_frame.pack(anchor=tk.W, pady=(0, 15))
@@ -157,15 +154,45 @@ class MoveCardDialog:
             width=6
         ).pack(side=tk.LEFT)
         
-        # Checkbox for adjusting following cards (only if there are following cards)
+        # Combobox for adjustment mode
         following_cards = self._get_following_cards()
+        previous_cards = self._get_previous_cards()
+        has_other_cards = len(self.app.cards) > 1
+        
+        # Build options list based on available cards
+        adjust_options = [t("combo.adjust_current_only")]
+        self.adjust_mode_map = {t("combo.adjust_current_only"): "current_only"}
+        
         if following_cards:
-            self.adjust_following_var = tk.BooleanVar(value=False)
-            tk.Checkbutton(
+            label = t("combo.adjust_current_and_following")
+            adjust_options.append(label)
+            self.adjust_mode_map[label] = "current_and_following"
+        
+        if previous_cards:
+            label = t("combo.adjust_current_and_previous")
+            adjust_options.append(label)
+            self.adjust_mode_map[label] = "current_and_previous"
+        
+        if has_other_cards:
+            label = t("combo.adjust_all_cards")
+            adjust_options.append(label)
+            self.adjust_mode_map[label] = "all_cards"
+        
+        # Only show combobox if there are other options besides "current only"
+        if len(adjust_options) > 1:
+            adjust_label = tk.Label(main_frame, text=t("label.adjustment_mode"))
+            adjust_label.pack(anchor=tk.W, pady=(10, 5))
+            
+            from tkinter import ttk
+            self.adjust_mode_var = tk.StringVar(value=adjust_options[0])
+            self.adjust_mode_combo = ttk.Combobox(
                 main_frame,
-                text=t("label.adjust_following_cards"),
-                variable=self.adjust_following_var
-            ).pack(anchor=tk.W, pady=(10, 0))
+                textvariable=self.adjust_mode_var,
+                values=adjust_options,
+                state="readonly",
+                width=40
+            )
+            self.adjust_mode_combo.pack(anchor=tk.W, pady=(0, 5))
         
         # Buttons
         button_frame = tk.Frame(main_frame)
@@ -206,6 +233,38 @@ class MoveCardDialog:
             return time_obj.hour, time_obj.minute, is_negative
         except ValueError as e:
             raise ValueError(f"{t('message.invalid_shift_format')}: {str(e)}")
+    
+    def _get_previous_cards(self):
+        """
+        Get all cards that start before the current card.
+        
+        Returns:
+            List of TaskCard objects sorted by start time
+        """
+        current_start_mins = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+        day_start = getattr(self.app, 'day_start', 0)
+        day_start_mins = day_start * 60
+        
+        # Normalize current card start time relative to day_start
+        if current_start_mins < day_start_mins:
+            current_start_mins += 24 * 60
+        
+        previous = []
+        for card in self.app.cards:
+            if card == self.card_obj:
+                continue
+            
+            card_start_mins = card.start_hour * 60 + card.start_minute
+            # Normalize card start time relative to day_start
+            if card_start_mins < day_start_mins:
+                card_start_mins += 24 * 60
+            
+            if card_start_mins < current_start_mins:
+                previous.append((card, card_start_mins))
+        
+        # Sort by start time
+        previous.sort(key=lambda x: x[1])
+        return [card for card, _ in previous]
     
     def _get_following_cards(self):
         """
@@ -647,27 +706,41 @@ class MoveCardDialog:
             )
             return
         
-        # Check if we should adjust following cards
-        adjust_following = self.adjust_following_var and self.adjust_following_var.get()
-        following_cards_to_shift = []
-        shift_minutes = 0
+        # Determine adjustment mode
+        adjust_mode = "current_only"
+        if self.adjust_mode_var:
+            selected_label = self.adjust_mode_var.get()
+            adjust_mode = self.adjust_mode_map.get(selected_label, "current_only")
         
-        if adjust_following:
-            following_cards_to_shift = self._get_following_cards()
-            
-            # Calculate shift amount
-            current_start_mins = self.card_obj.start_hour * 60 + self.card_obj.start_minute
-            new_start_mins = new_hour * 60 + new_minute
-            shift_minutes = new_start_mins - current_start_mins
-            
-            # Validate that following cards won't exceed day boundary
-            is_valid, error_msg = self._validate_following_cards_shift(shift_minutes)
-            if not is_valid:
-                messagebox.showerror(t("dialog.error"), error_msg)
-                return
+        # Calculate shift amount
+        current_start_mins = self.card_obj.start_hour * 60 + self.card_obj.start_minute
+        new_start_mins = new_hour * 60 + new_minute
+        shift_minutes = new_start_mins - current_start_mins
         
-        # Check for conflicts (only if not adjusting following cards)
-        if not adjust_following:
+        # Get cards to adjust based on mode
+        cards_to_shift = []
+        if adjust_mode == "current_and_following":
+            cards_to_shift = self._get_following_cards()
+        elif adjust_mode == "current_and_previous":
+            cards_to_shift = self._get_previous_cards()
+        elif adjust_mode == "all_cards":
+            cards_to_shift = [card for card in self.app.cards if card != self.card_obj]
+        
+        # Validate that shifted cards won't exceed day boundaries
+        if cards_to_shift and adjust_mode in ["current_and_following", "all_cards"]:
+            # Check following cards don't exceed upper boundary
+            following_to_check = [c for c in cards_to_shift 
+                                 if (c.start_hour * 60 + c.start_minute) > current_start_mins or
+                                 (c.start_hour < getattr(self.app, 'day_start', 0) and 
+                                  current_start_mins >= getattr(self.app, 'day_start', 0) * 60)]
+            if following_to_check:
+                is_valid, error_msg = self._validate_following_cards_shift(shift_minutes)
+                if not is_valid:
+                    messagebox.showerror(t("dialog.error"), error_msg)
+                    return
+        
+        # Check for conflicts (only if adjusting current card only)
+        if adjust_mode == "current_only":
             conflicts = self._check_conflicts(new_hour, new_minute)
             if conflicts:
                 conflict_names = [card.activity.get('name', 'Unknown') for card in conflicts]
@@ -680,8 +753,8 @@ class MoveCardDialog:
                     return
         
         # Store result and close
-        # Result format: (new_hour, new_minute, adjust_following, following_cards_list, shift_minutes)
-        self.result = (new_hour, new_minute, adjust_following, following_cards_to_shift, shift_minutes)
+        # Result format: (new_hour, new_minute, adjust_mode, cards_to_shift, shift_minutes)
+        self.result = (new_hour, new_minute, adjust_mode, cards_to_shift, shift_minutes)
         self.dialog.destroy()
     
     def _on_cancel(self):
