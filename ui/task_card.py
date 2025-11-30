@@ -301,9 +301,15 @@ class TaskCard:
         # Some tasks undone
         undone_count = total_count - done_count
         
-        # Finished card (past) with undone tasks - red
+        # Finished card (past) with undone tasks - blinking red/black
         if end_time <= now:
-            return Colors.TASK_COUNT_PAST_UNDONE  # Light red
+            import time as time_module
+            current_second = int(time_module.time())
+            # Alternate between red and black every second for blinking effect
+            if current_second % 2 == 0:
+                return Colors.TASK_COUNT_PAST_UNDONE  # Red
+            else:
+                return Colors.TASK_COUNT_TEXT  # Black (for blinking effect)
         
         # Active card (current) with undone tasks - blinking
         elif start_time <= now < end_time:

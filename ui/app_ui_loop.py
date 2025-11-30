@@ -164,6 +164,7 @@ def update_ui(app):
             app.card_visual_changed = False
     else:
         _refresh_active_card_if_undone_tasks(app, activity)
+        _refresh_missed_cards_with_undone_tasks(app, app.now_provider().time())
 
     # Store last update time for optimization
     app._last_ui_update = now
@@ -206,6 +207,46 @@ def _refresh_active_card_if_undone_tasks(app, activity):
                     now=app.now_provider().time(),
                     width=app.winfo_width()
                 )
+
+def _refresh_missed_cards_with_undone_tasks(app, now):
+    """
+    Refresh cards for activities that have finished but have undone tasks.
+    
+    This function checks all cards to find those where:
+    - The activity's end time is before the current time (finished/past)
+    - There are undone tasks remaining
+    
+    For such cards, it triggers a visual refresh to show the blinking red/black
+    status indicator, alerting the user to missed tasks.
+    
+    Args:
+        app: The main TimeboxApp instance
+        now: Current time object
+    """
+    for card_obj in getattr(app, 'cards', []):
+        tasks = card_obj.activity.get("tasks", [])
+        if not tasks:
+            continue
+        
+        # Check if card is finished (end time is before current time)
+        from datetime import time
+        end_time = time(card_obj.end_hour, card_obj.end_minute)
+        if end_time > now:
+            continue  # Card is not finished yet
+        
+        # Check if there are any undone tasks
+        tasks_done = getattr(card_obj, '_tasks_done', [False] * len(tasks))
+        if any(not done for done in tasks_done):
+            log_debug(f"Refreshing missed card '{card_obj.activity.get('name')}' due to undone tasks")
+            card_obj.update_card_visuals(
+                card_obj.start_hour,
+                card_obj.start_minute,
+                app.start_hour,
+                app.pixels_per_hour,
+                app.offset_y,
+                now=now,
+                width=app.winfo_width()
+            )
 
 def _is_mouse_inside_window(app) -> bool:
     """
