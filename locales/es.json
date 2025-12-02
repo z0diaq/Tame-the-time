@@ -12,7 +12,8 @@
     "tasks_for": "Tareas para {activity_name}",
     "schedule_selection": "Selección de Cronograma",
     "day_rollover_prompt": "Nuevo Día Detectado",
-    "move_card": "Mover Tarjeta"
+    "move_card": "Mover Tarjeta",
+    "compact_view": "Vista Compacta"
   },
   "menu": {
     "file": "Archivo",
@@ -132,7 +133,8 @@
     "remove": "Eliminar",
     "new": "Nuevo",
     "remove_all": "Eliminar todo",
-    "new_task": "Nueva Tarea"
+    "new_task": "Nueva Tarea",
+    "toggle_compact_view": "Cambiar Vista Compacta"
   },
   "dialog": {
     "error": "Error",
@@ -172,5 +174,18 @@
   },
   "activity": {
     "unknown_activity": "Actividad Desconocida"
+  },
+  "compact": {
+    "current_activity": "Actividad Actual",
+    "next_task": "Próxima Tarea",
+    "no_activity": "Sin tarea activa",
+    "no_tasks": "Sin tareas",
+    "tasks_info": "Tareas: {done}/{total}",
+    "completion": "Completado",
+    "no_next_task": "Sin tareas próximas",
+    "starting_soon": "Comienza pronto",
+    "seconds_until": "en {seconds}s",
+    "minutes_until": "en {minutes}m",
+    "hours_minutes_until": "en {hours}h {minutes}m"
   }
 }

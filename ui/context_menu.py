@@ -322,6 +322,14 @@ def show_canvas_context_menu(app, event):
             variable=disable_centering_var,
             command=app.toggle_disable_auto_centering
         )
+        # Add compact view toggle option
+        def toggle_compact_view():
+            """Toggle the compact view window."""
+            if hasattr(app, 'compact_view'):
+                app.compact_view.toggle()
+                # Save visibility state
+                app.save_settings(immediate=True)
+        menu.add_command(label=t("context_menu.toggle_compact_view"), command=toggle_compact_view)
     else:
         return
     menu.tk_popup(event.x_root, event.y_root)

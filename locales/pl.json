@@ -12,7 +12,8 @@
     "tasks_for": "Zadania dla {activity_name}",
     "schedule_selection": "Wybór harmonogramu",
     "day_rollover_prompt": "Wykryto nowy dzień",
-    "move_card": "Przenieś kartę"
+    "move_card": "Przenieś kartę",
+    "compact_view": "Widok kompaktowy"
   },
   "menu": {
     "file": "Plik",
@@ -132,7 +133,8 @@
     "remove": "Usuń",
     "new": "Nowy",
     "remove_all": "Usuń wszystkie",
-    "new_task": "Nowe zadanie"
+    "new_task": "Nowe zadanie",
+    "toggle_compact_view": "Przełącz widok kompaktowy"
   },
   "dialog": {
     "error": "Błąd",
@@ -161,7 +163,9 @@
     "invalid_time_format": "Nieprawidłowy format czasu",
     "invalid_shift_format": "Nieprawidłowy format przesunięcia",
     "move_crosses_day_boundary": "Nie można przenieść karty: nowa pozycja przekroczyłaby granicę dnia (dzień rozpoczyna się o {day_start}:00). Proszę wybrać godzinę, która utrzyma kartę w tym samym okresie dnia.",
-    "move_conflict_warning": "Karta będzie nakladać się z następującą(ymi) kartą(ami):\n\n{conflict_list}\n\nCzy chcesz kontynuować mimo to?"
+    "move_conflict_warning": "Karta będzie nakladać się z następującą(ymi) kartą(ami):\n\n{conflict_list}\n\nCzy chcesz kontynuować mimo to?",
+    "following_cards_exceed_boundary": "Nie można przesunąć następnych kart: Karta '{card_name}' zakończyłaby się o {end_time}, co jest poza granicą dnia (dzień rozpoczyna się o {day_start}:00). Proszę zmniejszyć wartość przesunięcia.",
+    "following_cards_before_boundary": "Nie można przesunąć następnych kart: Karta '{card_name}' rozpoczęłaby się przed granicą dnia (dzień rozpoczyna się o {day_start}:00). Proszę zwiększyć wartość przesunięcia."
   },
   "schedule_option": {
     "last_used": "{filename} (Ostatnio używany)",
@@ -170,5 +174,18 @@
   },
   "activity": {
     "unknown_activity": "Nieznana aktywność"
+  },
+  "compact": {
+    "current_activity": "Bieżąca aktywność",
+    "next_task": "Następne zadanie",
+    "no_activity": "Brak aktywnego zadania",
+    "no_tasks": "Brak zadań",
+    "tasks_info": "Zadania: {done}/{total}",
+    "completion": "Ukończenie",
+    "no_next_task": "Brak nadchodzących zadań",
+    "starting_soon": "Rozpoczyna się wkrótce",
+    "seconds_until": "za {seconds}s",
+    "minutes_until": "za {minutes}m",
+    "hours_minutes_until": "za {hours}h {minutes}m"
   }
 }

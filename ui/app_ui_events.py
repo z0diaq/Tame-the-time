@@ -35,6 +35,11 @@ def on_motion(app, event):
 def on_close(app):
     """Handle close event - ask to save schedule if there are unsaved changes."""
     app.save_settings(immediate=True)  # Save immediately on close
+    
+    # Close compact view if it exists
+    if hasattr(app, 'compact_view') and app.compact_view:
+        app.compact_view.destroy()
+    
     if app.schedule_changed:
         if messagebox.askyesno("Unsaved Changes", "You have unsaved changes. Do you want to save them?"):
             save_schedule(app, ask_for_confirmation=False)

@@ -12,7 +12,8 @@
     "tasks_for": "Tasks for {activity_name}",
     "schedule_selection": "Schedule Selection",
     "day_rollover_prompt": "New Day Detected",
-    "move_card": "Move Card"
+    "move_card": "Move Card",
+    "compact_view": "Compact View"
   },
   "menu": {
     "file": "File",
@@ -132,7 +133,8 @@
     "remove": "Remove",
     "new": "New",
     "remove_all": "Remove all",
-    "new_task": "New Task"
+    "new_task": "New Task",
+    "toggle_compact_view": "Toggle Compact View"
   },
   "dialog": {
     "error": "Error",
@@ -172,5 +174,18 @@
   },
   "activity": {
     "unknown_activity": "Unknown Activity"
+  },
+  "compact": {
+    "current_activity": "Current Activity",
+    "next_task": "Next Task",
+    "no_activity": "No active task",
+    "no_tasks": "No tasks",
+    "tasks_info": "Tasks: {done}/{total}",
+    "completion": "Completion",
+    "no_next_task": "No upcoming tasks",
+    "starting_soon": "Starting soon",
+    "seconds_until": "in {seconds}s",
+    "minutes_until": "in {minutes}m",
+    "hours_minutes_until": "in {hours}h {minutes}m"
   }
 }

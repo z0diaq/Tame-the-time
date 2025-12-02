@@ -46,6 +46,11 @@ class TimeboxApp(tk.Tk):
     
     def _save_settings_immediate(self):
         """Immediately save settings to file."""
+        # Get compact view visibility state
+        compact_view_visible = False
+        if hasattr(self, 'compact_view'):
+            compact_view_visible = self.compact_view.is_visible
+        
         settings = {
             "window_position": self.geometry(),
             "gotify_token": utils.notification.gotify_token,
@@ -58,7 +63,8 @@ class TimeboxApp(tk.Tk):
             "current_language": getattr(self, 'current_language', 'en'),
             "day_start": getattr(self, 'day_start', 0),
             "disable_auto_centering": getattr(self, 'disable_auto_centering', False),
-            "last_schedule_path": getattr(self, 'last_schedule_path', None)
+            "last_schedule_path": getattr(self, 'last_schedule_path', None),
+            "compact_view_visible": compact_view_visible
         }
         with open(self.SETTINGS_PATH, "w") as f:
             json.dump(settings, f)
@@ -226,6 +232,16 @@ class TimeboxApp(tk.Tk):
         self._load_daily_task_entries()
         
         self.skip_redraw = False  # Allow redraws after initial setup
+        
+        # Initialize compact view
+        from ui.compact_view import create_compact_view
+        self.compact_view = create_compact_view(self, self.now_provider)
+        
+        # Restore compact view visibility from settings
+        compact_view_visible = settings.get("compact_view_visible", False)
+        if compact_view_visible:
+            self.compact_view.show()
+        
         update_ui(self)
 
         self.protocol("WM_DELETE_WINDOW", lambda: on_close(self))
@@ -723,6 +739,10 @@ class TimeboxApp(tk.Tk):
         
         # Update status bar
         self.update_status_bar()
+        
+        # Update compact view if it exists
+        if hasattr(self, 'compact_view'):
+            self.compact_view.refresh_ui_after_language_change()
         
         # Save language preference
         self.save_settings(immediate=True)

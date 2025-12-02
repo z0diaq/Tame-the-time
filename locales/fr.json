@@ -12,7 +12,8 @@
     "tasks_for": "Tâches pour {activity_name}",
     "schedule_selection": "Sélection du Planning",
     "day_rollover_prompt": "Nouveau Jour Détecté",
-    "move_card": "Déplacer la Carte"
+    "move_card": "Déplacer la Carte",
+    "compact_view": "Vue Compacte"
   },
   "menu": {
     "file": "Fichier",
@@ -132,7 +133,8 @@
     "remove": "Supprimer",
     "new": "Nouveau",
     "remove_all": "Tout supprimer",
-    "new_task": "Nouvelle Tâche"
+    "new_task": "Nouvelle Tâche",
+    "toggle_compact_view": "Basculer la Vue Compacte"
   },
   "dialog": {
     "error": "Erreur",
@@ -173,5 +175,18 @@
   },
   "activity": {
     "unknown_activity": "Activité Inconnue"
+  },
+  "compact": {
+    "current_activity": "Activité Actuelle",
+    "next_task": "Tâche Suivante",
+    "no_activity": "Aucune tâche active",
+    "no_tasks": "Aucune tâche",
+    "tasks_info": "Tâches : {done}/{total}",
+    "completion": "Achèvement",
+    "no_next_task": "Aucune tâche à venir",
+    "starting_soon": "Commence bientôt",
+    "seconds_until": "dans {seconds}s",
+    "minutes_until": "dans {minutes}m",
+    "hours_minutes_until": "dans {hours}h {minutes}m"
   }
 }

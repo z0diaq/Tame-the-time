@@ -168,6 +168,10 @@ def update_ui(app):
 
     # Store last update time for optimization
     app._last_ui_update = now
+    
+    # Update compact view if it's visible
+    if hasattr(app, 'compact_view') and app.compact_view.is_visible:
+        app.compact_view.update()
         
     app.after(UIConstants.UI_UPDATE_INTERVAL_MS, lambda: update_ui(app))
 
