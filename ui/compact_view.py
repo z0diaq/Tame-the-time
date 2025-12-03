@@ -49,13 +49,18 @@ class CompactView:
     
     def show(self):
         """Show the compact view window."""
+        self.is_visible = True
+        
         if self.window is None or not self.window.winfo_exists():
             self._create_window()
+            # _create_window() already calls update() at the end
         else:
             self.window.deiconify()
+            # Only call update if window already existed
+            self.update()
         
-        self.is_visible = True
-        self.update()
+        # Hide main window when compact view is shown
+        self.parent.withdraw()
     
     def hide(self):
         """Hide the compact view window."""
@@ -65,6 +70,9 @@ class CompactView:
             self.window.withdraw()
         
         self.is_visible = False
+        
+        # Show main window when compact view is hidden
+        self.parent.deiconify()
     
     def toggle(self):
         """Toggle compact view visibility."""
@@ -81,6 +89,10 @@ class CompactView:
         
         self.window = None
         self.is_visible = False
+        
+        # Show main window when compact view is destroyed
+        if self.parent.winfo_exists():
+            self.parent.deiconify()
     
     def _create_window(self):
         """Create the compact view window UI."""
@@ -224,10 +236,22 @@ class CompactView:
         
         # Handle window close
         self.window.protocol("WM_DELETE_WINDOW", self.hide)
+        
+        # Force an initial update after widgets are created
+        self.window.update_idletasks()
+        self.update()
     
     def update(self):
         """Update compact view with current information."""
         if not self.is_visible or not self.window or not self.window.winfo_exists():
+            return
+        
+        from utils.logging import log_debug
+        log_debug("Compact view: update() called")
+        
+        # Check if all widgets are created
+        if not self.time_label or not self.activity_name_label:
+            log_debug("Compact view: Widgets not ready yet, skipping update")
             return
         
         # Update current time
@@ -249,41 +273,57 @@ class CompactView:
     
     def _update_current_activity(self):
         """Update current activity information."""
-        # Get current activity from schedule service
-        from services.schedule_service import ScheduleService
+        # Get current activity from parent's schedule (same method as main app uses)
+        from utils.time_utils import get_current_activity
+        from utils.logging import log_debug
         
-        schedule_service = ScheduleService(self.now_provider)
-        schedule_service._schedule = getattr(self.parent, '_schedule_model', None)
+        now = self.now_provider()
+        log_debug(f"Compact view: Getting current activity for time {now}")
+        log_debug(f"Compact view: Schedule has {len(self.parent.schedule)} activities")
         
-        if not schedule_service._schedule:
-            # Fallback: create schedule from parent's schedule data
-            from models.schedule import Schedule
-            schedule_service._schedule = Schedule(self.parent.schedule)
-        
-        current_activity = schedule_service.get_current_activity()
+        current_activity = get_current_activity(self.parent.schedule, now)
+        log_debug(f"Compact view: Current activity = {current_activity}")
         
         if current_activity:
             # Update activity name
-            self.activity_name_label.config(text=current_activity.name)
+            self.activity_name_label.config(text=current_activity.get("name", "Unknown"))
             
             # Update description
-            desc_text = "\n".join(current_activity.description) if current_activity.description else ""
+            description = current_activity.get("description", [])
+            if description:
+                # Handle both list and string formats
+                if isinstance(description, list):
+                    desc_text = "\n".join(str(d) for d in description)
+                else:
+                    desc_text = str(description)
+            else:
+                desc_text = ""
             self.activity_desc_label.config(text=desc_text)
             
             # Update tasks info
-            tasks = current_activity.tasks
-            if tasks:
+            tasks = current_activity.get("tasks", [])
+            log_debug(f"Compact view: Activity has {len(tasks)} tasks")
+            
+            if tasks and len(tasks) > 0:
                 # Get task completion status from parent app's cards
                 task_done_count = 0
                 total_tasks = len(tasks)
                 
-                # Find the card for this activity to get task completion status
-                activity_id = current_activity.id
+                # Find the card for this activity by matching name and time
+                found_card = False
                 for card in self.parent.cards:
-                    if card.activity.get("id") == activity_id:
+                    card_activity = card.activity
+                    if (card_activity.get("name") == current_activity.get("name") and
+                        card_activity.get("start_time") == current_activity.get("start_time") and
+                        card_activity.get("end_time") == current_activity.get("end_time")):
                         tasks_done = getattr(card, '_tasks_done', [False] * total_tasks)
                         task_done_count = sum(tasks_done)
+                        found_card = True
+                        log_debug(f"Compact view: Found card with {task_done_count}/{total_tasks} tasks done")
                         break
+                
+                if not found_card:
+                    log_debug(f"Compact view: No matching card found for activity")
                 
                 # Update tasks label
                 self.tasks_label.config(
@@ -299,7 +339,9 @@ class CompactView:
                     text=t("compact.completion") + f": {percentage}%"
                 )
                 self.progress_bar["value"] = percentage
+                log_debug(f"Compact view: Set progress to {percentage}%")
             else:
+                log_debug(f"Compact view: No tasks for this activity")
                 self.tasks_label.config(text=t("compact.no_tasks"))
                 self.progress_label.config(text=t("compact.completion") + ": --")
                 self.progress_bar["value"] = 0
@@ -313,16 +355,30 @@ class CompactView:
     
     def _update_next_task(self):
         """Update next task information."""
-        from services.schedule_service import ScheduleService
+        from utils.time_utils import get_current_activity
         
-        schedule_service = ScheduleService(self.now_provider)
-        schedule_service._schedule = getattr(self.parent, '_schedule_model', None)
+        # Find next activity by iterating through schedule
+        now = self.now_provider()
+        current_time = now.time()
         
-        if not schedule_service._schedule:
-            from models.schedule import Schedule
-            schedule_service._schedule = Schedule(self.parent.schedule)
+        # Find the next activity after current time
+        next_activity = None
+        next_start = None
         
-        next_result = schedule_service.get_next_activity()
+        from utils.time_utils import TimeUtils
+        from datetime import datetime, timedelta
+        
+        for activity in self.parent.schedule:
+            start_time_obj = TimeUtils.parse_time_with_validation(activity["start_time"])
+            # If this activity's start time is in the future
+            if start_time_obj > current_time:
+                if next_activity is None or start_time_obj < TimeUtils.parse_time_with_validation(next_activity["start_time"]):
+                    next_activity = activity
+                    # Calculate next_start datetime
+                    next_start = datetime.combine(now.date(), start_time_obj)
+                    break
+        
+        next_result = (next_activity, next_start) if next_activity else None
         
         if next_result:
             next_activity, next_start = next_result
@@ -346,7 +402,7 @@ class CompactView:
                 time_str = t("compact.hours_minutes_until").format(hours=hours, minutes=minutes)
             
             # Update next task label
-            next_text = f"▶ {next_activity.name}\n{time_str}"
+            next_text = f"▶ {next_activity.get('name', 'Unknown')}\n{time_str}"
             self.next_task_label.config(text=next_text)
         else:
             self.next_task_label.config(text=t("compact.no_next_task"))
