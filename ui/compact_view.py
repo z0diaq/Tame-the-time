@@ -110,7 +110,7 @@ class CompactView:
             self.window.geometry("320x280")
         
         # Main frame with padding
-        main_frame = tk.Frame(self.window, padx=10, pady=10, bg="#f0f0f0")
+        main_frame = tk.Frame(self.window, padx=4, pady=4, bg="#f0f0f0")
         main_frame.pack(fill="both", expand=True)
         
         # === Current Time Section ===
@@ -154,6 +154,7 @@ class CompactView:
             text="No active task",
             font=("Arial", 11, "bold"),
             bg="white",
+            fg="black",
             anchor="w",
             justify="left",
             wraplength=280
@@ -228,6 +229,7 @@ class CompactView:
             text=t("compact.no_next_task"),
             font=("Arial", 9),
             bg="#ecf0f1",
+            fg="gray",
             anchor="w",
             justify="left",
             wraplength=280
