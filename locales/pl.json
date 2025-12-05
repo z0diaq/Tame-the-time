@@ -178,11 +178,13 @@
   "compact": {
     "current_activity": "Bieżąca aktywność",
     "next_task": "Następne zadanie",
+    "next_activity": "Następna aktywność",
     "no_activity": "Brak aktywnego zadania",
     "no_tasks": "Brak zadań",
     "tasks_info": "Zadania: {done}/{total}",
     "completion": "Ukończenie",
     "no_next_task": "Brak nadchodzących zadań",
+    "no_next_activity": "Brak nadchodzących aktywności",
     "starting_soon": "Rozpoczyna się wkrótce",
     "seconds_until": "za {seconds}s",
     "minutes_until": "za {minutes}m",

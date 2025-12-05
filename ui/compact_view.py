@@ -1,12 +1,11 @@
 """
-Compact view window for displaying minimal task information.
-Shows current time, active task details, and next task preview.
+Compact view window for Tame-the-Time application.
+Displays minimal information: current time, current activity, and next activity.
 """
 
 import tkinter as tk
-from tkinter import ttk
-from datetime import datetime
 from typing import Optional, Dict, Any
+from datetime import datetime
 from utils.translator import t
 from utils.locale_utils import get_weekday_name
 
@@ -17,9 +16,8 @@ class CompactView:
     
     Shows:
     - Current time with day of week
-    - Current activity (name, description, tasks)
-    - Task completion percentage
-    - Next task name and time until it starts
+    - Current activity (name, tasks done count, description)
+    - Next activity name and time until it starts
     """
     
     def __init__(self, parent, now_provider):
@@ -40,9 +38,7 @@ class CompactView:
         self.activity_name_label: Optional[tk.Label] = None
         self.activity_desc_label: Optional[tk.Label] = None
         self.tasks_label: Optional[tk.Label] = None
-        self.progress_label: Optional[tk.Label] = None
-        self.progress_bar: Optional[ttk.Progressbar] = None
-        self.next_task_label: Optional[tk.Label] = None
+        self.next_activity_label: Optional[tk.Label] = None
         
         # Track last window geometry for restoration
         self.last_geometry: Optional[str] = None
@@ -103,11 +99,14 @@ class CompactView:
         self.window.attributes("-topmost", True)  # Always on top by default
         self.window.resizable(True, True)
         
+        # Set minimum window size to fit activity title
+        self.window.minsize(280, 180)
+        
         # Restore last geometry or use default
         if self.last_geometry:
             self.window.geometry(self.last_geometry)
         else:
-            self.window.geometry("320x280")
+            self.window.geometry("320x240")
         
         # Main frame with padding
         main_frame = tk.Frame(self.window, padx=4, pady=4, bg="#f0f0f0")
@@ -120,10 +119,10 @@ class CompactView:
         self.time_label = tk.Label(
             time_frame,
             text="--:--:--",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 11, "bold"),
             fg="white",
             bg="#2c3e50",
-            pady=8
+            pady=6
         )
         self.time_label.pack()
         
@@ -159,7 +158,19 @@ class CompactView:
             justify="left",
             wraplength=280
         )
-        self.activity_name_label.pack(fill="x", pady=(0, 4))
+        self.activity_name_label.pack(fill="x", pady=(0, 3))
+        
+        # Tasks info (moved before description)
+        self.tasks_label = tk.Label(
+            activity_content,
+            text="",
+            font=("Arial", 9, "italic"),
+            bg="white",
+            fg="#666666",
+            anchor="w",
+            justify="left"
+        )
+        self.tasks_label.pack(fill="x", pady=(0, 4))
         
         # Activity description
         self.activity_desc_label = tk.Label(
@@ -172,46 +183,15 @@ class CompactView:
             wraplength=280,
             fg="#555555"
         )
-        self.activity_desc_label.pack(fill="x", pady=(0, 6))
+        self.activity_desc_label.pack(fill="x", pady=(0, 0))
         
-        # Tasks info
-        self.tasks_label = tk.Label(
-            activity_content,
-            text="",
-            font=("Arial", 9),
-            bg="white",
-            anchor="w",
-            justify="left"
-        )
-        self.tasks_label.pack(fill="x", pady=(0, 4))
-        
-        # Progress section
-        progress_frame = tk.Frame(activity_content, bg="white")
-        progress_frame.pack(fill="x", pady=(4, 0))
-        
-        self.progress_label = tk.Label(
-            progress_frame,
-            text=t("compact.completion") + ": 0%",
-            font=("Arial", 9),
-            bg="white",
-            anchor="w"
-        )
-        self.progress_label.pack(fill="x")
-        
-        self.progress_bar = ttk.Progressbar(
-            progress_frame,
-            mode="determinate",
-            maximum=100
-        )
-        self.progress_bar.pack(fill="x", pady=(2, 0))
-        
-        # === Next Task Section ===
+        # === Next Activity Section ===
         next_frame = tk.Frame(main_frame, bg="#ecf0f1", relief="solid", bd=1)
         next_frame.pack(fill="x")
         
         next_header = tk.Label(
             next_frame,
-            text=t("compact.next_task"),
+            text=t("compact.next_activity"),
             font=("Arial", 9, "bold"),
             bg="#95a5a6",
             fg="white",
@@ -224,17 +204,17 @@ class CompactView:
         next_content = tk.Frame(next_frame, bg="#ecf0f1", padx=8, pady=6)
         next_content.pack(fill="x")
         
-        self.next_task_label = tk.Label(
+        self.next_activity_label = tk.Label(
             next_content,
-            text=t("compact.no_next_task"),
+            text=t("compact.no_next_activity"),
             font=("Arial", 9),
             bg="#ecf0f1",
-            fg="gray",
+            fg="#555555",
             anchor="w",
             justify="left",
             wraplength=280
         )
-        self.next_task_label.pack(fill="x")
+        self.next_activity_label.pack(fill="x")
         
         # Handle window close
         self.window.protocol("WM_DELETE_WINDOW", self.hide)
@@ -327,33 +307,19 @@ class CompactView:
                 if not found_card:
                     log_debug(f"Compact view: No matching card found for activity")
                 
-                # Update tasks label
+                # Update tasks label with "Tasks done x/y" format
                 self.tasks_label.config(
-                    text=t("compact.tasks_info").format(
-                        done=task_done_count,
-                        total=total_tasks
-                    )
+                    text=f"Tasks done {task_done_count}/{total_tasks}"
                 )
-                
-                # Update progress
-                percentage = int((task_done_count / total_tasks) * 100) if total_tasks > 0 else 0
-                self.progress_label.config(
-                    text=t("compact.completion") + f": {percentage}%"
-                )
-                self.progress_bar["value"] = percentage
-                log_debug(f"Compact view: Set progress to {percentage}%")
+                log_debug(f"Compact view: Tasks {task_done_count}/{total_tasks}")
             else:
                 log_debug(f"Compact view: No tasks for this activity")
-                self.tasks_label.config(text=t("compact.no_tasks"))
-                self.progress_label.config(text=t("compact.completion") + ": --")
-                self.progress_bar["value"] = 0
+                self.tasks_label.config(text="No tasks")
         else:
             # No current activity
             self.activity_name_label.config(text=t("compact.no_activity"))
             self.activity_desc_label.config(text="")
             self.tasks_label.config(text="")
-            self.progress_label.config(text=t("compact.completion") + ": --")
-            self.progress_bar["value"] = 0
     
     def _update_next_task(self):
         """Update next task information."""
@@ -403,11 +369,11 @@ class CompactView:
                 minutes = (total_seconds % 3600) // 60
                 time_str = t("compact.hours_minutes_until").format(hours=hours, minutes=minutes)
             
-            # Update next task label
+            # Update next activity label
             next_text = f"▶ {next_activity.get('name', 'Unknown')}\n{time_str}"
-            self.next_task_label.config(text=next_text)
+            self.next_activity_label.config(text=next_text)
         else:
-            self.next_task_label.config(text=t("compact.no_next_task"))
+            self.next_activity_label.config(text=t("compact.no_next_activity"))
     
     def refresh_ui_after_language_change(self):
         """Refresh UI elements after language change."""
