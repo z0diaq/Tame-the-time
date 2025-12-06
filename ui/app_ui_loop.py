@@ -427,7 +427,12 @@ def _handle_day_rollover(app, now: datetime) -> None:
     # 4. Create new daily task entries for the new day
     _create_new_day_task_entries(app)
     
-    # 5. Update status bar to reflect new day statistics
+    # 5. When keeping current schedule, reload task states from database and refresh cards
+    if not schedule_loaded:
+        app._load_daily_task_entries()
+        _refresh_all_cards(app, now)
+    
+    # 6. Update status bar to reflect new day statistics
     app.update_status_bar()
     
     log_info(f"Day rollover completed at {now.strftime('%H:%M:%S %Y-%m-%d')}")
@@ -498,6 +503,38 @@ def _reset_all_task_completion_status(app) -> None:
         log_debug(f"Reset {reset_count} task completion statuses for new day")
     except Exception as e:
         log_error(f"Failed to reset task completion status: {e}")
+
+
+def _refresh_all_cards(app, now: datetime) -> None:
+    """
+    Refresh all card visuals to correctly mark them as new for the new day.
+    
+    This ensures that all activity cards have their visual state updated to reflect
+    the new day's task tracking data loaded from the database. This is called when
+    keeping the current schedule during day rollover to ensure cards show correct
+    task completion indicators.
+    
+    Args:
+        app: The main TimeboxApp instance containing the task cards to refresh
+        now: Current datetime for visual calculations
+    """
+    try:
+        current_time = now.time()
+        for card_obj in getattr(app, 'cards', []):
+            # Refresh card visuals with current task states
+            card_obj.update_card_visuals(
+                card_obj.start_hour,
+                card_obj.start_minute,
+                app.start_hour,
+                app.pixels_per_hour,
+                app.offset_y,
+                now=current_time,
+                width=app.winfo_width()
+            )
+        
+        log_debug(f"Refreshed {len(app.cards)} cards for new day")
+    except Exception as e:
+        log_error(f"Failed to refresh cards for new day: {e}")
 
 
 def _check_and_load_new_day_schedule(app, now: datetime) -> bool:
