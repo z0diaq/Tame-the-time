@@ -323,28 +323,9 @@ class CompactView:
     
     def _update_next_task(self):
         """Update next task information."""
-        from utils.time_utils import get_current_activity
-        
-        # Find next activity by iterating through schedule
+        # Use parent's get_next_task_and_time which correctly handles out-of-sequence activities
         now = self.now_provider()
-        current_time = now.time()
-        
-        # Find the next activity after current time
-        next_activity = None
-        next_start = None
-        
-        from utils.time_utils import TimeUtils
-        from datetime import datetime, timedelta
-        
-        for activity in self.parent.schedule:
-            start_time_obj = TimeUtils.parse_time_with_validation(activity["start_time"])
-            # If this activity's start time is in the future
-            if start_time_obj > current_time:
-                if next_activity is None or start_time_obj < TimeUtils.parse_time_with_validation(next_activity["start_time"]):
-                    next_activity = activity
-                    # Calculate next_start datetime
-                    next_start = datetime.combine(now.date(), start_time_obj)
-                    break
+        next_activity, next_start = self.parent.get_next_task_and_time(now)
         
         next_result = (next_activity, next_start) if next_activity else None
         
