@@ -1,4 +1,7 @@
 # Tame-the-time
+
+**Version:** 0.1.0
+
 Timeboxing UI application with gamification
 
 Features:
@@ -59,13 +62,33 @@ Tame-the-Time is designed to help anyone who wants to structure their day and st
 
 ---
 
-## Quick Start
+## Installation
+
+### Using Poetry (Recommended)
+
+1. Install Poetry: `curl -sSL https://install.python-poetry.org | python3 -`
+2. Clone the repository: `git clone https://github.com/z0diaq/Tame-the-time.git`
+3. Navigate to directory: `cd Tame-the-time`
+4. Install dependencies: `poetry install`
+5. Run the application: `poetry run python TameTheTime.py`
+
+### Using pip (Alternative)
 
 1. Install dependencies: `pip install -r requirements.txt`
-2. Run the application: `python TameTheTime.py`
-3. Load an example schedule: File → Open → Select an example YAML file
-4. Customize activities: Right-click on any card to edit or add tasks
-5. Track your progress: Use the statistics view to see completion rates
+2. Run the application: `python3 TameTheTime.py`
+
+### Check Version
+
+```bash
+python3 TameTheTime.py --version
+```
+
+## Quick Start
+
+1. Run the application (see Installation above)
+2. Load an example schedule: File → Open → Select an example YAML file
+3. Customize activities: Right-click on any card to edit or add tasks
+4. Track your progress: Use the statistics view to see completion rates
 
 ## Screenshots
 

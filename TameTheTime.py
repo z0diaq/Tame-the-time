@@ -12,6 +12,7 @@ import utils.config
 from constants import AppConstants, ValidationConstants
 from models.time_manager import TimeManager
 from utils.translator import init_translator, t
+from __version__ import __version__
 
 # Global time manager instance
 time_manager: Optional[TimeManager] = None
@@ -232,6 +233,11 @@ def main() -> None:
     """Main application entry point."""
     global time_manager
     
+    # Check for version flag
+    if "--version" in sys.argv or "-v" in sys.argv:
+        print(f"Tame-the-Time version {__version__}")
+        sys.exit(0)
+    
     # Initialize time manager
     time_manager = TimeManager()
     check_time_parameter()
@@ -293,6 +299,7 @@ def main() -> None:
     
     # Setup logging and notifications
     log_startup()
+    log_info(f"Tame-the-Time version {__version__}")
     check_no_notification_parameter()
     
     app: ui.app.TimeboxApp = ui.app.TimeboxApp(schedule, config_path, db_path, now_provider=get_now)

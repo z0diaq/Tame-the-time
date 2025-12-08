@@ -26,6 +26,7 @@ This will be fixed at a later time.
 | [ADR-014](adr_014_forgiving_streak_counting.md) | Forgiving Streak Counting Logic for Task Completion | Accepted | 2025-10-24 |
 | [ADR-015](adr_015_url_extraction_context_menu.md) | URL Extraction and Opening from Task Context Menu | Accepted | 2025-11-13 |
 | [ADR-016](adr_016_card_repositioning.md) | Interactive Card Repositioning with Time Validation | Accepted | 2025-11-22 |
+| [ADR-017](adr_017_semantic_versioning_poetry.md) | Semantic Versioning with Poetry for Dependency Management | Accepted | 2025-12-08 |
 
 ## ADR Categories
 
@@ -52,6 +53,9 @@ This will be fixed at a later time.
 ### User Experience Features
 - **ADR-015**: URL Extraction from Context Menu - Quick access to task-embedded URLs
 - **ADR-016**: Card Repositioning - Interactive card movement with validation
+
+### Project Management & Tooling
+- **ADR-017**: Semantic Versioning with Poetry - Version management and dependency handling
 
 ## How to Use ADRs
 
