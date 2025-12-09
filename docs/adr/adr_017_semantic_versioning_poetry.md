@@ -98,10 +98,14 @@ Implementation Notes:
 **Migration Steps:**
 1. Create pyproject.toml with current dependencies from requirements.txt
 2. Set initial version to 0.1.0
-3. Run `poetry install` to generate poetry.lock
-4. Add poetry.lock to version control
-5. Update documentation to reflect Poetry usage
-6. Keep requirements.txt temporarily for backward compatibility
+3. Create tame_the_time/ package directory for Poetry compatibility
+4. Add __init__.py and __main__.py entry points to package
+5. Configure packages and include sections in pyproject.toml
+6. Add missing dependency (requests) discovered during testing
+7. Run `poetry install` to generate poetry.lock
+8. Add poetry.lock to version control
+9. Update documentation to reflect Poetry usage
+10. Keep requirements.txt in sync for backward compatibility
 
 **Version Update Commands:**
 ```bash
@@ -123,10 +127,22 @@ poetry version premajor    # 0.1.0 → 1.0.0-alpha.0
 
 **pyproject.toml Structure:**
 - [tool.poetry]: Core project metadata and version
-- [tool.poetry.dependencies]: Production dependencies
-- [tool.poetry.group.dev.dependencies]: Development-only dependencies
-- [tool.poetry.scripts]: Executable entry points
+- [tool.poetry.dependencies]: Production dependencies (matplotlib, PyYAML, requests)
+- [tool.poetry.group.dev.dependencies]: Development-only dependencies (pytest, pytest-cov)
+- [tool.poetry.scripts]: Executable entry points (tame-the-time command)
+- packages: List of Python packages to include in distribution
+- include: List of data files (locales, examples, config files)
 - [build-system]: Build tool configuration (Poetry Core)
+
+**Package Structure:**
+- tame_the_time/: Minimal package directory for Poetry compatibility
+  - __init__.py: Package initialization with version import
+  - __main__.py: Entry point wrapper that calls TameTheTime.main()
+- TameTheTime.py: Main application script (kept at root for backward compatibility)
+- ui/, utils/, models/, services/, config/: Application modules
+- locales/: Translation files (JSON)
+- examples/: Sample schedule files and screenshots
+- default_settings.yaml: Default configuration template
 
 **Version Numbering During Development (Pre-1.0.0):**
 - 0.1.x: Initial stable features (day rollover, statistics, internationalization)
