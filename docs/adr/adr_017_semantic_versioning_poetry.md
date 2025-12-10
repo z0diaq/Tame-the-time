@@ -156,3 +156,18 @@ poetry version premajor    # 0.1.0 → 1.0.0-alpha.0
 - Document both installation methods in README
 - Provide migration guide for existing users
 - Can eventually deprecate requirements.txt after Poetry adoption
+
+**Automated Release Pipeline:**
+GitHub Actions workflows for CI/CD:
+- **release.yml**: Triggered on version tags (v*.*.*), builds packages, creates GitHub Release
+- **test.yml**: Triggered on pushes to main/develop, runs tests and validates build
+- Automated version consistency checking between pyproject.toml and __version__.py
+- Distribution packages automatically attached to GitHub Releases
+- Helper script (scripts/bump_version.sh) automates version bumping workflow
+- Pre-release detection based on version string (alpha, beta, rc markers)
+
+**Tooling:**
+- scripts/bump_version.sh: Automated version update with consistency checking
+- CHANGELOG.md: Standardized changelog following Keep a Changelog format
+- docs/RELEASE_PROCESS.md: Comprehensive release workflow documentation
+- docs/INSTALLATION.md: End-user installation guide for distribution packages
