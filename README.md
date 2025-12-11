@@ -1,6 +1,9 @@
 # Tame-the-time
 
-**Version:** 0.1.0
+**Version:** 0.1.1
+
+[![Build and Release](https://github.com/z0diaq/Tame-the-time/actions/workflows/release.yml/badge.svg)](https://github.com/z0diaq/Tame-the-time/actions/workflows/release.yml)
+[![Test Build](https://github.com/z0diaq/Tame-the-time/actions/workflows/test.yml/badge.svg)](https://github.com/z0diaq/Tame-the-time/actions/workflows/test.yml)
 
 Timeboxing UI application with gamification
 
@@ -100,4 +103,45 @@ ADHD person...
 
 Basic charts...
 ![Basic charts](https://github.com/z0diaq/Tame-the-time/blob/main/examples/251117_charts.png)
+
+---
+
+## Documentation
+
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions for end users
+- **[Release Process](docs/RELEASE_PROCESS.md)** - How to create releases with GitHub Actions
+- **[Version Update Guide](docs/VersionUpdate.md)** - Semantic versioning and version management
+- **[ADR Documentation](docs/adr/README.md)** - Architecture Decision Records
+- **[CHANGELOG](CHANGELOG.md)** - Version history and changes
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. **Fork the repository**
+2. **Clone your fork**: `git clone https://github.com/YOUR_USERNAME/Tame-the-time.git`
+3. **Install with Poetry**: `poetry install`
+4. **Create a branch**: `git checkout -b feature/your-feature-name`
+5. **Make your changes** and test thoroughly
+6. **Commit**: Follow [Conventional Commits](https://www.conventionalcommits.org/)
+7. **Push** and create a Pull Request
+
+See [docs/adr/README.md](docs/adr/README.md) to understand the architecture.
+
+## Releases
+
+Releases are automated via GitHub Actions:
+- Push a tag like `v0.1.0` to trigger a release
+- Distribution packages (.whl and .tar.gz) are automatically built
+- GitHub Release is created with downloadable assets
+- See [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) for details
+
+## License
+
+GPL-3.0-or-later - see [LICENSE](LICENSE) file for details
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/z0diaq/Tame-the-time/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/z0diaq/Tame-the-time/discussions)
 
