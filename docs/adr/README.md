@@ -27,6 +27,7 @@ This will be fixed at a later time.
 | [ADR-015](adr_015_url_extraction_context_menu.md) | URL Extraction and Opening from Task Context Menu | Accepted | 2025-11-13 |
 | [ADR-016](adr_016_card_repositioning.md) | Interactive Card Repositioning with Time Validation | Accepted | 2025-11-22 |
 | [ADR-017](adr_017_semantic_versioning_poetry.md) | Semantic Versioning with Poetry for Dependency Management | Accepted | 2025-12-08 |
+| [ADR-018](adr_018_windows_installer_pyinstaller.md) | Windows Installer with PyInstaller and Inno Setup | Accepted | 2025-12-12 |
 
 ## ADR Categories
 
@@ -56,6 +57,7 @@ This will be fixed at a later time.
 
 ### Project Management & Tooling
 - **ADR-017**: Semantic Versioning with Poetry - Version management and dependency handling
+- **ADR-018**: Windows Installer with PyInstaller and Inno Setup - Windows distribution strategy
 
 ## How to Use ADRs
 

@@ -8,9 +8,10 @@ When you push a version tag (e.g., `v0.1.0`) to GitHub, the following happens au
 
 1. ✅ GitHub Actions triggers the build workflow
 2. 🔨 Poetry builds distribution packages (wheel + source)
-3. 📦 Creates a GitHub Release with the packages attached
-4. 📝 Generates release notes from commits
-5. 🎯 Marks pre-releases (alpha/beta/rc) appropriately
+3. 🪟 PyInstaller creates Windows executable and Inno Setup builds installer
+4. 📦 Creates a GitHub Release with all packages attached
+5. 📝 Generates release notes from commits
+6. 🎯 Marks pre-releases (alpha/beta/rc) appropriately
 
 ## Prerequisites
 
@@ -102,9 +103,10 @@ git push origin "v${VERSION}"
 
 1. Go to **Releases** tab on GitHub
 2. Verify the new release is created
-3. Check that both files are attached:
-   - `tame_the_time-0.2.0-py3-none-any.whl`
-   - `tame_the_time-0.2.0.tar.gz`
+3. Check that all files are attached:
+   - `tame_the_time-0.2.0-py3-none-any.whl` (Python wheel)
+   - `tame_the_time-0.2.0.tar.gz` (Python source)
+   - `TameTheTime-0.2.0-Setup.exe` (Windows installer)
 
 ## Manual Release (Fallback)
 
@@ -157,20 +159,37 @@ The workflow triggers on tags matching the pattern `v*.*.*`:
 
 ### What Gets Built
 
-The workflow:
+The workflow runs three jobs in sequence:
+
+**Job 1: Build Python Packages (Ubuntu)**
 1. Checks out the tagged commit
 2. Sets up Python 3.12
 3. Installs Poetry
 4. Installs dependencies via `poetry install`
 5. Builds packages via `poetry build`
-6. Creates GitHub Release
-7. Uploads both `.whl` and `.tar.gz` files
+6. Uploads artifacts for release job
+
+**Job 2: Build Windows Installer (Windows)**
+1. Checks out the tagged commit
+2. Sets up Python 3.12 on Windows
+3. Installs Poetry
+4. Installs dependencies including PyInstaller
+5. Builds executable with PyInstaller
+6. Installs Inno Setup
+7. Creates Windows installer
+8. Uploads installer for release job
+
+**Job 3: Create Release (Ubuntu)**
+1. Downloads all build artifacts
+2. Creates GitHub Release
+3. Uploads all files to the release
 
 ### Release Assets
 
 Each release includes:
 - **Wheel package** (`.whl`) - Binary distribution for fast installation
 - **Source package** (`.tar.gz`) - Source distribution for pip/Poetry
+- **Windows installer** (`.exe`) - Self-contained Windows installer with all dependencies
 
 ### Release Notes
 
