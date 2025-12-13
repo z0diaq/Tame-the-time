@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended GitHub Actions release workflow to build Windows installers alongside Python packages
 - Release artifacts now include wheel, source, and Windows installer
 
+### Fixed
+- Python version constraint to <3.15 for PyInstaller compatibility
+
 ### Documentation
 - ADR-018: Windows Installer with PyInstaller and Inno Setup
 - Updated RELEASE_PROCESS.md with Windows build information
