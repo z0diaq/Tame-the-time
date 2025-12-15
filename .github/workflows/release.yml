@@ -83,10 +83,12 @@ jobs:
       - name: Install dependencies (including build tools)
         run: |
           poetry install --no-interaction --with build
+        shell: bash
       
       - name: Build executable with PyInstaller
         run: |
           poetry run pyinstaller tame_the_time.spec
+        shell: bash
       
       - name: Verify executable
         run: |
