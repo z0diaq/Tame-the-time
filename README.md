@@ -1,6 +1,6 @@
 # Tame-the-time
 
-**Version:** 0.1.3
+**Version:** 0.1.4
 
 [![Build and Release](https://github.com/z0diaq/Tame-the-time/actions/workflows/release.yml/badge.svg)](https://github.com/z0diaq/Tame-the-time/actions/workflows/release.yml)
 [![Test Build](https://github.com/z0diaq/Tame-the-time/actions/workflows/test.yml/badge.svg)](https://github.com/z0diaq/Tame-the-time/actions/workflows/test.yml)
