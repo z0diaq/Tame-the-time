@@ -23,6 +23,8 @@ class TaskStatisticsDialog:
         self.task_service = task_tracking_service
         self.dialog = None
         self.task_listbox = None
+        self.task_canvas = None
+        self.task_scrollbar = None
         self.grouping_var = None
         self.ignore_weekends_var = None
         self.show_known_only_var = None
@@ -33,6 +35,8 @@ class TaskStatisticsDialog:
         self.selected_task_indices = []  # Store selected task indices for persistence
         self.all_task_data = []  # Store all tasks before filtering
         self.filtered_task_data = []  # Store filtered tasks for display
+        self.task_colors = {}  # Store color assignments for each task UUID
+        self.task_canvas_items = []  # Store canvas item IDs for task list
         
     def show(self):
         """Show the statistics dialog."""
@@ -111,24 +115,25 @@ class TaskStatisticsDialog:
         )
         show_current_schedule_only_cb.pack(anchor=tk.W)
         
-        # Task list with scrollbar
+        # Task list with scrollbar (using Canvas for color indicators)
         list_frame = tk.Frame(parent)
         list_frame.pack(fill=tk.BOTH, expand=True)
         
-        scrollbar = tk.Scrollbar(list_frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.task_scrollbar = tk.Scrollbar(list_frame)
+        self.task_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.task_listbox = tk.Listbox(
+        self.task_canvas = tk.Canvas(
             list_frame,
-            selectmode=tk.EXTENDED,  # Allow multiple selection
-            yscrollcommand=scrollbar.set,
-            font=("Arial", 10)
+            yscrollcommand=self.task_scrollbar.set,
+            bg="white",
+            highlightthickness=0
         )
-        self.task_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.config(command=self.task_listbox.yview)
+        self.task_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.task_scrollbar.config(command=self.task_canvas.yview)
         
-        # Bind selection change event
-        self.task_listbox.bind('<<ListboxSelect>>', self._on_task_selection_change)
+        # Bind click event for task selection
+        self.task_canvas.bind('<Button-1>', self._on_task_click)
+        self.task_canvas.bind('<Configure>', self._on_canvas_resize)
         
     def _create_right_panel(self, parent):
         """Create the right panel with chart options and display area."""
@@ -174,10 +179,16 @@ class TaskStatisticsDialog:
             # Store all task info for filtering
             self.all_task_data = []
             
-            for task_info in unique_tasks:
+            # Get chart colors for assignment
+            chart_colors = Colors.get_chart_colors()
+            
+            for i, task_info in enumerate(unique_tasks):
                 task_uuid = task_info['task_uuid']
                 activity_id = task_info['activity_id']
                 task_name = task_info['task_name']
+                
+                # Assign color to this task
+                self.task_colors[task_uuid] = chart_colors[i % len(chart_colors)]
                 
                 # Get activity name for display format: "Activity name / task name"
                 activity_name = t("activity.unknown_activity")
@@ -191,7 +202,7 @@ class TaskStatisticsDialog:
                 task_info_with_activity['activity_name'] = activity_name
                 self.all_task_data.append(task_info_with_activity)
             
-            # Apply filtering and populate the listbox
+            # Apply filtering and populate the canvas
             self._apply_task_filter()
                 
             log_debug(f"Populated task list with {len(unique_tasks)} tasks")
@@ -226,8 +237,10 @@ class TaskStatisticsDialog:
         self.canvas.draw()
         
     def _apply_task_filter(self):
-        """Apply filtering based on the checkbox states and populate the listbox."""
-        self.task_listbox.delete(0, tk.END)
+        """Apply filtering based on the checkbox states and populate the canvas."""
+        # Clear canvas
+        self.task_canvas.delete('all')
+        self.task_canvas_items = []
         self.filtered_task_data = []
         
         show_known_only = self.show_known_only_var.get() if self.show_known_only_var else True
@@ -240,10 +253,16 @@ class TaskStatisticsDialog:
                 if activity.get('id'):
                     current_schedule_activity_ids.add(activity['id'])
         
+        y_position = 5
+        line_height = 25
+        color_box_size = 15
+        color_box_margin = 5
+        
         for task_info in self.all_task_data:
             activity_name = task_info['activity_name']
             task_name = task_info['task_name']
             activity_id = task_info['activity_id']
+            task_uuid = task_info['task_uuid']
             
             # Apply known activity filter: if show_known_only is True, skip "Unknown Activity" tasks
             if show_known_only and activity_name == t("activity.unknown_activity"):
@@ -253,9 +272,103 @@ class TaskStatisticsDialog:
             if show_current_schedule_only and activity_id and activity_id not in current_schedule_activity_ids:
                 continue
             
+            # Get color for this task
+            task_color = self.task_colors.get(task_uuid, "#cccccc")
+            
+            # Draw color box
+            color_box = self.task_canvas.create_rectangle(
+                color_box_margin, y_position,
+                color_box_margin + color_box_size, y_position + color_box_size,
+                fill=task_color, outline="black", width=1
+            )
+            
+            # Draw task text
             display_text = f"{activity_name} / {task_name}"
-            self.task_listbox.insert(tk.END, display_text)
+            text_x = color_box_margin + color_box_size + 10
+            text_item = self.task_canvas.create_text(
+                text_x, y_position + color_box_size // 2,
+                text=display_text, anchor=tk.W, font=("Arial", 10), tags="tasktext"
+            )
+            
+            # Create invisible click area for selection
+            bbox = self.task_canvas.bbox(text_item)
+            if bbox:
+                click_area = self.task_canvas.create_rectangle(
+                    color_box_margin, y_position,
+                    bbox[2] + 5, y_position + line_height,
+                    fill="", outline="", tags=f"task_{len(self.task_canvas_items)}"
+                )
+                self.task_canvas.tag_lower(click_area)
+            
+            # Store item info
+            self.task_canvas_items.append({
+                'color_box': color_box,
+                'text': text_item,
+                'y_start': y_position,
+                'y_end': y_position + line_height,
+                'selected': False
+            })
             self.filtered_task_data.append(task_info)
+            
+            y_position += line_height
+        
+        # Update scroll region
+        self.task_canvas.configure(scrollregion=(0, 0, 480, y_position))
+    
+    def _on_task_click(self, event):
+        """Handle click on task canvas."""
+        # Find which task was clicked
+        y_click = self.task_canvas.canvasy(event.y)
+        clicked_index = None
+        
+        for i, item in enumerate(self.task_canvas_items):
+            if item['y_start'] <= y_click <= item['y_end']:
+                clicked_index = i
+                break
+        
+        if clicked_index is None:
+            return
+        
+        # Toggle selection (Ctrl/Shift for multi-select)
+        if event.state & 0x0004:  # Ctrl key
+            # Toggle this item
+            item = self.task_canvas_items[clicked_index]
+            item['selected'] = not item['selected']
+            if item['selected']:
+                if clicked_index not in self.selected_task_indices:
+                    self.selected_task_indices.append(clicked_index)
+            else:
+                if clicked_index in self.selected_task_indices:
+                    self.selected_task_indices.remove(clicked_index)
+        else:
+            # Clear all and select only this one
+            for item in self.task_canvas_items:
+                item['selected'] = False
+            self.task_canvas_items[clicked_index]['selected'] = True
+            self.selected_task_indices = [clicked_index]
+        
+        # Redraw selections
+        self._redraw_task_selections()
+        
+        # Update chart
+        self._update_chart()
+    
+    def _on_canvas_resize(self, event):
+        """Handle canvas resize."""
+        # Update scroll region width
+        if self.task_canvas_items:
+            last_y = self.task_canvas_items[-1]['y_end'] if self.task_canvas_items else 100
+            self.task_canvas.configure(scrollregion=(0, 0, event.width, last_y))
+    
+    def _redraw_task_selections(self):
+        """Redraw task list to show selections."""
+        for i, item in enumerate(self.task_canvas_items):
+            if item['selected']:
+                # Highlight selected tasks
+                self.task_canvas.itemconfig(item['text'], fill="blue", font=("Arial", 10, "bold"))
+            else:
+                # Normal appearance
+                self.task_canvas.itemconfig(item['text'], fill="black", font=("Arial", 10))
     
     def _on_filter_change(self):
         """Handle filter checkbox change."""
@@ -274,11 +387,6 @@ class TaskStatisticsDialog:
         # Update chart
         self._update_chart()
     
-    def _on_task_selection_change(self, event=None):
-        """Handle task selection change."""
-        # Store current selection for persistence
-        self.selected_task_indices = list(self.task_listbox.curselection())
-        self._update_chart()
         
     def _on_options_change(self, event=None):
         """Handle chart options change."""
@@ -288,28 +396,30 @@ class TaskStatisticsDialog:
         
     def _restore_task_selection(self):
         """Restore previously selected tasks after grouping change."""
-        if self.selected_task_indices and self.task_listbox:
+        if self.selected_task_indices and self.task_canvas_items:
             # Clear current selection
-            self.task_listbox.selection_clear(0, tk.END)
+            for item in self.task_canvas_items:
+                item['selected'] = False
             
             # Restore previous selection
             for index in self.selected_task_indices:
-                if index < self.task_listbox.size():
-                    self.task_listbox.selection_set(index)
+                if index < len(self.task_canvas_items):
+                    self.task_canvas_items[index]['selected'] = True
+            
+            self._redraw_task_selections()
         
     def _update_chart(self):
         """Update the chart based on current selection and options."""
         try:
-            # Get selected tasks
-            selected_indices = self.task_listbox.curselection()
-            if not selected_indices:
+            # Get selected tasks from selected_task_indices
+            if not self.selected_task_indices:
                 self._show_empty_chart()
                 return
                 
             # Parse selected tasks using filtered task data
             selected_task_uuids = []
             
-            for index in selected_indices:
+            for index in self.selected_task_indices:
                 if index < len(self.filtered_task_data):
                     task_info = self.filtered_task_data[index]
                     selected_task_uuids.append(task_info['task_uuid'])
@@ -374,16 +484,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_dates))
         
-        colors = Colors.get_chart_colors()
-        
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from filtered data
-            task_display_name = task_uuid  # fallback
-            for stored_task in self.filtered_task_data:
-                if stored_task['task_uuid'] == task_uuid:
-                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
-                    break
-            
             # Create completion data for each date
             completion_data = []
             for date_str in sorted_dates:
@@ -391,11 +492,10 @@ class TaskStatisticsDialog:
                               for entry in task_data)
                 completion_data.append(1 if completed else 0)
             
-            # Plot bars
+            # Plot bars with assigned color
             x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
-            color = colors[i % len(colors)]
-            ax.bar(x_offset, completion_data, bar_width, label=task_display_name, 
-                  color=color, alpha=0.7)
+            color = self.task_colors.get(task_uuid, "#cccccc")
+            ax.bar(x_offset, completion_data, bar_width, color=color, alpha=0.7)
         
         ax.set_xlabel(t('chart.date'))
         ax.set_ylabel(t('chart.completed_not_completed'))
@@ -403,7 +503,6 @@ class TaskStatisticsDialog:
         ax.set_xticks(x_positions)
         ax.set_xticklabels(date_labels, rotation=45)
         ax.set_ylim(0, 1.2)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         
         self.figure.tight_layout()
         self.canvas.draw()
@@ -430,16 +529,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_weeks))
         
-        colors = Colors.get_chart_colors()
-        
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from filtered data
-            task_display_name = task_uuid  # fallback
-            for stored_task in self.filtered_task_data:
-                if stored_task['task_uuid'] == task_uuid:
-                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
-                    break
-            
             # Create completion data for each week
             completion_rates = []
             for week_start in sorted_weeks:
@@ -452,11 +542,10 @@ class TaskStatisticsDialog:
                         break
                 completion_rates.append(rate)
             
-            # Plot bars
+            # Plot bars with assigned color
             x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
-            color = colors[i % len(colors)]
-            ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
-                  color=color, alpha=0.7)
+            color = self.task_colors.get(task_uuid, "#cccccc")
+            ax.bar(x_offset, completion_rates, bar_width, color=color, alpha=0.7)
         
         ax.set_xlabel(t('chart.week'))
         ax.set_ylabel(t('chart.completion_rate'))
@@ -464,7 +553,6 @@ class TaskStatisticsDialog:
         ax.set_xticks(x_positions)
         ax.set_xticklabels(week_labels, rotation=45)
         ax.set_ylim(0, 1.1)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         
         self.figure.tight_layout()
         self.canvas.draw()
@@ -491,16 +579,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_months))
         
-        colors = Colors.get_chart_colors()
-        
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from filtered data
-            task_display_name = task_uuid  # fallback
-            for stored_task in self.filtered_task_data:
-                if stored_task['task_uuid'] == task_uuid:
-                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
-                    break
-            
             # Create completion data for each month
             completion_rates = []
             for month_date in sorted_months:
@@ -513,11 +592,10 @@ class TaskStatisticsDialog:
                         break
                 completion_rates.append(rate)
             
-            # Plot bars
+            # Plot bars with assigned color
             x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
-            color = colors[i % len(colors)]
-            ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
-                  color=color, alpha=0.7)
+            color = self.task_colors.get(task_uuid, "#cccccc")
+            ax.bar(x_offset, completion_rates, bar_width, color=color, alpha=0.7)
         
         ax.set_xlabel(t('chart.month'))
         ax.set_ylabel(t('chart.completion_rate'))
@@ -525,7 +603,6 @@ class TaskStatisticsDialog:
         ax.set_xticks(x_positions)
         ax.set_xticklabels(month_labels, rotation=45)
         ax.set_ylim(0, 1.1)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         
         self.figure.tight_layout()
         self.canvas.draw()
@@ -552,16 +629,7 @@ class TaskStatisticsDialog:
         bar_width = 0.8 / len(stats_data) if stats_data else 0.8
         x_positions = range(len(sorted_years))
         
-        colors = Colors.get_chart_colors()
-        
         for i, (task_uuid, task_data) in enumerate(stats_data.items()):
-            # Get task display name from filtered data
-            task_display_name = task_uuid  # fallback
-            for stored_task in self.filtered_task_data:
-                if stored_task['task_uuid'] == task_uuid:
-                    task_display_name = f"{stored_task['activity_name']} / {stored_task['task_name']}"
-                    break
-            
             # Create completion data for each year
             completion_rates = []
             for year_date in sorted_years:
@@ -574,11 +642,10 @@ class TaskStatisticsDialog:
                         break
                 completion_rates.append(rate)
             
-            # Plot bars
+            # Plot bars with assigned color
             x_offset = [x + (i - len(stats_data)/2 + 0.5) * bar_width for x in x_positions]
-            color = colors[i % len(colors)]
-            ax.bar(x_offset, completion_rates, bar_width, label=task_display_name, 
-                  color=color, alpha=0.7)
+            color = self.task_colors.get(task_uuid, "#cccccc")
+            ax.bar(x_offset, completion_rates, bar_width, color=color, alpha=0.7)
         
         ax.set_xlabel(t('chart.year'))
         ax.set_ylabel(t('chart.completion_rate'))
@@ -586,7 +653,6 @@ class TaskStatisticsDialog:
         ax.set_xticks(x_positions)
         ax.set_xticklabels(year_labels, rotation=45)
         ax.set_ylim(0, 1.1)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         
         self.figure.tight_layout()
         self.canvas.draw()
