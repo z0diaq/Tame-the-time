@@ -685,6 +685,24 @@ class TimeboxApp(tk.Tk):
             
             log_info(f"Loaded {len(done_states)} task done states from database")
             
+            # Update card visuals to reflect loaded task completion states
+            now = self.now_provider().time()
+            for card_obj in self.cards:
+                if card_obj.activity.get("tasks"):
+                    card_obj.update_card_visuals(
+                        card_obj.start_hour,
+                        card_obj.start_minute,
+                        self.day_start,
+                        self.pixels_per_hour,
+                        self.offset_y,
+                        now=now,
+                        show_start_time=(card_obj.start_minute != 0),
+                        show_end_time=(card_obj.end_minute != 0),
+                        width=self.winfo_width(),
+                        is_moving=False
+                    )
+            log_debug("Updated card visuals after loading task completion states")
+            
         except Exception as e:
             log_error(f"Failed to load daily task entries: {e}")
 
