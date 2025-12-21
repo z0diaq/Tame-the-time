@@ -246,12 +246,15 @@ class TaskStatisticsDialog:
         show_known_only = self.show_known_only_var.get() if self.show_known_only_var else True
         show_current_schedule_only = self.show_current_schedule_only_var.get() if self.show_current_schedule_only_var else True
         
+        log_debug(f"Applying task filter: show_known_only={show_known_only}, show_current_schedule_only={show_current_schedule_only}")
+        
         # Get current schedule activity IDs for filtering
         current_schedule_activity_ids = set()
         if show_current_schedule_only and hasattr(self.parent, 'schedule') and self.parent.schedule:
             for activity in self.parent.schedule:
                 if activity.get('id'):
                     current_schedule_activity_ids.add(activity['id'])
+            log_debug(f"Current schedule activity IDs: {current_schedule_activity_ids}")
         
         y_position = 5
         line_height = 25
@@ -266,11 +269,15 @@ class TaskStatisticsDialog:
             
             # Apply known activity filter: if show_known_only is True, skip "Unknown Activity" tasks
             if show_known_only and activity_name == t("activity.unknown_activity"):
+                log_debug(f"Filtering out unknown activity task: {task_name}")
                 continue
             
             # Apply current schedule filter: if show_current_schedule_only is True, skip tasks not in current schedule
             if show_current_schedule_only and activity_id and activity_id not in current_schedule_activity_ids:
+                log_debug(f"Filtering out task not in current schedule: {activity_name} / {task_name} (activity_id={activity_id})")
                 continue
+            
+            log_debug(f"Including task: {activity_name} / {task_name} (activity_id={activity_id})")
             
             # Get color for this task
             task_color = self.task_colors.get(task_uuid, "#cccccc")
