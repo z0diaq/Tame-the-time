@@ -272,10 +272,12 @@ class TaskStatisticsDialog:
                 log_debug(f"Filtering out unknown activity task: {task_name}")
                 continue
             
-            # Apply current schedule filter: if show_current_schedule_only is True, skip tasks not in current schedule
-            if show_current_schedule_only and activity_id and activity_id not in current_schedule_activity_ids:
-                log_debug(f"Filtering out task not in current schedule: {activity_name} / {task_name} (activity_id={activity_id})")
-                continue
+            # Apply current schedule filter: if show_current_schedule_only is True, 
+            # only show tasks that have an activity_id in the current schedule
+            if show_current_schedule_only:
+                if not activity_id or activity_id not in current_schedule_activity_ids:
+                    log_debug(f"Filtering out task not in current schedule: {activity_name} / {task_name} (activity_id={activity_id})")
+                    continue
             
             log_debug(f"Including task: {activity_name} / {task_name} (activity_id={activity_id})")
             
