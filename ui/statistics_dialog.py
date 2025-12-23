@@ -266,6 +266,8 @@ class TaskStatisticsDialog:
             task_name = task_info['task_name']
             activity_id = task_info['activity_id']
             task_uuid = task_info['task_uuid']
+
+            log_debug(f"Processing task: {activity_name} / {task_name} (activity_id={activity_id})")
             
             # Apply known activity filter: if show_known_only is True, skip "Unknown Activity" tasks
             if show_known_only and activity_name == t("activity.unknown_activity"):
