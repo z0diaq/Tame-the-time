@@ -558,6 +558,7 @@ class TaskStatisticsDialog:
             color = self.task_colors.get(task_uuid, "#cccccc")
             ax.bar(x_offset, completion_rates, bar_width, color=color, alpha=0.7)
         
+        log_debug(f"Prepared week labels: {week_labels}")
         ax.set_xlabel(t('chart.week'))
         ax.set_ylabel(t('chart.completion_rate'))
         ax.set_title(t('chart.weekly_completion'))
