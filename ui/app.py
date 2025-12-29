@@ -639,6 +639,15 @@ class TimeboxApp(tk.Tk):
                 if not activity_id:
                     log_debug(f"Activity '{card_obj.activity.get('name', 'Unknown')}' has no ID, skipping task loading")
                     continue
+                
+                # Verify activity exists in current schedule
+                activity_in_schedule = any(
+                    activity.get('id') == activity_id 
+                    for activity in self.schedule
+                )
+                if not activity_in_schedule:
+                    log_debug(f"Skipping DB load for activity '{card_obj.activity.get('name')}' - not in current schedule")
+                    continue
                     
                 tasks = card_obj.activity.get("tasks", [])
                 
@@ -688,6 +697,16 @@ class TimeboxApp(tk.Tk):
             # Update card visuals to reflect loaded task completion states
             now = self.now_provider().time()
             for card_obj in self.cards:
+                # Only update visuals for cards in current schedule
+                activity_id = card_obj.activity.get("id")
+                activity_in_schedule = any(
+                    activity.get('id') == activity_id 
+                    for activity in self.schedule
+                )
+                if not activity_in_schedule:
+                    log_debug(f"Skipping visual update for card '{card_obj.activity.get('name')}' - not in current schedule")
+                    continue
+                
                 if card_obj.activity.get("tasks"):
                     card_obj.update_card_visuals(
                         card_obj.start_hour,

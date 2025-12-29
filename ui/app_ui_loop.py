@@ -12,6 +12,28 @@ import tkinter.font as tkfont
 from ui.day_rollover_dialog import show_day_rollover_dialog
 
 
+def _is_activity_in_schedule(app, activity_id: str) -> bool:
+    """
+    Check if an activity with the given ID exists in the current schedule.
+    
+    Args:
+        app: The main TimeboxApp instance
+        activity_id: The activity ID to check
+    
+    Returns:
+        True if activity exists in current schedule, False otherwise
+    """
+    if not activity_id:
+        return False
+    
+    schedule = getattr(app, 'schedule', [])
+    for activity in schedule:
+        if activity.get('id') == activity_id:
+            return True
+    
+    return False
+
+
 def truncate_text_to_width(text: str, font, max_width: int) -> str:
     """
     Truncate text to fit within max_width pixels, replacing overflow with '...'.
@@ -196,6 +218,12 @@ def _refresh_active_card_if_undone_tasks(app, activity):
     
     # Find the corresponding card object to check _tasks_done using ID-based matching
     activity_id = activity.get("id")
+    
+    # Skip if activity is not in current schedule
+    if not _is_activity_in_schedule(app, activity_id):
+        log_debug(f"Skipping refresh for activity '{activity.get('name')}' - not in current schedule")
+        return
+    
     for card_obj in getattr(app, 'cards', []):
         if activity_id and card_obj.activity.get('id') == activity_id:
             # Use _tasks_done if present, otherwise assume all tasks are undone
@@ -219,6 +247,7 @@ def _refresh_missed_cards_with_undone_tasks(app, now):
     This function checks all cards to find those where:
     - The activity's end time is before the current time (finished/past)
     - There are undone tasks remaining
+    - The activity exists in the current schedule
     
     For such cards, it triggers a visual refresh to show the blinking red/black
     status indicator, alerting the user to missed tasks.
@@ -228,6 +257,13 @@ def _refresh_missed_cards_with_undone_tasks(app, now):
         now: Current time object
     """
     for card_obj in getattr(app, 'cards', []):
+        activity_id = card_obj.activity.get('id')
+        
+        # Skip if activity is not in current schedule
+        if not _is_activity_in_schedule(app, activity_id):
+            log_debug(f"Skipping refresh for card '{card_obj.activity.get('name')}' - not in current schedule")
+            continue
+        
         tasks = card_obj.activity.get("tasks", [])
         if not tasks:
             continue
