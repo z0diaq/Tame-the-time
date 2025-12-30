@@ -225,8 +225,9 @@ class TaskCard:
             self.card_left - 10, self.y + self.height, text=end_time_text, font=("Arial", 8), anchor="e"
         )
         canvas.itemconfig(self.time_end_label, tags=(tag))
-        # Hide time_end_label if at 0 minutes
-        if self.end_minute == 0 or not draw_end_time:
+        # Hide time_end_label if draw_end_time is False (next card starts at same time)
+        # or if at 0 minutes and we're allowed to draw it
+        if not draw_end_time or (draw_end_time and self.end_minute == 0):
             canvas.itemconfig(self.time_end_label, state="hidden")
         # Add tasks count label if tasks exist
         tasks = self.activity.get("tasks", [])
@@ -442,7 +443,7 @@ class TaskCard:
 
         self.canvas.itemconfig(self.time_end_label, text=f"{self.end_hour:02d}:{self.end_minute:02d}")
         self.canvas.coords(self.time_end_label, self.card_left - 10, self.y + self.height)
-        self.canvas.itemconfig(self.time_end_label, state="hidden" if self.end_minute == 0 or not show_end_time else "normal")
+        self.canvas.itemconfig(self.time_end_label, state="hidden" if not show_end_time or (show_end_time and self.end_minute == 0) else "normal")
 
         self.canvas.coords(self.label, (self.card_left + self.card_right) // 2, self.y + self.height // 2)
         # Calculate available width for text (with some padding)
