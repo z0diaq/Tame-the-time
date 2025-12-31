@@ -94,6 +94,15 @@ class TaskStatisticsDialog:
 - Filters work independently and can be combined for precise task selection
 - Default behavior shows only tasks from current schedule with known activities
 
+**Week Label Format Enhancement (December 2025):**
+- Updated weekly statistics labels to show complete Monday-Sunday date range
+- New format: `month.day-month.day (Xd)` where X is the number of tracked days
+- First date always represents Monday (ISO week start)
+- Second date always represents Sunday (ISO week end)
+- Tracked days count shows actual days with data (e.g., "2d" if only Monday and Tuesday were tracked)
+- Example: `12.23-12.29 (5d)` means week from December 23 (Monday) to December 29 (Sunday) with 5 days of tracked data
+- Provides clearer context about week boundaries and data completeness
+
 **Technical Implementation:**
 ```python
 # Extended grouping support

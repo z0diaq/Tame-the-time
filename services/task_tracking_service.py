@@ -500,10 +500,16 @@ class TaskTrackingService:
             completion_rate = (week_data['completed_days'] / week_data['total_days'] 
                              if week_data['total_days'] > 0 else 0)
             
+            # Calculate week end (Sunday = Monday + 6 days)
+            week_end = week_start + timedelta(days=6)
+            
+            # Format: month.day-month.day (Xd) where X is tracked days count
+            display_label = f"{week_start.month}.{week_start.day}-{week_end.month}.{week_end.day} ({week_data['total_days']}d)"
+            
             data.append({
                 'date': week_start_str,
                 'completed': completion_rate,
-                'display_label': f"Week {week_start.strftime('%m-%d')}"
+                'display_label': display_label
             })
             
             if len(data) >= limit:
