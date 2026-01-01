@@ -512,7 +512,7 @@ class TaskStatisticsDialog:
         ax.set_ylabel(t('chart.completed_not_completed'))
         ax.set_title(t('chart.daily_completion'))
         ax.set_xticks(x_positions)
-        ax.set_xticklabels(date_labels, rotation=45)
+        ax.set_xticklabels(date_labels, rotation=45, ha='right')
         ax.set_ylim(0, 1.2)
         
         self.figure.tight_layout()
@@ -563,7 +563,7 @@ class TaskStatisticsDialog:
         ax.set_ylabel(t('chart.completion_rate'))
         ax.set_title(t('chart.weekly_completion'))
         ax.set_xticks(x_positions)
-        ax.set_xticklabels(week_labels, rotation=45)
+        ax.set_xticklabels(week_labels, rotation=45, ha='right')
         ax.set_ylim(0, 1.1)
         
         self.figure.tight_layout()
@@ -613,7 +613,7 @@ class TaskStatisticsDialog:
         ax.set_ylabel(t('chart.completion_rate'))
         ax.set_title(t('chart.monthly_completion'))
         ax.set_xticks(x_positions)
-        ax.set_xticklabels(month_labels, rotation=45)
+        ax.set_xticklabels(month_labels, rotation=45, ha='right')
         ax.set_ylim(0, 1.1)
         
         self.figure.tight_layout()
@@ -663,7 +663,7 @@ class TaskStatisticsDialog:
         ax.set_ylabel(t('chart.completion_rate'))
         ax.set_title(t('chart.yearly_completion'))
         ax.set_xticks(x_positions)
-        ax.set_xticklabels(year_labels, rotation=45)
+        ax.set_xticklabels(year_labels, rotation=45, ha='right')
         ax.set_ylim(0, 1.1)
         
         self.figure.tight_layout()
