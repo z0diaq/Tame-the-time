@@ -248,13 +248,18 @@ class TaskStatisticsDialog:
         
         log_debug(f"Applying task filter: show_known_only={show_known_only}, show_current_schedule_only={show_current_schedule_only}")
         
-        # Get current schedule activity IDs for filtering
-        current_schedule_activity_ids = set()
+        # Build a set of task UUIDs that exist in the current schedule
+        current_schedule_task_uuids = set()
         if show_current_schedule_only and hasattr(self.parent, 'schedule') and self.parent.schedule:
             for activity in self.parent.schedule:
-                if activity.get('id'):
-                    current_schedule_activity_ids.add(activity['id'])
-            log_debug(f"Current schedule activity IDs: {current_schedule_activity_ids}")
+                if 'tasks' in activity:
+                    for task in activity.get('tasks', []):
+                        if isinstance(task, dict) and 'uuid' in task:
+                            current_schedule_task_uuids.add(task['uuid'])
+                        elif isinstance(task, str):
+                            # Legacy string format - skip these in filter
+                            log_debug(f"Skipping legacy string task in filter: {task}")
+            log_debug(f"Current schedule task UUIDs: {current_schedule_task_uuids}")
         
         y_position = 5
         line_height = 25
@@ -275,10 +280,10 @@ class TaskStatisticsDialog:
                 continue
             
             # Apply current schedule filter: if show_current_schedule_only is True, 
-            # only show tasks that have an activity_id in the current schedule
+            # only show tasks whose UUID exists in the current schedule
             if show_current_schedule_only:
-                if not activity_id or activity_id not in current_schedule_activity_ids:
-                    log_debug(f"Filtering out task not in current schedule: {activity_name} / {task_name} (activity_id={activity_id})")
+                if not task_uuid or task_uuid not in current_schedule_task_uuids:
+                    log_debug(f"Filtering out task not in current schedule: {activity_name} / {task_name} (task_uuid={task_uuid})")
                     continue
             
             log_debug(f"Including task: {activity_name} / {task_name} (activity_id={activity_id})")
