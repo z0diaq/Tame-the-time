@@ -52,6 +52,7 @@
     "gotify_token": "Token Gotify:",
     "advance_notification_settings": "Ustawienia powiadomień z wyprzedzeniem:",
     "enable_advance_notifications": "Włącz powiadomienia z wyprzedzeniem",
+    "append_checkbox_state": "Dodaj stan checkboxa do tekstu checkboxa",
     "seconds_before_activity": "Sekund przed aktywnością:",
     "select_tasks": "Wybierz zadania:",
     "show_only_known_activity": "Pokaż tylko zadania ze znaną aktywnością",
@@ -68,6 +69,10 @@
     "time_format_hint": "(format: HH:MM)",
     "shift_format_hint": "(np. 01:30 lub -01:30 do tyłu)",
     "adjustment_mode": "Tryb dostosowania:"
+  },
+  "checkbox_state": {
+    "on": "(Włączone)",
+    "off": "(Wyłączone)"
   },
   "combo": {
     "disabled": "Wyłączone",

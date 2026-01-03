@@ -52,6 +52,7 @@
     "gotify_token": "Gotify Token:",
     "advance_notification_settings": "Advance Notification Settings:",
     "enable_advance_notifications": "Enable advance notifications",
+    "append_checkbox_state": "Append checkbox state to checkbox text",
     "seconds_before_activity": "Seconds before activity:",
     "select_tasks": "Select Tasks:",
     "show_only_known_activity": "Show only tasks with known activity",
@@ -68,6 +69,10 @@
     "time_format_hint": "(format: HH:MM)",
     "shift_format_hint": "(e.g., 01:30 or -01:30 for backwards)",
     "adjustment_mode": "Adjustment mode:"
+  },
+  "checkbox_state": {
+    "on": "(On)",
+    "off": "(Off)"
   },
   "combo": {
     "disabled": "Disabled",

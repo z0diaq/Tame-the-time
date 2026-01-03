@@ -122,8 +122,15 @@ def open_global_options(app):
         ui_elements['gotify_token_label'].config(text=t("label.gotify_token"))
         ui_elements['language_label'].config(text=t("label.language"))
         ui_elements['advance_settings_label'].config(text=t("label.advance_notification_settings"))
-        ui_elements['advance_checkbox'].config(text=t("label.enable_advance_notifications"))
         ui_elements['seconds_label'].config(text=t("label.seconds_before_activity"))
+        ui_elements['advance_checkbox'].config(
+            text=get_checkbox_text("label.enable_advance_notifications", 
+                                 advance_notification_enabled_var.get())
+        )
+        ui_elements['append_state_checkbox'].config(
+            text=get_checkbox_text("label.append_checkbox_state",
+                                 append_checkbox_state_var.get())
+        )
         
         # Update notification combo box values
         current_notification = notification_var.get()
@@ -150,9 +157,6 @@ def open_global_options(app):
         ui_elements['ok_button'].config(text=t("button.ok"))
         ui_elements['cancel_button'].config(text=t("button.cancel"))
     
-    # Bind language change event
-    language_var.trace("w", on_language_change)
-    
     # Advance notification settings
     ui_elements['advance_settings_label'] = tk.Label(options_win, text=t("label.advance_notification_settings"))
     ui_elements['advance_settings_label'].pack(anchor="w", padx=10, pady=(15, 0))
@@ -166,6 +170,16 @@ def open_global_options(app):
         variable=advance_notification_enabled_var
     )
     ui_elements['advance_checkbox'].pack(anchor="w", padx=10, pady=(5, 0))
+    
+    # Append checkbox state to text option
+    append_checkbox_state_var = tk.BooleanVar()
+    append_checkbox_state_var.set(getattr(app, 'append_checkbox_state', False))
+    ui_elements['append_state_checkbox'] = tk.Checkbutton(
+        options_win,
+        text=t("label.append_checkbox_state"),
+        variable=append_checkbox_state_var
+    )
+    ui_elements['append_state_checkbox'].pack(anchor="w", padx=10, pady=(5, 0))
     
     # Advance notification seconds setting
     advance_seconds_frame = tk.Frame(options_win)
@@ -181,6 +195,44 @@ def open_global_options(app):
         width=10
     )
     advance_notification_seconds_entry.pack(side="right")
+    
+    # Define helper functions for checkbox text updates
+    def get_checkbox_text(base_key, is_checked):
+        """Get checkbox text with optional state indicator."""
+        base_text = t(base_key)
+        if append_checkbox_state_var.get():
+            state = t("checkbox_state.on") if is_checked else t("checkbox_state.off")
+            return f"{base_text} {state}"
+        return base_text
+    
+    def update_checkbox_texts():
+        """Update all checkbox texts based on current state and settings."""
+        ui_elements['advance_checkbox'].config(
+            text=get_checkbox_text("label.enable_advance_notifications", 
+                                 advance_notification_enabled_var.get())
+        )
+        ui_elements['append_state_checkbox'].config(
+            text=get_checkbox_text("label.append_checkbox_state",
+                                 append_checkbox_state_var.get())
+        )
+    
+    def on_advance_notification_change(*args):
+        """Handle advance notification checkbox state change."""
+        update_checkbox_texts()
+    
+    def on_append_state_change(*args):
+        """Handle append state checkbox change."""
+        update_checkbox_texts()
+    
+    # Bind language change event
+    language_var.trace("w", on_language_change)
+    
+    # Bind checkbox state change events
+    advance_notification_enabled_var.trace("w", on_advance_notification_change)
+    append_checkbox_state_var.trace("w", on_append_state_change)
+    
+    # Initialize checkbox texts
+    update_checkbox_texts()
 
     def validate_gotify_url(url):
         """Validate Gotify URL format."""
@@ -248,6 +300,7 @@ def open_global_options(app):
                 # Update app settings
                 app.advance_notification_enabled = new_advance_enabled
                 app.advance_notification_seconds = new_advance_seconds
+                app.append_checkbox_state = append_checkbox_state_var.get()
                 
                 # Update notification service with new settings
                 app.notification_service.set_advance_notification_settings(

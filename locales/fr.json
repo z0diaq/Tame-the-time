@@ -52,6 +52,7 @@
     "gotify_token": "Token Gotify:",
     "advance_notification_settings": "Paramètres de Notification Anticipée:",
     "enable_advance_notifications": "Activer les notifications anticipées",
+    "append_checkbox_state": "Ajouter l'état de la case à cocher au texte",
     "seconds_before_activity": "Secondes avant l'activité:",
     "select_tasks": "Sélectionner les Tâches:",
     "show_only_known_activity": "Afficher uniquement les tâches avec activité connue",
@@ -68,6 +69,10 @@
     "time_format_hint": "(format : HH:MM)",
     "shift_format_hint": "(ex. 01:30 ou -01:30 pour reculer)",
     "adjustment_mode": "Mode d'ajustement :"
+  },
+  "checkbox_state": {
+    "on": "(Activé)",
+    "off": "(Désactivé)"
   },
   "combo": {
     "disabled": "Désactivé",
