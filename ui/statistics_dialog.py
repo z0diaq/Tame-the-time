@@ -37,6 +37,7 @@ class TaskStatisticsDialog:
         self.filtered_task_data = []  # Store filtered tasks for display
         self.task_colors = {}  # Store color assignments for each task UUID
         self.task_canvas_items = []  # Store canvas item IDs for task list
+        self.checkbox_widgets = {}  # Store checkbox widget references for dynamic updates
         
     def show(self):
         """Show the statistics dialog."""
@@ -104,6 +105,7 @@ class TaskStatisticsDialog:
             command=self._on_filter_change
         )
         show_known_only_cb.pack(anchor=tk.W)
+        self.checkbox_widgets['show_known_only'] = show_known_only_cb
         
         # Current schedule filter checkbox
         self.show_current_schedule_only_var = tk.BooleanVar(value=show_current_schedule_only_default)
@@ -114,6 +116,7 @@ class TaskStatisticsDialog:
             command=self._on_filter_change
         )
         show_current_schedule_only_cb.pack(anchor=tk.W)
+        self.checkbox_widgets['show_current_schedule_only'] = show_current_schedule_only_cb
         
         # Task list with scrollbar (using Canvas for color indicators)
         list_frame = tk.Frame(parent)
@@ -166,6 +169,15 @@ class TaskStatisticsDialog:
             command=self._on_options_change
         )
         ignore_weekends_cb.pack(side=tk.LEFT, padx=(20, 0))
+        self.checkbox_widgets['ignore_weekends'] = ignore_weekends_cb
+        
+        # Bind checkbox state change events for text updates
+        self.show_known_only_var.trace('w', self._on_checkbox_state_change)
+        self.show_current_schedule_only_var.trace('w', self._on_checkbox_state_change)
+        self.ignore_weekends_var.trace('w', self._on_checkbox_state_change)
+        
+        # Initialize checkbox texts
+        self._update_checkbox_texts()
         
         # Chart display area
         self.chart_frame = tk.Frame(parent, bg=Colors.CHART_FRAME_BG, relief=tk.SUNKEN, bd=1)
@@ -385,6 +397,36 @@ class TaskStatisticsDialog:
             else:
                 # Normal appearance
                 self.task_canvas.itemconfig(item['text'], fill="black", font=("Arial", 10))
+    
+    def _get_checkbox_text(self, base_key, is_checked):
+        """Get checkbox text with optional state indicator."""
+        base_text = t(base_key)
+        if hasattr(self.parent, 'append_checkbox_state') and self.parent.append_checkbox_state:
+            state = t("checkbox_state.on") if is_checked else t("checkbox_state.off")
+            return f"{base_text} {state}"
+        return base_text
+    
+    def _update_checkbox_texts(self):
+        """Update all checkbox texts based on current state and settings."""
+        if 'show_known_only' in self.checkbox_widgets:
+            self.checkbox_widgets['show_known_only'].config(
+                text=self._get_checkbox_text("label.show_only_known_activity", 
+                                            self.show_known_only_var.get())
+            )
+        if 'show_current_schedule_only' in self.checkbox_widgets:
+            self.checkbox_widgets['show_current_schedule_only'].config(
+                text=self._get_checkbox_text("label.show_only_current_schedule",
+                                            self.show_current_schedule_only_var.get())
+            )
+        if 'ignore_weekends' in self.checkbox_widgets:
+            self.checkbox_widgets['ignore_weekends'].config(
+                text=self._get_checkbox_text("label.ignore_weekends",
+                                            self.ignore_weekends_var.get())
+            )
+    
+    def _on_checkbox_state_change(self, *args):
+        """Handle checkbox state change to update text."""
+        self._update_checkbox_texts()
     
     def _on_filter_change(self):
         """Handle filter checkbox change."""

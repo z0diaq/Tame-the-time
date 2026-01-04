@@ -63,6 +63,7 @@ class TimeboxApp(tk.Tk):
             "current_language": getattr(self, 'current_language', 'en'),
             "day_start": getattr(self, 'day_start', 0),
             "disable_auto_centering": getattr(self, 'disable_auto_centering', False),
+            "append_checkbox_state": getattr(self, 'append_checkbox_state', False),
             "last_schedule_path": getattr(self, 'last_schedule_path', None),
             "compact_view_visible": compact_view_visible
         }
@@ -161,6 +162,9 @@ class TimeboxApp(tk.Tk):
         
         # Load disable_auto_centering setting (default: False = auto-centering enabled)
         self.disable_auto_centering = settings.get("disable_auto_centering", False)
+        
+        # Load append_checkbox_state setting (default: False = state not appended)
+        self.append_checkbox_state = settings.get("append_checkbox_state", False)
         
         self.menu_bar = tk.Menu(self)
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
