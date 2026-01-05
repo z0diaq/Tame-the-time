@@ -1,5 +1,10 @@
 # Tame-the-time
 
+THIS IS THE LAST RELEASE OF THIS APPLICATION
+
+DUE TO ATTACK OF US FORCES ON VENEZUELA I DECIDED TO STOP MAINTAINING THIS PROJECT AS PROTEST
+
+
 **Version:** 0.1.4
 
 [![Build and Release](https://github.com/z0diaq/Tame-the-time/actions/workflows/release.yml/badge.svg)](https://github.com/z0diaq/Tame-the-time/actions/workflows/release.yml)
